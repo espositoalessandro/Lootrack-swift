@@ -1,11 +1,5 @@
-//
-//  LootrackApp.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 13/08/2026.
-//
-
 import SwiftUI
+import SwiftData
 
 @main
 struct LootrackApp: App {
@@ -13,5 +7,6 @@ struct LootrackApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: Transaction.self)
     }
 }
