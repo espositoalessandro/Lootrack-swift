@@ -34,10 +34,12 @@ struct AddTransactionView: View {
 
         let transaction = Transaction(
             id: UUID(),
+            createdAt: .now,
+            updatedAt: .now,
             type: draft.type,
             amountInCents: amountInCents,
             note: draft.note,
-            occurredOn: Date()
+            occurredOn: draft.occurredOn,
         )
 
         onSave(transaction)

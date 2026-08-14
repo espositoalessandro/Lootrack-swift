@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 14/08/2026.
-//
-
 
 import SwiftUI
 import SwiftData
@@ -15,10 +8,15 @@ struct TransactionListView: View {
     @State private var editingTransaction: Transaction?
     
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Transaction.occurredOn, order: .reverse)
+    
+    @Query(
+        filter: #Predicate<Transaction> { transaction in
+            transaction.deletedAt == nil
+        },
+        sort: \Transaction.occurredOn,
+        order: .reverse
+    )
     private var transactions: [Transaction]
-    
-    
     var body: some View {
         List {
             ForEach(transactions) { transaction in
@@ -32,7 +30,8 @@ struct TransactionListView: View {
                             systemImage: "trash",
                             role: .destructive
                         ) {
-                            modelContext.delete(transaction)
+                            transaction.deletedAt = .now
+                            transaction.updatedAt = .now
                         }
                     }
             }
@@ -59,6 +58,9 @@ struct TransactionListView: View {
             AddTransactionView { transaction in
                 modelContext.insert(transaction)
             }
+        }
+        .sheet(item: $editingTransaction) { transaction in
+            EditTransactionView(transaction: transaction)
         }
     }
 }

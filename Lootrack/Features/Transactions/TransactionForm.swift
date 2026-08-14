@@ -18,6 +18,7 @@ struct TransactionForm: View {
                     Text("Income")
                         .tag(TransactionType.income)
                 }
+                DatePicker("Occurred on", selection: $draft.occurredOn)
             }
         }
     }

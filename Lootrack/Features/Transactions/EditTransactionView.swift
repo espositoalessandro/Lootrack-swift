@@ -43,7 +43,11 @@ struct EditTransactionView: View {
         transaction.note = draft.note
         transaction.amountInCents = amountInCents
         transaction.type = draft.type
-
+        transaction.occurredOn = draft.occurredOn
+        
+        transaction.createdAt = transaction.createdAt
+        transaction.updatedAt = .now
+    
         dismiss()
     }    
 }
