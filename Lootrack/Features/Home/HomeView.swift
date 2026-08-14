@@ -2,12 +2,9 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
-    @Query(
-        filter: #Predicate<Transaction> { transaction in
-            transaction.deletedAt == nil
-        }
-    )
+    @Query(TransactionQueries.active)
     private var transactions: [Transaction]
+    
     private var currentMonthTransactions: [Transaction] {
         guard let interval = Calendar.current.dateInterval(
             of: .month,

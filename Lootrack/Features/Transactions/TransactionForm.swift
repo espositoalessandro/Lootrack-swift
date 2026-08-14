@@ -4,12 +4,7 @@ import SwiftData
 struct TransactionForm: View {
     @Binding var draft: TransactionDraft
     
-    @Query(
-        filter: #Predicate<Category> { category in
-            category.deletedAt == nil
-        },
-        sort: \Category.name
-    )
+    @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
     private var matchingCategories: [Category] {

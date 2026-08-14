@@ -9,14 +9,9 @@ struct TransactionListView: View {
     
     @Environment(\.modelContext) private var modelContext
     
-    @Query(
-        filter: #Predicate<Transaction> { transaction in
-            transaction.deletedAt == nil
-        },
-        sort: \Transaction.occurredOn,
-        order: .reverse
-    )
+    @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
+    
     var body: some View {
         List {
             ForEach(transactions) { transaction in

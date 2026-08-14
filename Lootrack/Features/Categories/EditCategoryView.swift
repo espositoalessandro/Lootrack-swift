@@ -8,11 +8,7 @@ struct EditCategoryView: View {
 
     @State private var draft: CategoryDraft
 
-    @Query(
-        filter: #Predicate<Transaction> { transaction in
-            transaction.deletedAt == nil
-        }
-    )
+    @Query(TransactionQueries.active)
     private var transactions: [Transaction]
 
     private var hasTransactions: Bool {

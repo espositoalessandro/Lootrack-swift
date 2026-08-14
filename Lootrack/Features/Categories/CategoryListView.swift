@@ -1,11 +1,3 @@
-//
-//  CategoryListView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 14/08/2026.
-//
-
-
 import SwiftUI
 import SwiftData
 
@@ -13,12 +5,7 @@ struct CategoryListView: View {
     @State private var showingAddCategory = false
     @State private var editingCategory: Category?
 
-    @Query(
-        filter: #Predicate<Category> { category in
-            category.deletedAt == nil
-        },
-        sort: \Category.name
-    )
+    @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
     var body: some View {
