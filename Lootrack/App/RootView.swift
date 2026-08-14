@@ -21,6 +21,12 @@ struct RootView: View {
                     SyncView()
                 }
             }
+            
+            Tab("Categories", systemImage: "square.grid.2x2") {
+                NavigationStack {
+                    CategoryListView()
+                }
+            }
         }
     }
 }

@@ -57,10 +57,8 @@ struct TransactionListView: View {
         .sheet(isPresented: $showingAddTransaction) {
             AddTransactionView { transaction in
                 modelContext.insert(transaction)
-
                 do {
                     try modelContext.save()
-                    print("SAVED:", transaction.id)
                 } catch {
                     print("SWIFTDATA SAVE ERROR:", error)
                 }

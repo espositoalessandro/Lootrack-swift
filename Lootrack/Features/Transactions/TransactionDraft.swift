@@ -5,8 +5,6 @@ struct TransactionDraft {
     var amount: String = ""
     var type: TransactionType = .expense
     var occurredOn: Date = Date()
-    var createdAt: Date = Date()
-    var updatedAt: Date = Date()
     
     var amountInCents: Int? {
         let normalized = amount.replacingOccurrences(of: ",", with: ".")
@@ -31,7 +29,5 @@ struct TransactionDraft {
 
         type = transaction.type
         occurredOn = transaction.occurredOn
-        createdAt = transaction.createdAt
-        updatedAt = transaction.updatedAt
     }
 }
