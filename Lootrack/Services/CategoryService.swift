@@ -49,6 +49,9 @@ final class CategoryService {
     }
 
     func delete(_ category: Category) throws {
+        if try hasActiveTransactions(category) {
+            throw CategoryServiceError.cannotChangeTypeWhileInUse
+        }
         category.deletedAt = .now
         category.updatedAt = .now
 
