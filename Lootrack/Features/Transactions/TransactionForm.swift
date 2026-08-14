@@ -29,8 +29,6 @@ struct TransactionForm: View {
                         .tag(TransactionType.income)
                 }
                 .pickerStyle(.segmented)
-                .tint(draft.type == .expense ? .red : .green)
-
                 Picker("Category", selection: $draft.categoryId) {
                     Text("Uncategorized")
                         .tag(UUID?.none)

@@ -5,7 +5,7 @@ private enum TransactionListFilter: CaseIterable {
     case all
     case expense
     case income
-
+    
     var label: String {
         switch self {
         case .all:
@@ -18,11 +18,25 @@ private enum TransactionListFilter: CaseIterable {
     }
 }
 
+private struct TransactionDayGroup: Identifiable {
+    let date: Date
+    let transactions: [Transaction]
+    
+    var id: Date { date }
+}
+
+private struct TransactionMonthGroup: Identifiable {
+    let date: Date
+    let days: [TransactionDayGroup]
+    
+    var id: Date { date }
+}
+
 struct TransactionListView: View {
     @State private var showingAddTransaction = false
     @State private var editingTransaction: Transaction?
     @State private var selectedFilter: TransactionListFilter = .all
-    
+    @State private var searchQuery = ""
     
     @Environment(TransactionService.self)
     private var transactionService
@@ -30,18 +44,83 @@ struct TransactionListView: View {
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
     private var filteredTransactions: [Transaction] {
-        transactions.filter { transaction in
-            switch selectedFilter {
+        let normalizedSearch = searchQuery
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        
+        return transactions.filter { transaction in
+            let matchesFilter = switch selectedFilter {
             case .all:
-                return true
-
+                true
+                
             case .expense:
-                return transaction.type == .expense
-
+                transaction.type == .expense
+                
             case .income:
-                return transaction.type == .income
+                transaction.type == .income
             }
+            
+            guard matchesFilter else {
+                return false
+            }
+            
+            guard !normalizedSearch.isEmpty else {
+                return true
+            }
+            
+            let categoryName = transaction.categoryId
+                .flatMap { categoryNamesById[$0] }
+            ?? "Uncategorized"
+            
+            let searchableText = [
+                transaction.note,
+                categoryName,
+                transaction.type == .expense ? "expense" : "income"
+            ]
+                .joined(separator: " ")
+                .lowercased()
+            
+            return searchableText.contains(normalizedSearch)
         }
+    }
+    
+    private var transactionGroups: [TransactionMonthGroup] {
+        let calendar = Calendar.current
+        
+        let transactionsByMonth = Dictionary(
+            grouping: filteredTransactions
+        ) { transaction in
+            calendar.dateInterval(
+                of: .month,
+                for: transaction.occurredOn
+            )!.start
+        }
+        
+        return transactionsByMonth
+            .map { monthDate, transactions in
+                let transactionsByDay = Dictionary(
+                    grouping: transactions
+                ) { transaction in
+                    calendar.startOfDay(
+                        for: transaction.occurredOn
+                    )
+                }
+                
+                let days = transactionsByDay
+                    .map { dayDate, transactions in
+                        TransactionDayGroup(
+                            date: dayDate,
+                            transactions: transactions
+                        )
+                    }
+                    .sorted { $0.date > $1.date }
+                
+                return TransactionMonthGroup(
+                    date: monthDate,
+                    days: days
+                )
+            }
+            .sorted { $0.date > $1.date }
     }
     
     @Query(CategoryQueries.activeByName)
@@ -65,32 +144,58 @@ struct TransactionListView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal)
         List {
-            ForEach(filteredTransactions) { transaction in
-                TransactionRow(
-                    transaction: transaction,
-                    categoryName: transaction.categoryId.flatMap {
-                        categoryNamesById[$0]
-                    })
-                .swipeActions(edge: .trailing) {
-                    Button(
-                        "Delete",
-                        systemImage: "trash",
-                        role: .destructive
-                    ) {
-                        do {
-                            try transactionService.delete(transaction)
-                        } catch {
-                            print("FAILED TO DELETE TRANSACTION:", error)
+            ForEach(transactionGroups) { month in
+                Section {
+                    ForEach(month.days) { day in
+                        Section {
+                            ForEach(day.transactions) { transaction in
+                                TransactionRow(
+                                    transaction: transaction,
+                                    categoryName: transaction.categoryId.flatMap {
+                                        categoryNamesById[$0]
+                                    }
+                                )
+                                .swipeActions(edge: .trailing) {
+                                    Button(
+                                        "Delete",
+                                        systemImage: "trash",
+                                        role: .destructive
+                                    ) {
+                                        do {
+                                            try transactionService.delete(transaction)
+                                        } catch {
+                                            print("FAILED TO DELETE TRANSACTION:", error)
+                                        }
+                                    };
+                                    Button("Edit", systemImage: "pencil") {
+                                        editingTransaction = transaction
+                                    }.tint(.blue)
+                                }
+                                .swipeActions (edge: .leading, allowsFullSwipe: true){
+                                    Button("Edit", systemImage: "pencil") {
+                                        editingTransaction = transaction
+                                    }.tint(.blue)
+                                }
+                            }
+                        } header: {
+                            Text(
+                                day.date.formatted(
+                                    .dateTime
+                                        .weekday(.wide)
+                                        .day()
+                                        .month(.abbreviated)
+                                )
+                            )
                         }
-                    };
-                    Button("Edit", systemImage: "pencil") {
-                        editingTransaction = transaction
-                    }.tint(.blue)
-                }
-                .swipeActions (edge: .leading, allowsFullSwipe: true){
-                    Button("Edit", systemImage: "pencil") {
-                        editingTransaction = transaction
-                    }.tint(.blue)
+                    }
+                } header: {
+                    Text(
+                        month.date.formatted(
+                            .dateTime
+                                .month(.wide)
+                                .year()
+                        )
+                    )
                 }
             }
         }
@@ -99,6 +204,10 @@ struct TransactionListView: View {
             Color.clear
                 .frame(height: 80)
         }
+        .searchable(
+            text: $searchQuery,
+            prompt: "Search transactions"
+        )
         .overlay(alignment: .bottom) {
             Button {
                 showingAddTransaction = true
