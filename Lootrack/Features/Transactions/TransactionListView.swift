@@ -1,8 +1,16 @@
+//
+//  ContentView.swift
+//  Lootrack
+//
+//  Created by Alessandro Esposito on 14/08/2026.
+//
+
+
 import SwiftUI
 import SwiftData
 
 
-struct ContentView: View {
+struct TransactionListView: View {
     @State private var showingAddTransaction = false
     @State private var editingTransaction: Transaction?
     
@@ -29,6 +37,7 @@ struct ContentView: View {
                     }
             }
         }
+        .navigationTitle("Transactions")
         .safeAreaInset(edge: .bottom) {
             Color.clear
                 .frame(height: 80)
@@ -51,12 +60,5 @@ struct ContentView: View {
                 modelContext.insert(transaction)
             }
         }
-        .sheet(item: $editingTransaction) { transaction in
-            EditTransactionView(transaction: transaction)
-        }
     }
-}
-
-#Preview {
-    ContentView()
 }

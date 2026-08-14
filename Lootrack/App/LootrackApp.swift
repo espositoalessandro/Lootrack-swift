@@ -5,7 +5,7 @@ import SwiftData
 struct LootrackApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
         .modelContainer(for: [
             Transaction.self,
