@@ -16,17 +16,18 @@ struct RootView: View {
                 }
             }
 
-            Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
-                NavigationStack {
-                    SyncView()
-                }
-            }
             
             Tab("Categories", systemImage: "square.grid.2x2") {
                 NavigationStack {
                     CategoryListView()
                 }
             }
+            
+            Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
+                NavigationStack {
+                    SyncView()
+                }
+            }.disabled(true)
         }
     }
 }
