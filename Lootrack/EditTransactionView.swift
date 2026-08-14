@@ -1,22 +1,39 @@
 import SwiftUI
 
-struct AddTransactionView: View {
+struct EditTransactionView: View {
     @Environment(\.dismiss) private var dismiss
-
-    let onSave: (Transaction) -> Void
     
-    @State private var description = ""
-    @State private var amount = ""
-    @State private var type: TransactionType = .expense
+    let transaction: Transaction
+    
+    @State private var note: String
+    @State private var amount: String
+    @State private var type: TransactionType
+    
+    
+    init(transaction: Transaction) {
+        self.transaction = transaction
 
+        _note = State(initialValue: transaction.note)
+
+        _amount = State(
+            initialValue: NSDecimalNumber(
+                value: transaction.amountInCents
+            )
+            .dividing(by: 100)
+            .stringValue
+        )
+
+        _type = State(initialValue: transaction.type)
+    }
+    
     var body: some View {
         NavigationStack {
             TransactionForm(
-                note: $description,
+                note: $note,
                 amount: $amount,
                 type: $type
             )
-            .navigationTitle("New Transaction")
+            .navigationTitle("Edit Transaction")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -38,15 +55,10 @@ struct AddTransactionView: View {
             return
         }
 
-        let transaction = Transaction(
-            id: UUID(),
-            type: type,
-            amountInCents: amountInCents,
-            note: description,
-            occurredOn: Date()
-        )
+        transaction.note = note
+        transaction.amountInCents = amountInCents
+        transaction.type = type
 
-        onSave(transaction)
         dismiss()
     }
     
@@ -60,4 +72,3 @@ struct AddTransactionView: View {
         return NSDecimalNumber(decimal: decimal * 100).intValue
     }
 }
-

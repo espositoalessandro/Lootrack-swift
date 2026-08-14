@@ -4,6 +4,8 @@ import SwiftData
 
 struct ContentView: View {
     @State private var showingAddTransaction = false
+    @State private var editingTransaction: Transaction?
+    
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Transaction.occurredOn, order: .reverse)
     private var transactions: [Transaction]
@@ -13,6 +15,18 @@ struct ContentView: View {
         List {
             ForEach(transactions) { transaction in
                 TransactionRow(transaction: transaction)
+                    .onTapGesture {
+                        editingTransaction = transaction
+                    }
+                    .swipeActions {
+                        Button(
+                            "Delete",
+                            systemImage: "trash",
+                            role: .destructive
+                        ) {
+                            modelContext.delete(transaction)
+                        }
+                    }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -36,6 +50,9 @@ struct ContentView: View {
             AddTransactionView { transaction in
                 modelContext.insert(transaction)
             }
+        }
+        .sheet(item: $editingTransaction) { transaction in
+            EditTransactionView(transaction: transaction)
         }
     }
 }
