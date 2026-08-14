@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-struct CategoryListView: View {    
+struct CategoryListView: View {
     @Environment(CategoryService.self) private var categoryService
 
     @State private var showingAddCategory = false
@@ -22,21 +22,23 @@ struct CategoryListView: View {
                         .foregroundStyle(.secondary)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture {
-                    editingCategory = category
-                }
-                .swipeActions {
+
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(
                         "Delete",
                         systemImage: "trash",
-                        role: .destructive
                     ) {
                         do {
                             try categoryService.delete(category)
                         } catch {
                             print("FAILED TO DELETE CATEGORY:", error)
                         }
-                    }
+                    }.tint(.red)
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    Button("Edit", systemImage: "pencil") {
+                        editingCategory = category
+                    }.tint(.blue)
                 }
             }
         }

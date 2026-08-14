@@ -45,12 +45,12 @@ struct TransactionListView: View {
                     };
                     Button("Edit", systemImage: "pencil") {
                         editingTransaction = transaction
-                    }
+                    }.tint(.blue)
                 }
                 .swipeActions (edge: .leading, allowsFullSwipe: true){
                     Button("Edit", systemImage: "pencil") {
                         editingTransaction = transaction
-                    }
+                    }.tint(.blue)
                 }
             }
         }
