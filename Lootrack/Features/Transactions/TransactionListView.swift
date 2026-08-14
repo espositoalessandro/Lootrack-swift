@@ -17,10 +17,7 @@ struct TransactionListView: View {
         List {
             ForEach(transactions) { transaction in
                 TransactionRow(transaction: transaction)
-                    .onTapGesture {
-                        editingTransaction = transaction
-                    }
-                    .swipeActions {
+                    .swipeActions(edge: .trailing) {
                         Button(
                             "Delete",
                             systemImage: "trash",
@@ -31,6 +28,14 @@ struct TransactionListView: View {
                             } catch {
                                 print("FAILED TO DELETE TRANSACTION:", error)
                             }
+                        };
+                        Button("Edit", systemImage: "pencil") {
+                            editingTransaction = transaction
+                        }
+                    }
+                    .swipeActions (edge: .leading, allowsFullSwipe: true){
+                        Button("Edit", systemImage: "pencil") {
+                            editingTransaction = transaction
                         }
                     }
             }
