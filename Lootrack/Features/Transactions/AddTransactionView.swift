@@ -5,17 +5,11 @@ struct AddTransactionView: View {
 
     let onSave: (Transaction) -> Void
     
-    @State private var description = ""
-    @State private var amount = ""
-    @State private var type: TransactionType = .expense
+    @State private var draft = TransactionDraft()
 
     var body: some View {
         NavigationStack {
-            TransactionForm(
-                note: $description,
-                amount: $amount,
-                type: $type
-            )
+            TransactionForm(draft: $draft)
             .navigationTitle("New Transaction")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -34,30 +28,20 @@ struct AddTransactionView: View {
     }
     
     private func save() {
-        guard let amountInCents else {
+        guard let amountInCents = draft.amountInCents else {
             return
         }
 
         let transaction = Transaction(
             id: UUID(),
-            type: type,
+            type: draft.type,
             amountInCents: amountInCents,
-            note: description,
+            note: draft.note,
             occurredOn: Date()
         )
 
         onSave(transaction)
         dismiss()
-    }
-    
-    private var amountInCents: Int? {
-        let normalized = amount.replacingOccurrences(of: ",", with: ".")
-
-        guard let decimal = Decimal(string: normalized) else {
-            return nil
-        }
-
-        return NSDecimalNumber(decimal: decimal * 100).intValue
     }
 }
 

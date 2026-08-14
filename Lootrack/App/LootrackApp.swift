@@ -7,6 +7,9 @@ struct LootrackApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: Transaction.self)
+        .modelContainer(for: [
+            Transaction.self,
+            Category.self
+        ])
     }
 }

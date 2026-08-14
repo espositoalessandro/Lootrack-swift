@@ -1,19 +1,17 @@
 import SwiftUI
 
 struct TransactionForm: View {
-    @Binding var note: String
-    @Binding var amount: String
-    @Binding var type: TransactionType
+    @Binding var draft: TransactionDraft
 
     var body: some View {
         Form {
             Section("Transaction") {
-                TextField("Description", text: $note)
+                TextField("Description", text: $draft.note)
 
-                TextField("Amount", text: $amount)
+                TextField("Amount", text: $draft.amount)
                     .keyboardType(.decimalPad)
 
-                Picker("Type", selection: $type) {
+                Picker("Type", selection: $draft.type) {
                     Text("Expense")
                         .tag(TransactionType.expense)
 
