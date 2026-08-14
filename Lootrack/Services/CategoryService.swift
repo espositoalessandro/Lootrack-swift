@@ -4,6 +4,7 @@ import SwiftData
 
 enum CategoryServiceError: Error {
     case cannotChangeTypeWhileInUse
+    case cannotDeleteWhileInUse
 }
 
 @MainActor
@@ -50,7 +51,7 @@ final class CategoryService {
 
     func delete(_ category: Category) throws {
         if try hasActiveTransactions(category) {
-            throw CategoryServiceError.cannotChangeTypeWhileInUse
+            throw CategoryServiceError.cannotDeleteWhileInUse
         }
         category.deletedAt = .now
         category.updatedAt = .now
