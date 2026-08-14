@@ -40,6 +40,7 @@ struct AddTransactionView: View {
             amountInCents: amountInCents,
             note: draft.note,
             occurredOn: draft.occurredOn,
+            categoryId: draft.categoryId
         )
 
         onSave(transaction)

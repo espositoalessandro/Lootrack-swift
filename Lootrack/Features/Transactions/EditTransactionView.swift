@@ -45,6 +45,7 @@ struct EditTransactionView: View {
         transaction.type = draft.type
         transaction.occurredOn = draft.occurredOn
         transaction.updatedAt = .now
+        transaction.categoryId = draft.categoryId
     
         dismiss()
     }    
