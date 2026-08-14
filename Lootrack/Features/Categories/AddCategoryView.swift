@@ -1,10 +1,3 @@
-//
-//  AddCategoryView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 14/08/2026.
-//
-
 
 import SwiftUI
 import SwiftData
@@ -12,7 +5,10 @@ import SwiftData
 struct AddCategoryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-
+    
+    @Environment(CategoryService.self)
+    private var categoryService
+    
     @State private var draft = CategoryDraft()
 
     var body: some View {
@@ -37,12 +33,14 @@ struct AddCategoryView: View {
     }
 
     private func save() {
-        let category = Category(
-            type: draft.type,
-            name: draft.name
-        )
-
-        modelContext.insert(category)
-        dismiss()
+        do {
+            try categoryService.create(
+                name: draft.name,
+                type: draft.type
+            )
+            dismiss()
+        } catch {
+            print("FAILED TO CREATE CATEGORY:", error)
+        }
     }
 }

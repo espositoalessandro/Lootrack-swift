@@ -3,7 +3,8 @@ import SwiftData
 
 struct EditCategoryView: View {
     @Environment(\.dismiss) private var dismiss
-
+    @Environment(CategoryService.self) private var categoryService
+    
     let category: Category
 
     @State private var draft: CategoryDraft
@@ -50,10 +51,16 @@ struct EditCategoryView: View {
     }
 
     private func save() {
-        category.name = draft.name
-        category.type = draft.type
-        category.updatedAt = .now
+        do {
+            try categoryService.update(
+                category,
+                name: draft.name,
+                type: draft.type
+            )
 
-        dismiss()
+            dismiss()
+        } catch {
+            print("FAILED TO UPDATE CATEGORY:", error)
+        }
     }
 }

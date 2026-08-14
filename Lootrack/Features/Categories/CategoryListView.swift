@@ -1,10 +1,12 @@
 import SwiftUI
 import SwiftData
 
-struct CategoryListView: View {
+struct CategoryListView: View {    
+    @Environment(CategoryService.self) private var categoryService
+
     @State private var showingAddCategory = false
     @State private var editingCategory: Category?
-
+    
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
@@ -29,8 +31,11 @@ struct CategoryListView: View {
                         systemImage: "trash",
                         role: .destructive
                     ) {
-                        category.deletedAt = .now
-                        category.updatedAt = .now
+                        do {
+                            try categoryService.delete(category)
+                        } catch {
+                            print("FAILED TO DELETE CATEGORY:", error)
+                        }
                     }
                 }
             }
