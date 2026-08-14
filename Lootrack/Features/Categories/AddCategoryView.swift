@@ -1,10 +1,7 @@
-
 import SwiftUI
-import SwiftData
 
 struct AddCategoryView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     
     @Environment(CategoryService.self)
     private var categoryService

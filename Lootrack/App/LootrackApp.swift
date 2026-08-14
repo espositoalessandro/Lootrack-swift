@@ -36,5 +36,6 @@ struct LootrackApp: App {
         }
         .modelContainer(modelContainer)
         .environment(transactionService)
+        .environment(categoryService)
     }
 }

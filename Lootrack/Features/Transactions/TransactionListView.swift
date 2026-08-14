@@ -1,4 +1,3 @@
-
 import SwiftUI
 import SwiftData
 
@@ -13,31 +12,46 @@ struct TransactionListView: View {
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
     
+    @Query(CategoryQueries.activeByName)
+    private var categories: [Category]
+    
+    private var categoryNamesById: [UUID: String] {
+        Dictionary(
+            uniqueKeysWithValues: categories.map { category in
+                (category.id, category.name)
+            }
+        )
+    }
+    
     var body: some View {
         List {
             ForEach(transactions) { transaction in
-                TransactionRow(transaction: transaction)
-                    .swipeActions(edge: .trailing) {
-                        Button(
-                            "Delete",
-                            systemImage: "trash",
-                            role: .destructive
-                        ) {
-                            do {
-                                try transactionService.delete(transaction)
-                            } catch {
-                                print("FAILED TO DELETE TRANSACTION:", error)
-                            }
-                        };
-                        Button("Edit", systemImage: "pencil") {
-                            editingTransaction = transaction
+                TransactionRow(
+                    transaction: transaction,
+                    categoryName: transaction.categoryId.flatMap {
+                        categoryNamesById[$0]
+                    })
+                .swipeActions(edge: .trailing) {
+                    Button(
+                        "Delete",
+                        systemImage: "trash",
+                        role: .destructive
+                    ) {
+                        do {
+                            try transactionService.delete(transaction)
+                        } catch {
+                            print("FAILED TO DELETE TRANSACTION:", error)
                         }
+                    };
+                    Button("Edit", systemImage: "pencil") {
+                        editingTransaction = transaction
                     }
-                    .swipeActions (edge: .leading, allowsFullSwipe: true){
-                        Button("Edit", systemImage: "pencil") {
-                            editingTransaction = transaction
-                        }
+                }
+                .swipeActions (edge: .leading, allowsFullSwipe: true){
+                    Button("Edit", systemImage: "pencil") {
+                        editingTransaction = transaction
                     }
+                }
             }
         }
         .navigationTitle("Transactions")
