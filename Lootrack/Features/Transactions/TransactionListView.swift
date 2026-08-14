@@ -1,16 +1,48 @@
 import SwiftUI
 import SwiftData
 
+private enum TransactionListFilter: CaseIterable {
+    case all
+    case expense
+    case income
+
+    var label: String {
+        switch self {
+        case .all:
+            return "All"
+        case .expense:
+            return "Expenses"
+        case .income:
+            return "Income"
+        }
+    }
+}
 
 struct TransactionListView: View {
     @State private var showingAddTransaction = false
     @State private var editingTransaction: Transaction?
+    @State private var selectedFilter: TransactionListFilter = .all
+    
     
     @Environment(TransactionService.self)
     private var transactionService
     
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
+    private var filteredTransactions: [Transaction] {
+        transactions.filter { transaction in
+            switch selectedFilter {
+            case .all:
+                return true
+
+            case .expense:
+                return transaction.type == .expense
+
+            case .income:
+                return transaction.type == .income
+            }
+        }
+    }
     
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
@@ -24,8 +56,16 @@ struct TransactionListView: View {
     }
     
     var body: some View {
+        Picker("Transaction type", selection: $selectedFilter) {
+            ForEach(TransactionListFilter.allCases, id: \.self) { filter in
+                Text(filter.label)
+                    .tag(filter)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
         List {
-            ForEach(transactions) { transaction in
+            ForEach(filteredTransactions) { transaction in
                 TransactionRow(
                     transaction: transaction,
                     categoryName: transaction.categoryId.flatMap {

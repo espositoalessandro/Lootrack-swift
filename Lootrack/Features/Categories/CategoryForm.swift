@@ -17,6 +17,8 @@ struct CategoryForm: View {
                     Text("Income")
                         .tag(TransactionType.income)
                 }
+                .pickerStyle(.segmented)
+                .tint(draft.type == .expense ? .red : .green)
                 .disabled(typeDisabled)
             }
         }
