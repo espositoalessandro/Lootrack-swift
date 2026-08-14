@@ -7,6 +7,8 @@ struct EditTransactionView: View {
     
     @State private var draft: TransactionDraft
     
+    @Environment(TransactionService.self)
+    private var transactionService
     
     init(transaction: Transaction) {
         self.transaction = transaction
@@ -40,13 +42,19 @@ struct EditTransactionView: View {
             return
         }
 
-        transaction.note = draft.note
-        transaction.amountInCents = amountInCents
-        transaction.type = draft.type
-        transaction.occurredOn = draft.occurredOn
-        transaction.updatedAt = .now
-        transaction.categoryId = draft.categoryId
-    
-        dismiss()
-    }    
+        do {
+            try transactionService.update(
+                transaction,
+                type: draft.type,
+                amountInCents: amountInCents,
+                note: draft.note,
+                occurredOn: draft.occurredOn,
+                categoryId: draft.categoryId
+            )
+
+            dismiss()
+        } catch {
+            print("FAILED TO UPDATE TRANSACTION:", error)
+        }
+    }
 }

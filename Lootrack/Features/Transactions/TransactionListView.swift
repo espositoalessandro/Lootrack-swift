@@ -7,7 +7,8 @@ struct TransactionListView: View {
     @State private var showingAddTransaction = false
     @State private var editingTransaction: Transaction?
     
-    @Environment(\.modelContext) private var modelContext
+    @Environment(TransactionService.self)
+    private var transactionService
     
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
@@ -25,8 +26,11 @@ struct TransactionListView: View {
                             systemImage: "trash",
                             role: .destructive
                         ) {
-                            transaction.deletedAt = .now
-                            transaction.updatedAt = .now
+                            do {
+                                try transactionService.delete(transaction)
+                            } catch {
+                                print("FAILED TO DELETE TRANSACTION:", error)
+                            }
                         }
                     }
             }
@@ -50,14 +54,7 @@ struct TransactionListView: View {
             .padding(.bottom, 12)
         }
         .sheet(isPresented: $showingAddTransaction) {
-            AddTransactionView { transaction in
-                modelContext.insert(transaction)
-                do {
-                    try modelContext.save()
-                } catch {
-                    print("SWIFTDATA SAVE ERROR:", error)
-                }
-            }
+            AddTransactionView()
         }
         .sheet(item: $editingTransaction) { transaction in
             EditTransactionView(transaction: transaction)

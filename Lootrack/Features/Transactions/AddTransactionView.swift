@@ -3,7 +3,8 @@ import SwiftUI
 struct AddTransactionView: View {
     @Environment(\.dismiss) private var dismiss
 
-    let onSave: (Transaction) -> Void
+    @Environment(TransactionService.self)
+    private var transactionService
     
     @State private var draft = TransactionDraft()
 
@@ -32,19 +33,19 @@ struct AddTransactionView: View {
             return
         }
 
-        let transaction = Transaction(
-            id: UUID(),
-            createdAt: .now,
-            updatedAt: .now,
-            type: draft.type,
-            amountInCents: amountInCents,
-            note: draft.note,
-            occurredOn: draft.occurredOn,
-            categoryId: draft.categoryId
-        )
+        do {
+            try transactionService.create(
+                type: draft.type,
+                amountInCents: amountInCents,
+                note: draft.note,
+                occurredOn: draft.occurredOn,
+                categoryId: draft.categoryId
+            )
 
-        onSave(transaction)
-        dismiss()
+            dismiss()
+        } catch {
+            print("FAILED TO CREATE TRANSACTION:", error)
+        }
     }
 }
 
