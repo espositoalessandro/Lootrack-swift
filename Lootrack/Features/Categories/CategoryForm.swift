@@ -1,15 +1,9 @@
-//
-//  CategoryForm.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 14/08/2026.
-//
-
-
 import SwiftUI
 
 struct CategoryForm: View {
     @Binding var draft: CategoryDraft
+
+    var typeDisabled = false
 
     var body: some View {
         Form {
@@ -23,6 +17,7 @@ struct CategoryForm: View {
                     Text("Income")
                         .tag(TransactionType.income)
                 }
+                .disabled(typeDisabled)
             }
         }
     }

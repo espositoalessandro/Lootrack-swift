@@ -59,5 +59,8 @@ struct CategoryListView: View {
         .sheet(isPresented: $showingAddCategory) {
             AddCategoryView()
         }
+        .sheet(item: $editingCategory) { category in
+            EditCategoryView(category: category)
+        }
     }
 }
