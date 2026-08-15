@@ -1,19 +1,20 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 private enum TransactionListFilter: CaseIterable {
     case all
     case expense
     case income
-    
+
     var label: String {
         switch self {
         case .all:
-            return "All"
+            return String(localized: "All")
+
         case .expense:
-            return "Expenses"
+            return String(localized: "Expenses")
         case .income:
-            return "Income"
+            return String(localized: "Income")
         }
     }
 }
@@ -21,14 +22,14 @@ private enum TransactionListFilter: CaseIterable {
 private struct TransactionDayGroup: Identifiable {
     let date: Date
     let transactions: [Transaction]
-    
+
     var id: Date { date }
 }
 
 private struct TransactionMonthGroup: Identifiable {
     let date: Date
     let days: [TransactionDayGroup]
-    
+
     var id: Date { date }
 }
 
@@ -37,56 +38,59 @@ struct TransactionListView: View {
     @State private var editingTransaction: Transaction?
     @State private var selectedFilter: TransactionListFilter = .all
     @State private var searchQuery = ""
-    
+
     @Environment(TransactionService.self)
     private var transactionService
-    
+
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
     private var filteredTransactions: [Transaction] {
-        let normalizedSearch = searchQuery
+        let normalizedSearch =
+            searchQuery
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-        
+
         return transactions.filter { transaction in
-            let matchesFilter = switch selectedFilter {
-            case .all:
-                true
-                
-            case .expense:
-                transaction.type == .expense
-                
-            case .income:
-                transaction.type == .income
-            }
-            
+            let matchesFilter =
+                switch selectedFilter {
+                case .all:
+                    true
+
+                case .expense:
+                    transaction.type == .expense
+
+                case .income:
+                    transaction.type == .income
+                }
+
             guard matchesFilter else {
                 return false
             }
-            
+
             guard !normalizedSearch.isEmpty else {
                 return true
             }
-            
-            let categoryName = transaction.categoryId
+
+            let categoryName =
+                transaction.categoryId
                 .flatMap { categoryNamesById[$0] }
-            ?? "Uncategorized"
-            
+                ?? String(localized: "Uncategorized")
+
             let searchableText = [
                 transaction.note,
                 categoryName,
-                transaction.type == .expense ? "expense" : "income"
+                transaction.type == .expense ? "expense" : "income",
             ]
-                .joined(separator: " ")
-                .lowercased()
-            
+            .joined(separator: " ")
+            .lowercased()
+
             return searchableText.contains(normalizedSearch)
         }
     }
-    
+
     private var transactionGroups: [TransactionMonthGroup] {
         let calendar = Calendar.current
-        
+
         let transactionsByMonth = Dictionary(
             grouping: filteredTransactions
         ) { transaction in
@@ -95,8 +99,9 @@ struct TransactionListView: View {
                 for: transaction.occurredOn
             )!.start
         }
-        
-        return transactionsByMonth
+
+        return
+            transactionsByMonth
             .map { monthDate, transactions in
                 let transactionsByDay = Dictionary(
                     grouping: transactions
@@ -105,8 +110,9 @@ struct TransactionListView: View {
                         for: transaction.occurredOn
                     )
                 }
-                
-                let days = transactionsByDay
+
+                let days =
+                    transactionsByDay
                     .map { dayDate, transactions in
                         TransactionDayGroup(
                             date: dayDate,
@@ -114,7 +120,7 @@ struct TransactionListView: View {
                         )
                     }
                     .sorted { $0.date > $1.date }
-                
+
                 return TransactionMonthGroup(
                     date: monthDate,
                     days: days
@@ -122,10 +128,10 @@ struct TransactionListView: View {
             }
             .sorted { $0.date > $1.date }
     }
-    
+
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
-    
+
     private var categoryNamesById: [UUID: String] {
         Dictionary(
             uniqueKeysWithValues: categories.map { category in
@@ -133,7 +139,7 @@ struct TransactionListView: View {
             }
         )
     }
-    
+
     var body: some View {
         Picker("Transaction type", selection: $selectedFilter) {
             ForEach(TransactionListFilter.allCases, id: \.self) { filter in
@@ -151,7 +157,8 @@ struct TransactionListView: View {
                             ForEach(day.transactions) { transaction in
                                 TransactionRow(
                                     transaction: transaction,
-                                    categoryName: transaction.categoryId.flatMap {
+                                    categoryName: transaction.categoryId.flatMap
+                                    {
                                         categoryNamesById[$0]
                                     }
                                 )
@@ -162,16 +169,24 @@ struct TransactionListView: View {
                                         role: .destructive
                                     ) {
                                         do {
-                                            try transactionService.delete(transaction)
+                                            try transactionService.delete(
+                                                transaction
+                                            )
                                         } catch {
-                                            print("FAILED TO DELETE TRANSACTION:", error)
+                                            print(
+                                                "FAILED TO DELETE TRANSACTION:",
+                                                error
+                                            )
                                         }
-                                    };
+                                    }
                                     Button("Edit", systemImage: "pencil") {
                                         editingTransaction = transaction
                                     }.tint(.blue)
                                 }
-                                .swipeActions (edge: .leading, allowsFullSwipe: true){
+                                .swipeActions(
+                                    edge: .leading,
+                                    allowsFullSwipe: true
+                                ) {
                                     Button("Edit", systemImage: "pencil") {
                                         editingTransaction = transaction
                                     }.tint(.blue)

@@ -1,9 +1,9 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct TransactionForm: View {
     @Binding var draft: TransactionDraft
-    
+
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
@@ -12,7 +12,7 @@ struct TransactionForm: View {
             category.type == draft.type
         }
     }
-    
+
     var body: some View {
         Form {
             Section("Transaction") {
