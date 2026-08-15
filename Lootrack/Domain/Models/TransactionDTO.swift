@@ -13,7 +13,7 @@ struct TransactionDTO: Codable {
     let type: TransactionType
     let amountInCents: Int
     let note: String
-    let occurredOn: Date
+    let occurredOn: String
     let categoryId: UUID?
 }
 

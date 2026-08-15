@@ -4,7 +4,7 @@ struct TransactionDraft {
     var note: String = ""
     var amount: String = ""
     var type: TransactionType = .expense
-    var occurredOn: Date = Date()
+    var occurredOn: String = ""
     var categoryId: UUID?
     var amountInCents: Int? {
         let normalized = amount.replacingOccurrences(of: ",", with: ".")
