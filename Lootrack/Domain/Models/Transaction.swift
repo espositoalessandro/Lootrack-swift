@@ -7,7 +7,7 @@ enum TransactionType: String, Codable {
 }
 
 @Model
-final class Transaction {
+final class Transaction: Entity, Syncable {
     @Attribute(.unique)
     var id: UUID
 
@@ -22,7 +22,6 @@ final class Transaction {
     var amountInCents: Int
     var note: String
     var occurredOn: Date
-
     var categoryId: UUID?
 
     init(
@@ -36,22 +35,16 @@ final class Transaction {
         amountInCents: Int,
         note: String,
         occurredOn: Date,
-        categoryId: UUID? = nil
+        categoryId: UUID? = nil,
     ) {
         self.id = id
-
-        self.revision = revision
-        self.lastMutationId = lastMutationId
-
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
-
         self.type = type
         self.amountInCents = amountInCents
         self.note = note
         self.occurredOn = occurredOn
-
         self.categoryId = categoryId
     }
 }

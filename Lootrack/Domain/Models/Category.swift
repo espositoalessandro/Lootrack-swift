@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Category {
+final class Category: Entity, Syncable {
     @Attribute(.unique)
     var id: UUID
 
