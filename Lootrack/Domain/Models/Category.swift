@@ -7,7 +7,7 @@ final class Category: Entity {
     var id: UUID
 
     var revision: Int?
-    var lastMutationId: String?
+    var lastMutationId: UUID?
 
     var createdAt: Date
     var updatedAt: Date
@@ -19,7 +19,7 @@ final class Category: Entity {
     init(
         id: UUID = UUID(),
         revision: Int? = nil,
-        lastMutationId: String? = nil,
+        lastMutationId: UUID? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         deletedAt: Date? = nil,

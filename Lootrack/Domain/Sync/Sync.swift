@@ -1,23 +1,23 @@
 import Foundation
 import SwiftData
 
-enum SyncEntityType: String, CaseIterable {
+enum SyncEntityType: String, Codable {
     case transaction
     case category
 }
 
-enum SyncOperation: String, CaseIterable {
+enum SyncOperation: String, Codable {
     case upsert
     case delete
 }
 
-protocol Syncable {
+nonisolated protocol Syncable {
     var revision: Int? { get set }
     var lastMutationId: UUID? { get set }
 }
 
 @Model
-final class SyncMutation: Identifiable {
+final class SyncMutation {
     @Attribute(.unique)
     var id: UUID
     
@@ -26,8 +26,8 @@ final class SyncMutation: Identifiable {
     var operation: SyncOperation
     var expectedRevision: Int?
     var expectedMutationId: UUID?
-    var basePayloadJson: Data?
-    var payloadJson: Data
+    var basePayload: Data?
+    var payload: Data
     var createdAt: Date
 
     init(
@@ -35,10 +35,10 @@ final class SyncMutation: Identifiable {
         entityType: SyncEntityType,
         entityId: UUID,
         operation: SyncOperation,
-        expectedRevision: Int,
-        expectedMutationId: UUID,
-        basePayloadJson: Data,
-        payloadJson: Data,
+        expectedRevision: Int? = nil,
+        expectedMutationId: UUID? = nil,
+        basePayload: Data? = nil,
+        payload: Data,
         createdAt: Date = .now
     ) {
         self.id = id
@@ -47,8 +47,8 @@ final class SyncMutation: Identifiable {
         self.operation = operation
         self.expectedRevision = expectedRevision
         self.expectedMutationId = expectedMutationId
-        self.basePayloadJson = basePayloadJson
-        self.payloadJson = payloadJson
+        self.basePayload = basePayload
+        self.payload = payload
         self.createdAt = createdAt
     }
 }
