@@ -10,7 +10,6 @@ private enum TransactionListFilter: CaseIterable {
         switch self {
         case .all:
             return String(localized: "All")
-
         case .expense:
             return String(localized: "Expenses")
         case .income:
@@ -22,14 +21,12 @@ private enum TransactionListFilter: CaseIterable {
 private struct TransactionDayGroup: Identifiable {
     let date: Date
     let transactions: [Transaction]
-
     var id: Date { date }
 }
 
 private struct TransactionMonthGroup: Identifiable {
     let date: Date
     let days: [TransactionDayGroup]
-
     var id: Date { date }
 }
 
@@ -55,10 +52,8 @@ struct TransactionListView: View {
                 switch selectedFilter {
                 case .all:
                     true
-
                 case .expense:
                     transaction.type == .expense
-
                 case .income:
                     transaction.type == .income
                 }
