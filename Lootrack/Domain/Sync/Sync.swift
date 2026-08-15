@@ -13,7 +13,7 @@ enum SyncOperation: String, CaseIterable {
 
 protocol Syncable {
     var revision: Int? { get set }
-    var lastMutationId: String? { get set }
+    var lastMutationId: UUID? { get set }
 }
 
 @Model
@@ -24,10 +24,10 @@ final class SyncMutation: Identifiable {
     var entityType: SyncEntityType
     var entityId: UUID
     var operation: SyncOperation
-    var expectedRevision: Int
-    var expectedMutationId: UUID
-    var basePayloadJson: String
-    var payloadJson: String
+    var expectedRevision: Int?
+    var expectedMutationId: UUID?
+    var basePayloadJson: Data?
+    var payloadJson: Data
     var createdAt: Date
 
     init(
@@ -37,8 +37,8 @@ final class SyncMutation: Identifiable {
         operation: SyncOperation,
         expectedRevision: Int,
         expectedMutationId: UUID,
-        basePayloadJson: String,
-        payloadJson: String,
+        basePayloadJson: Data,
+        payloadJson: Data,
         createdAt: Date = .now
     ) {
         self.id = id

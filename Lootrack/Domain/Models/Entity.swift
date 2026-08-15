@@ -1,6 +1,6 @@
 import Foundation
 
-protocol Entity: Identifiable {
+protocol Entity: Identifiable, Syncable {
     var id: UUID { get }
     var createdAt: Date { get }
     var updatedAt: Date { get set }
