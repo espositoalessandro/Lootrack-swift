@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 enum MutationQueries {
-    static func getRelationshipsByEntityId(_ entityId: UUID) throws
+    static func getEntitySyncState(_ entityId: UUID) throws
         -> FetchDescriptor<EntitySyncState>
     {
         FetchDescriptor(

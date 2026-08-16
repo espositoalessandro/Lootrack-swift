@@ -17,23 +17,26 @@ final class Sync {
         _ changes: String?
     ) throws {
         let mutation = try mutationFrom(entity, operation, changes)
-        let existingRelationships = try context.fetch(
-            MutationQueries.getRelationshipsByEntityId(entity.id)
-        )
-        let mutationToEntity = EntitySyncState(
+        
+        let state = try context.fetch(
+            MutationQueries.getEntitySyncState(entity.id)
+        ).first
+        
+        let newState = EntitySyncState(
             entityId: entity.id,
+            lastMutationId: mutation.id,
             revision: 1
         )
 
-        if !existingRelationships.isEmpty {
-            mutation.expectedMutationId = existingRelationships.first!.lastMutationId
-            mutation.expectedRevision = existingRelationships.first!.revision
+        if state != nil {
+            mutation.expectedMutationId = state!.lastMutationId
+            mutation.expectedRevision = state!.revision
             
-            existingRelationships.first!.revision += 1
-            existingRelationships.first!.lastMutationId = mutation.id
+            state!.revision += 1
+            state!.lastMutationId = mutation.id
             
         } else {
-            context.insert(mutationToEntity)
+            context.insert(newState)
         }
 
         context.insert(mutation)
