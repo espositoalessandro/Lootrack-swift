@@ -1,3 +1,4 @@
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -17,6 +18,12 @@ struct LootrackApp: App {
                 EntitySyncState.self
             )
 
+            #if DEBUG
+                SwiftDataDebugLogger.shared.install(
+                    context: modelContainer.mainContext
+                )
+            #endif
+
             self.modelContainer = modelContainer
             self.sync = Sync(
                 modelContext: modelContainer.mainContext
@@ -29,7 +36,6 @@ struct LootrackApp: App {
                 modelContext: modelContainer.mainContext,
                 sync: sync
             )
-
 
         } catch {
             fatalError(

@@ -21,7 +21,7 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws -> Transaction {
-        
+
         let transaction = Transaction(
             type: type,
             amountInCents: amountInCents,
@@ -30,7 +30,40 @@ final class TransactionService {
             categoryId: categoryId
         )
 
-        try sync.createMutation(transaction, .upsert, nil)
+        let changes: [MutationChange] = [
+            .init(
+                field: "type",
+                before: .null,
+                after: .transactionType(type)
+            ),
+            .init(
+                field: "amountInCents",
+                before: .null,
+                after: .int(amountInCents)
+            ),
+            .init(
+                field: "note",
+                before: .null,
+                after: .string(note)
+            ),
+            .init(
+                field: "occurredOn",
+                before: .null,
+                after: .date(occurredOn)
+            ),
+            .init(
+                field: "categoryId",
+                before: .null,
+                after: categoryId != nil ? .uuid(categoryId!) : .null
+            ),
+            .init(
+                field: "updatedAt",
+                before: .date(transaction.updatedAt),
+                after: .date(.now)
+            ),
+        ]
+
+        try sync.createMutation(transaction, .upsert, changes)
         modelContext.insert(transaction)
         try modelContext.save()
 
@@ -45,8 +78,42 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws {
-        
-        try sync.createMutation(transaction, .upsert, nil)
+
+        let changes: [MutationChange] = [
+            .init(
+                field: "type",
+                before: .transactionType(transaction.type),
+                after: .transactionType(type)
+            ),
+            .init(
+                field: "amountInCents",
+                before: .int(transaction.amountInCents),
+                after: .int(amountInCents)
+            ),
+            .init(
+                field: "note",
+                before: .string(transaction.note),
+                after: .string(note)
+            ),
+            .init(
+                field: "occurredOn",
+                before: .date(transaction.occurredOn),
+                after: .date(occurredOn)
+            ),
+            .init(
+                field: "categoryId",
+                before: categoryId != nil
+                    ? .uuid(transaction.categoryId!) : .null,
+                after: categoryId != nil ? .uuid(categoryId!) : .null
+            ),
+            .init(
+                field: "updatedAt",
+                before: .date(transaction.updatedAt),
+                after: .date(.now)
+            ),
+        ]
+
+        try sync.createMutation(transaction, .upsert, changes)
 
         transaction.type = type
         transaction.amountInCents = amountInCents
@@ -59,8 +126,21 @@ final class TransactionService {
     }
 
     func delete(_ transaction: Transaction) throws {
-        
-        try sync.createMutation(transaction, .delete, nil)
+
+        let changes: [MutationChange] = [
+            .init(
+                field: "deletedAt",
+                before: .null,
+                after: .date(.now)
+            ),
+            .init(
+                field: "updatedAt",
+                before: .date(transaction.updatedAt),
+                after: .date(.now)
+            ),
+        ]
+
+        try sync.createMutation(transaction, .delete, changes)
 
         transaction.deletedAt = .now
         transaction.updatedAt = .now

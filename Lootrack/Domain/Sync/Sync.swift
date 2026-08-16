@@ -14,8 +14,9 @@ final class Sync {
     func createMutation<T: Entity>(
         _ entity: T,
         _ operation: SyncOperation,
-        _ changes: String?
+        _ changes: [MutationChange]
     ) throws {
+        
         let mutation = mutationFrom(entity, operation, changes)
 
         let state = try context.fetch(
@@ -44,7 +45,7 @@ final class Sync {
     private func mutationFrom<T: Entity>(
         _ entity: T,
         _ operation: SyncOperation,
-        _ changes: String?
+        _ changes: [MutationChange]
     ) -> Mutation {
 
         let mutationId = UUID()

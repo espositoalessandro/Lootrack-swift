@@ -12,12 +12,11 @@ enum CategoryServiceError: Error {
 final class CategoryService {
     private let modelContext: ModelContext
     private let sync: Sync
-    
+
     init(modelContext: ModelContext, sync: Sync) {
         self.modelContext = modelContext
         self.sync = sync
     }
-    
 
     @discardableResult
     func create(
@@ -28,7 +27,25 @@ final class CategoryService {
             type: type,
             name: name
         )
-        try sync.createMutation(category, .upsert, nil)
+        let changes: [MutationChange] = [
+            .init(
+                field: "type",
+                before: .null,
+                after: .transactionType(type)
+            ),
+            .init(
+                field: "name",
+                before: .null,
+                after: .string(name)
+            ),
+            .init(
+                field: "updatedAt",
+                before: .date(category.updatedAt),
+                after: .date(.now)
+            ),
+        ]
+
+        try sync.createMutation(category, .upsert, changes)
         modelContext.insert(category)
         try modelContext.save()
 
@@ -41,15 +58,34 @@ final class CategoryService {
         type: TransactionType
     ) throws {
         if category.type != type,
-           try hasActiveTransactions(category) {
+            try hasActiveTransactions(category)
+        {
             throw CategoryServiceError.cannotChangeTypeWhileInUse
         }
+
+        let changes: [MutationChange] = [
+            .init(
+                field: "type",
+                before: .transactionType(category.type),
+                after: .transactionType(type)
+            ),
+            .init(
+                field: "name",
+                before: .string(category.name),
+                after: .string(name)
+            ),
+            .init(
+                field: "updatedAt",
+                before: .date(category.updatedAt),
+                after: .date(.now)
+            ),
+        ]
 
         category.name = name
         category.type = type
         category.updatedAt = .now
-        
-        try sync.createMutation(category, .upsert, nil)
+
+        try sync.createMutation(category, .upsert, changes)
         try modelContext.save()
     }
 
@@ -57,7 +93,21 @@ final class CategoryService {
         if try hasActiveTransactions(category) {
             throw CategoryServiceError.cannotDeleteWhileInUse
         }
-        try sync.createMutation(category, .delete, nil)
+
+        let changes: [MutationChange] = [
+            .init(
+                field: "deletedAt",
+                before: .null,
+                after: .date(.now)
+            ),
+            .init(
+                field: "updatedAt",
+                before: .date(category.updatedAt),
+                after: .date(.now)
+            ),
+        ]
+
+        try sync.createMutation(category, .delete, changes)
         category.deletedAt = .now
         category.updatedAt = .now
         try modelContext.save()
@@ -70,8 +120,8 @@ final class CategoryService {
 
         let descriptor = FetchDescriptor<Transaction>(
             predicate: #Predicate<Transaction> { transaction in
-                transaction.deletedAt == nil &&
-                transaction.categoryId == categoryId
+                transaction.deletedAt == nil
+                    && transaction.categoryId == categoryId
             }
         )
 

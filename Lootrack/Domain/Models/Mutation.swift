@@ -16,6 +16,21 @@ enum SyncOperation: String, Codable {
     case delete
 }
 
+enum MutationValue: Codable {
+    case string(String)
+    case int(Int)
+    case date(Date)
+    case uuid(UUID)
+    case transactionType(TransactionType)
+    case null
+}
+
+struct MutationChange: Codable {
+    let field: String
+    let before: MutationValue
+    let after: MutationValue
+}
+
 @Model
 final class Mutation: ImmutableEntity {
     @Attribute(.unique)
@@ -26,7 +41,7 @@ final class Mutation: ImmutableEntity {
     var expectedRevision: Int?
     var expectedMutationId: UUID?
     var createdAt: Date
-    var changes: String?
+    var changes: [MutationChange]
     var entity: EntityRef {
         if let transaction = _transaction {
             return .transaction(transaction)
@@ -44,7 +59,7 @@ final class Mutation: ImmutableEntity {
         expectedRevision: Int? = nil,
         expectedMutationId: UUID? = nil,
         createdAt: Date = .now,
-        changes: String? = nil
+        changes: [MutationChange] = []
     ) {
         self.id = id
         self.operation = operation
