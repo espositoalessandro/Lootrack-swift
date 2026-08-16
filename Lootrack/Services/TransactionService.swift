@@ -78,7 +78,7 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws {
-
+        let now: Date = .now
         let changes: [MutationChange] = [
             .init(
                 field: "type",
@@ -102,14 +102,14 @@ final class TransactionService {
             ),
             .init(
                 field: "categoryId",
-                before: categoryId != nil
+                before: transaction.categoryId != nil
                     ? .uuid(transaction.categoryId!) : .null,
                 after: categoryId != nil ? .uuid(categoryId!) : .null
             ),
             .init(
                 field: "updatedAt",
                 before: .date(transaction.updatedAt),
-                after: .date(.now)
+                after: .date(now)
             ),
         ]
 
@@ -120,30 +120,30 @@ final class TransactionService {
         transaction.note = note
         transaction.occurredOn = occurredOn
         transaction.categoryId = categoryId
-        transaction.updatedAt = .now
+        transaction.updatedAt = now
 
         try modelContext.save()
     }
 
     func delete(_ transaction: Transaction) throws {
-
+        let now: Date = .now
         let changes: [MutationChange] = [
             .init(
                 field: "deletedAt",
                 before: .null,
-                after: .date(.now)
+                after: .date(now)
             ),
             .init(
                 field: "updatedAt",
                 before: .date(transaction.updatedAt),
-                after: .date(.now)
+                after: .date(now)
             ),
         ]
 
         try sync.createMutation(transaction, .delete, changes)
 
-        transaction.deletedAt = .now
-        transaction.updatedAt = .now
+        transaction.deletedAt = now
+        transaction.updatedAt = now
 
         try modelContext.save()
     }
