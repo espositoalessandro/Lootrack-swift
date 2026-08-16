@@ -5,7 +5,7 @@ enum EntityRef {
     case transaction(Transaction)
     case category(Category)
 }
- 
+
 enum SyncEntityType: String, Codable {
     case transaction
     case category
@@ -20,13 +20,23 @@ enum SyncOperation: String, Codable {
 final class Mutation: ImmutableEntity {
     @Attribute(.unique)
     var id: UUID
-    var entity: EntityRef
+    private var _transaction: Transaction?
+    private var _category: Category?
     var operation: SyncOperation
     var expectedRevision: Int?
     var expectedMutationId: UUID?
     var createdAt: Date
     var changes: String?
-    
+    var entity: EntityRef {
+        if let transaction = _transaction {
+            return .transaction(transaction)
+        }
+        if let category = _category {
+            return .category(category)
+        }
+        fatalError("Mutation has no associated entity")
+    }
+
     init(
         id: UUID = UUID(),
         entity: EntityRef,
@@ -37,12 +47,20 @@ final class Mutation: ImmutableEntity {
         changes: String? = nil
     ) {
         self.id = id
-        self.entity = entity
         self.operation = operation
         self.expectedRevision = expectedRevision
         self.expectedMutationId = expectedMutationId
         self.createdAt = createdAt
         self.changes = changes
+
+        switch entity {
+        case .transaction(let transaction):
+            self._transaction = transaction
+            self._category = nil
+        case .category(let category):
+            self._category = category
+            self._transaction = nil
+        }
     }
 }
 
@@ -53,7 +71,7 @@ final class MutationDTO: Codable {
     var expectedRevision: Int?
     var expectedMutationId: UUID?
     var createdAt: Date
-    
+
     init(
         id: UUID = UUID(),
         entity: Data,

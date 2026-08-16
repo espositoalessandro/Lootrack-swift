@@ -16,26 +16,25 @@ final class Sync {
         _ operation: SyncOperation,
         _ changes: String?
     ) throws {
-        let mutation = try mutationFrom(entity, operation, changes)
-        
+        let mutation = mutationFrom(entity, operation, changes)
+
         let state = try context.fetch(
             MutationQueries.getEntitySyncState(entity.id)
         ).first
-        
-        let newState = EntitySyncState(
-            entityId: entity.id,
-            lastMutationId: mutation.id,
-            revision: 1
-        )
 
         if state != nil {
             mutation.expectedMutationId = state!.lastMutationId
             mutation.expectedRevision = state!.revision
-            
+
             state!.revision += 1
             state!.lastMutationId = mutation.id
-            
+
         } else {
+            let newState = EntitySyncState(
+                entityId: entity.id,
+                lastMutationId: mutation.id,
+                revision: 1
+            )
             context.insert(newState)
         }
 
@@ -46,7 +45,7 @@ final class Sync {
         _ entity: T,
         _ operation: SyncOperation,
         _ changes: String?
-    ) throws -> Mutation {
+    ) -> Mutation {
 
         let mutationId = UUID()
         let entityRef: EntityRef
