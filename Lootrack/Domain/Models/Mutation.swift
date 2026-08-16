@@ -76,18 +76,15 @@ final class EntitySyncState {
     @Attribute(.unique)
     var entityId: UUID
 
-    var mutationId: UUID
     var lastMutationId: UUID?
     var revision: Int
 
     init(
         entityId: UUID,
-        mutationId: UUID,
         lastMutationId: UUID? = nil,
         revision: Int
     ) {
         self.entityId = entityId
-        self.mutationId = mutationId
         self.lastMutationId = lastMutationId
         self.revision = revision
     }

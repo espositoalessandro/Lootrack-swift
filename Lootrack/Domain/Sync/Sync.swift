@@ -22,23 +22,21 @@ final class Sync {
         )
         let mutationToEntity = EntitySyncState(
             entityId: entity.id,
-            mutationId: mutation.id,
             revision: 1
         )
 
         if !existingRelationships.isEmpty {
             mutation.expectedMutationId = existingRelationships.first!.lastMutationId
-            mutation.expectedRevision = existingRelationships.last!.revision
+            mutation.expectedRevision = existingRelationships.first!.revision
             
-            mutationToEntity.revision = existingRelationships.first!.revision + 1
-            mutationToEntity.lastMutationId = mutationToEntity.mutationId
-            mutationToEntity.mutationId = mutation.id
+            existingRelationships.first!.revision += 1
+            existingRelationships.first!.lastMutationId = mutation.id
+            
         } else {
             context.insert(mutationToEntity)
         }
 
         context.insert(mutation)
-        try context.save()
     }
 
     private func mutationFrom<T: Entity>(
