@@ -1,3 +1,4 @@
+import Foundation
 import SwiftData
 import SwiftUI
 
@@ -41,7 +42,7 @@ struct TransactionForm: View {
                 .onChange(of: draft.type) {
                     draft.categoryId = nil
                 }
-                DatePicker("Occurred on", selection: $draft.occurredOn)
+                DatePicker("Occurred on", selection: $draft.occurredOn, displayedComponents: .date)
             }
         }
     }

@@ -20,13 +20,11 @@ final class TransactionService {
         categoryId: UUID?
     ) throws -> Transaction {
         
-        var occurred = occurredOn.formatted(Date.ISO8601FormatStyle(dateSeparator: .dash, timeZone: .current).year().month().day())
-        
         let transaction = Transaction(
             type: type,
             amountInCents: amountInCents,
             note: note,
-            occurredOn: occurred,
+            occurredOn: occurredOn,
             categoryId: categoryId
         )
 

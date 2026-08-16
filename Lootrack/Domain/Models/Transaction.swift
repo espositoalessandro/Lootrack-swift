@@ -21,7 +21,7 @@ final class Transaction: Entity {
     var type: TransactionType
     var amountInCents: Int
     var note: String
-    var occurredOn: String
+    var occurredOn: Date
     var categoryId: UUID?
 
     init(
@@ -34,7 +34,7 @@ final class Transaction: Entity {
         type: TransactionType,
         amountInCents: Int,
         note: String,
-        occurredOn: String,
+        occurredOn: Date,
         categoryId: UUID? = nil,
     ) {
         self.id = id
