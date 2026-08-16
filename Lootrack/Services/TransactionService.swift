@@ -21,8 +21,11 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws -> Transaction {
+        let now = Date.now
 
         let transaction = Transaction(
+            createdAt: now,
+            updatedAt: now,
             type: type,
             amountInCents: amountInCents,
             note: note,
@@ -31,6 +34,16 @@ final class TransactionService {
         )
 
         let changes: [MutationChange] = [
+            .init(
+                field: "createdAt",
+                before: .null,
+                after: .date(now)
+            ),
+            .init(
+                field: "updatedAt",
+                before: .null,
+                after: .date(now)
+            ),
             .init(
                 field: "type",
                 before: .null,
@@ -54,16 +67,16 @@ final class TransactionService {
             .init(
                 field: "categoryId",
                 before: .null,
-                after: categoryId != nil ? .uuid(categoryId!) : .null
-            ),
-            .init(
-                field: "updatedAt",
-                before: .date(transaction.updatedAt),
-                after: .date(.now)
+                after: categoryId.map(MutationValue.uuid) ?? .null
             ),
         ]
 
-        try sync.createMutation(transaction, .upsert, changes)
+        try sync.createMutation(
+            transaction,
+            .upsert,
+            changes
+        )
+
         modelContext.insert(transaction)
         try modelContext.save()
 
@@ -78,42 +91,54 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws {
-        let now: Date = .now
-        let changes: [MutationChange] = [
-            .init(
+        let now = Date.now
+
+        var changes = [
+            MutationChange.ifChanged(
                 field: "type",
-                before: .transactionType(transaction.type),
-                after: .transactionType(type)
+                from: .transactionType(transaction.type),
+                to: .transactionType(type)
             ),
-            .init(
+            MutationChange.ifChanged(
                 field: "amountInCents",
-                before: .int(transaction.amountInCents),
-                after: .int(amountInCents)
+                from: .int(transaction.amountInCents),
+                to: .int(amountInCents)
             ),
-            .init(
+            MutationChange.ifChanged(
                 field: "note",
-                before: .string(transaction.note),
-                after: .string(note)
+                from: .string(transaction.note),
+                to: .string(note)
             ),
-            .init(
+            MutationChange.ifChanged(
                 field: "occurredOn",
-                before: .date(transaction.occurredOn),
-                after: .date(occurredOn)
+                from: .date(transaction.occurredOn),
+                to: .date(occurredOn)
             ),
-            .init(
+            MutationChange.ifChanged(
                 field: "categoryId",
-                before: transaction.categoryId != nil
-                    ? .uuid(transaction.categoryId!) : .null,
-                after: categoryId != nil ? .uuid(categoryId!) : .null
+                from: transaction.categoryId.map(MutationValue.uuid) ?? .null,
+                to: categoryId.map(MutationValue.uuid) ?? .null
             ),
+        ]
+        .compactMap { $0 }
+
+        guard !changes.isEmpty else {
+            return
+        }
+
+        changes.append(
             .init(
                 field: "updatedAt",
                 before: .date(transaction.updatedAt),
                 after: .date(now)
-            ),
-        ]
+            )
+        )
 
-        try sync.createMutation(transaction, .upsert, changes)
+        try sync.createMutation(
+            transaction,
+            .upsert,
+            changes
+        )
 
         transaction.type = type
         transaction.amountInCents = amountInCents
@@ -126,11 +151,12 @@ final class TransactionService {
     }
 
     func delete(_ transaction: Transaction) throws {
-        let now: Date = .now
+        let now = Date.now
+
         let changes: [MutationChange] = [
             .init(
                 field: "deletedAt",
-                before: .null,
+                before: transaction.deletedAt.map(MutationValue.date) ?? .null,
                 after: .date(now)
             ),
             .init(
@@ -140,7 +166,11 @@ final class TransactionService {
             ),
         ]
 
-        try sync.createMutation(transaction, .delete, changes)
+        try sync.createMutation(
+            transaction,
+            .delete,
+            changes
+        )
 
         transaction.deletedAt = now
         transaction.updatedAt = now

@@ -23,11 +23,26 @@ final class CategoryService {
         name: String,
         type: TransactionType
     ) throws -> Category {
+        let now = Date.now
+
         let category = Category(
+            createdAt: now,
+            updatedAt: now,
             type: type,
             name: name
         )
+
         let changes: [MutationChange] = [
+            .init(
+                field: "createdAt",
+                before: .null,
+                after: .date(now)
+            ),
+            .init(
+                field: "updatedAt",
+                before: .null,
+                after: .date(now)
+            ),
             .init(
                 field: "type",
                 before: .null,
@@ -38,14 +53,14 @@ final class CategoryService {
                 before: .null,
                 after: .string(name)
             ),
-            .init(
-                field: "updatedAt",
-                before: .date(category.updatedAt),
-                after: .date(.now)
-            ),
         ]
 
-        try sync.createMutation(category, .upsert, changes)
+        try sync.createMutation(
+            category,
+            .upsert,
+            changes
+        )
+
         modelContext.insert(category)
         try modelContext.save()
 
@@ -62,30 +77,41 @@ final class CategoryService {
         {
             throw CategoryServiceError.cannotChangeTypeWhileInUse
         }
-        let now: Date = .now
-        let changes: [MutationChange] = [
-            .init(
+
+        let now = Date.now
+
+        var changes = [
+            MutationChange.ifChanged(
                 field: "type",
-                before: .transactionType(category.type),
-                after: .transactionType(type)
+                from: .transactionType(category.type),
+                to: .transactionType(type)
             ),
-            .init(
+            MutationChange.ifChanged(
                 field: "name",
-                before: .string(category.name),
-                after: .string(name)
+                from: .string(category.name),
+                to: .string(name)
             ),
+        ]
+        .compactMap { $0 }
+
+        guard !changes.isEmpty else {
+            return
+        }
+
+        changes.append(
             .init(
                 field: "updatedAt",
                 before: .date(category.updatedAt),
                 after: .date(now)
-            ),
-        ]
+            )
+        )
+
+        try sync.createMutation(category, .upsert, changes)
 
         category.name = name
         category.type = type
         category.updatedAt = now
 
-        try sync.createMutation(category, .upsert, changes)
         try modelContext.save()
     }
 
@@ -93,11 +119,13 @@ final class CategoryService {
         if try hasActiveTransactions(category) {
             throw CategoryServiceError.cannotDeleteWhileInUse
         }
-        let now: Date = .now
+
+        let now = Date.now
+
         let changes: [MutationChange] = [
             .init(
                 field: "deletedAt",
-                before: .null,
+                before: category.deletedAt.map(MutationValue.date) ?? .null,
                 after: .date(now)
             ),
             .init(
@@ -107,9 +135,15 @@ final class CategoryService {
             ),
         ]
 
-        try sync.createMutation(category, .delete, changes)
+        try sync.createMutation(
+            category,
+            .delete,
+            changes
+        )
+
         category.deletedAt = now
         category.updatedAt = now
+
         try modelContext.save()
     }
 

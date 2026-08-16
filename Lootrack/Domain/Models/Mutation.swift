@@ -16,7 +16,7 @@ enum SyncOperation: String, Codable {
     case delete
 }
 
-enum MutationValue: Codable {
+enum MutationValue: Codable, Equatable {
     case string(String)
     case int(Int)
     case date(Date)
@@ -29,6 +29,24 @@ struct MutationChange: Codable {
     let field: String
     let before: MutationValue
     let after: MutationValue
+}
+
+extension MutationChange {
+    static func ifChanged(
+        field: String,
+        from before: MutationValue,
+        to after: MutationValue
+    ) -> MutationChange? {
+        guard before != after else {
+            return nil
+        }
+        
+        return MutationChange(
+            field: field,
+            before: before,
+            after: after
+        )
+    }
 }
 
 @Model
