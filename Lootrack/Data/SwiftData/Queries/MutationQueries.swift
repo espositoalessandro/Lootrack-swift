@@ -3,14 +3,14 @@ import SwiftData
 
 enum MutationQueries {
     static func getRelationshipsByEntityId(_ entityId: UUID) throws
-        -> FetchDescriptor<Relationship>
+        -> FetchDescriptor<EntitySyncState>
     {
         FetchDescriptor(
-            predicate: #Predicate<Relationship> { mutation in
+            predicate: #Predicate<EntitySyncState> { mutation in
                 mutation.entityId == entityId
             },
             sortBy: [
-                SortDescriptor(\Relationship.revision, order: .reverse)
+                SortDescriptor(\EntitySyncState.revision, order: .reverse)
             ]
         )
     }

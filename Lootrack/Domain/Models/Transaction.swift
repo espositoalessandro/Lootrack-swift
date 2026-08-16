@@ -11,9 +11,6 @@ final class Transaction: Entity {
     @Attribute(.unique)
     var id: UUID
 
-    var revision: Int?
-    var lastMutationId: UUID?
-
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -26,8 +23,6 @@ final class Transaction: Entity {
 
     init(
         id: UUID = UUID(),
-        revision: Int? = nil,
-        lastMutationId: UUID? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         deletedAt: Date? = nil,
@@ -46,17 +41,12 @@ final class Transaction: Entity {
         self.note = note
         self.occurredOn = occurredOn
         self.categoryId = categoryId
-        self.revision = revision
-        self.lastMutationId = lastMutationId
     }
 }
 
 struct TransactionDTO: Codable {
     let id: UUID
-    
-    let revision: Int?
-    let lastMutationId: UUID?
-    
+
     let createdAt: Date
     let updatedAt: Date
     let deletedAt: Date?
@@ -71,8 +61,6 @@ struct TransactionDTO: Codable {
 extension TransactionDTO {
     init(transaction: Transaction) {
         self.id = transaction.id
-        self.revision = transaction.revision
-        self.lastMutationId = transaction.lastMutationId
         self.createdAt = transaction.createdAt
         self.updatedAt = transaction.updatedAt
         self.deletedAt = transaction.deletedAt

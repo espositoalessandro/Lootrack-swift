@@ -6,9 +6,6 @@ final class Category: Entity {
     @Attribute(.unique)
     var id: UUID
 
-    var revision: Int?
-    var lastMutationId: UUID?
-
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -18,8 +15,6 @@ final class Category: Entity {
 
     init(
         id: UUID = UUID(),
-        revision: Int? = nil,
-        lastMutationId: UUID? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         deletedAt: Date? = nil,
@@ -27,9 +22,6 @@ final class Category: Entity {
         name: String
     ) {
         self.id = id
-
-        self.revision = revision
-        self.lastMutationId = lastMutationId
 
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -42,10 +34,7 @@ final class Category: Entity {
 
 struct CategoryDTO: Codable {
     let id: UUID
-    
-    let revision: Int?
-    let lastMutationId: UUID?
-    
+     
     let createdAt: Date
     let updatedAt: Date
     let deletedAt: Date?
@@ -57,13 +46,10 @@ struct CategoryDTO: Codable {
 extension CategoryDTO {
     init(category: Category) {
         self.id = category.id
-        self.revision = category.revision
-        self.lastMutationId = category.lastMutationId
         self.createdAt = category.createdAt
         self.updatedAt = category.updatedAt
         self.deletedAt = category.deletedAt
         self.type = category.type
         self.name = category.name
-        
     }
 }

@@ -72,11 +72,11 @@ final class MutationDTO: Codable {
 }
 
 @Model
-final class Relationship {
+final class EntitySyncState {
     @Attribute(.unique)
-    var mutationId: UUID
-
     var entityId: UUID
+
+    var mutationId: UUID
     var lastMutationId: UUID?
     var revision: Int
 

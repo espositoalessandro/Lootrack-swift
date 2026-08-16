@@ -14,7 +14,7 @@ struct LootrackApp: App {
                 for: Transaction.self,
                 Category.self,
                 Mutation.self,
-                Relationship.self
+                EntitySyncState.self
             )
 
             self.modelContainer = modelContainer

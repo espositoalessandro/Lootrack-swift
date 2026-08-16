@@ -20,17 +20,23 @@ final class Sync {
         let existingRelationships = try context.fetch(
             MutationQueries.getRelationshipsByEntityId(entity.id)
         )
-        let mutationToEntity = Relationship(
+        let mutationToEntity = EntitySyncState(
             entityId: entity.id,
             mutationId: mutation.id,
             revision: 1
         )
-        
+
         if !existingRelationships.isEmpty {
-            mutationToEntity.revision = existingRelationships[0].revision + 1
+            mutation.expectedMutationId = existingRelationships.first!.lastMutationId
+            mutation.expectedRevision = existingRelationships.last!.revision
+            
+            mutationToEntity.revision = existingRelationships.first!.revision + 1
+            mutationToEntity.lastMutationId = mutationToEntity.mutationId
+            mutationToEntity.mutationId = mutation.id
+        } else {
+            context.insert(mutationToEntity)
         }
-        
-        context.insert(mutationToEntity)
+
         context.insert(mutation)
         try context.save()
     }
