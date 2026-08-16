@@ -1,22 +1,17 @@
 import Foundation
 import SwiftData
 
-enum EntityRef {
-    case transaction(Transaction)
-    case category(Category)
-}
-
-enum SyncEntityType: String, Codable {
+nonisolated enum SyncEntityType: String, Codable {
     case transaction
     case category
 }
 
-enum SyncOperation: String, Codable {
+nonisolated enum SyncOperation: String, Codable {
     case upsert
     case delete
 }
 
-enum MutationValue: Codable, Equatable {
+nonisolated enum MutationValue: Codable, Equatable {
     case string(String)
     case int(Int)
     case date(Date)
@@ -25,7 +20,7 @@ enum MutationValue: Codable, Equatable {
     case null
 }
 
-struct MutationChange: Codable {
+nonisolated struct MutationChange: Codable {
     let field: String
     let before: MutationValue
     let after: MutationValue
@@ -40,12 +35,40 @@ extension MutationChange {
         guard before != after else {
             return nil
         }
-        
+
         return MutationChange(
             field: field,
             before: before,
             after: after
         )
+    }
+}
+
+struct SyncEntityKey: Hashable {
+    let type: SyncEntityType
+    let id: UUID
+}
+
+enum EntityRef {
+    case transaction(Transaction)
+    case category(Category)
+}
+
+extension EntityRef {
+    var key: SyncEntityKey {
+        switch self {
+        case .transaction(let transaction):
+            return SyncEntityKey(
+                type: .transaction,
+                id: transaction.id
+            )
+
+        case .category(let category):
+            return SyncEntityKey(
+                type: .category,
+                id: category.id
+            )
+        }
     }
 }
 

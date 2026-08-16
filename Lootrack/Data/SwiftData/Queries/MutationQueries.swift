@@ -15,15 +15,12 @@ enum MutationQueries {
         )
     }
 
-    static var activeByMostRecent: FetchDescriptor<Transaction> {
+    static var pendingByOldest: FetchDescriptor<Mutation> {
         FetchDescriptor(
-            predicate: #Predicate<Transaction> { transaction in
-                transaction.deletedAt == nil
-            },
             sortBy: [
                 SortDescriptor(
-                    \Transaction.occurredOn,
-                    order: .reverse
+                    \Mutation.createdAt,
+                     order: .forward
                 )
             ]
         )

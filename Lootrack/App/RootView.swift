@@ -27,7 +27,7 @@ struct RootView: View {
                 NavigationStack {
                     SyncView()
                 }
-            }.disabled(true)
+            }
         }
     }
 }

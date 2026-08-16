@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-enum TransactionType: String, Codable {
+nonisolated enum TransactionType: String, Codable {
     case expense
     case income
 }
