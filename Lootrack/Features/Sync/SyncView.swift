@@ -5,7 +5,7 @@ enum PendingMutationKind {
     case created
     case updated
     case deleted
-    
+
     var displayName: String {
         switch self {
         case .created:
@@ -145,6 +145,6 @@ struct SyncView: View {
                     }
                 }
             }
-        }
+        }.navigationTitle("Mutation list")
     }
 }

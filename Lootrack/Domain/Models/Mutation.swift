@@ -44,7 +44,7 @@ extension MutationChange {
     }
 }
 
-struct SyncEntityKey: Hashable {
+nonisolated struct SyncEntityKey: Hashable {
     let type: SyncEntityType
     let id: UUID
 }
