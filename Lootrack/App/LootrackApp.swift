@@ -18,16 +18,18 @@ struct LootrackApp: App {
             )
 
             self.modelContainer = modelContainer
-
-            self.transactionService = TransactionService(
-                modelContext: modelContainer.mainContext
-            )
-            self.categoryService = CategoryService(
-                modelContext: modelContainer.mainContext
-            )
             self.sync = Sync(
                 modelContext: modelContainer.mainContext
             )
+            self.transactionService = TransactionService(
+                modelContext: modelContainer.mainContext,
+                sync: sync
+            )
+            self.categoryService = CategoryService(
+                modelContext: modelContainer.mainContext,
+                sync: sync
+            )
+
 
         } catch {
             fatalError(

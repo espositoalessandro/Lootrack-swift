@@ -6,9 +6,11 @@ import SwiftData
 @Observable
 final class TransactionService {
     private let modelContext: ModelContext
+    private let sync: Sync
 
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext, sync: Sync) {
         self.modelContext = modelContext
+        self.sync = sync
     }
 
     @discardableResult
@@ -28,6 +30,7 @@ final class TransactionService {
             categoryId: categoryId
         )
 
+        try sync.createMutation(transaction, .upsert, nil)
         modelContext.insert(transaction)
         try modelContext.save()
 
@@ -42,6 +45,9 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws {
+        
+        try sync.createMutation(transaction, .upsert, nil)
+
         transaction.type = type
         transaction.amountInCents = amountInCents
         transaction.note = note
@@ -53,6 +59,9 @@ final class TransactionService {
     }
 
     func delete(_ transaction: Transaction) throws {
+        
+        try sync.createMutation(transaction, .delete, nil)
+
         transaction.deletedAt = .now
         transaction.updatedAt = .now
 

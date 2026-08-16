@@ -11,10 +11,13 @@ enum CategoryServiceError: Error {
 @Observable
 final class CategoryService {
     private let modelContext: ModelContext
-
-    init(modelContext: ModelContext) {
+    private let sync: Sync
+    
+    init(modelContext: ModelContext, sync: Sync) {
         self.modelContext = modelContext
+        self.sync = sync
     }
+    
 
     @discardableResult
     func create(
@@ -25,7 +28,7 @@ final class CategoryService {
             type: type,
             name: name
         )
-
+        try sync.createMutation(category, .upsert, nil)
         modelContext.insert(category)
         try modelContext.save()
 
@@ -45,7 +48,8 @@ final class CategoryService {
         category.name = name
         category.type = type
         category.updatedAt = .now
-
+        
+        try sync.createMutation(category, .upsert, nil)
         try modelContext.save()
     }
 
@@ -53,9 +57,9 @@ final class CategoryService {
         if try hasActiveTransactions(category) {
             throw CategoryServiceError.cannotDeleteWhileInUse
         }
+        try sync.createMutation(category, .delete, nil)
         category.deletedAt = .now
         category.updatedAt = .now
-
         try modelContext.save()
     }
 

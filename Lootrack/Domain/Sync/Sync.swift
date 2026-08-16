@@ -29,6 +29,10 @@ final class Sync {
         if !existingRelationships.isEmpty {
             mutationToEntity.revision = existingRelationships[0].revision + 1
         }
+        
+        context.insert(mutationToEntity)
+        context.insert(mutation)
+        try context.save()
     }
 
     private func mutationFrom<T: Entity>(
