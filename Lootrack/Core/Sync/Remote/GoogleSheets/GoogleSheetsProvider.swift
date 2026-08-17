@@ -28,13 +28,42 @@ final class GoogleAuthorizationService {
         )
     }
 
-    func restorePreviousSignIn() async throws {
-        _ = try await GIDSignIn.sharedInstance.restorePreviousSignIn()
+    func accessToken() async throws -> String {
+        let user = try await getUser()
+        let authorizedUser = try await ensureDrivePermission(
+            for: user
+        )
+        let refreshedUser =
+            try await authorizedUser.refreshTokensIfNeeded()
+
+        return refreshedUser.accessToken.tokenString
     }
 
-    func signIn(
-        presenting viewController: UIViewController
-    ) async throws {
+    func signOut() {
+        GIDSignIn.sharedInstance.signOut()
+    }
+
+    private func getUser() async throws -> GIDGoogleUser {
+        if let currentUser =
+            GIDSignIn.sharedInstance.currentUser
+        {
+            return currentUser
+        }
+
+        if GIDSignIn.sharedInstance.hasPreviousSignIn(),
+            let restoredUser = try? await GIDSignIn.sharedInstance
+                .restorePreviousSignIn()
+        {
+            return restoredUser
+        }
+
+        return try await signIn()
+    }
+
+    private func signIn() async throws -> GIDGoogleUser {
+        let viewController =
+            try presentingViewController()
+
         let result = try await GIDSignIn.sharedInstance.signIn(
             withPresenting: viewController,
             hint: nil,
@@ -50,37 +79,94 @@ final class GoogleAuthorizationService {
         else {
             throw GoogleSheetsError.missingDrivePermission
         }
+
+        return result.user
     }
 
-    func accessToken() async throws -> String {
-        guard
-            let currentUser =
-                GIDSignIn.sharedInstance.currentUser
-        else {
-            throw GoogleSheetsError.notSignedIn
+    private func ensureDrivePermission(
+        for user: GIDGoogleUser
+    ) async throws -> GIDGoogleUser {
+        if user.grantedScopes?.contains(
+            Self.driveFileScope
+        ) == true {
+            return user
         }
 
-        let user = try await currentUser.refreshTokensIfNeeded()
+        let result = try await user.addScopes(
+            [Self.driveFileScope],
+            presenting: presentingViewController()
+        )
 
         guard
-            user.grantedScopes?.contains(
+            result.user.grantedScopes?.contains(
                 Self.driveFileScope
             ) == true
         else {
             throw GoogleSheetsError.missingDrivePermission
         }
 
-        return user.accessToken.tokenString
+        return result.user
     }
 
-    func signOut() {
-        GIDSignIn.sharedInstance.signOut()
+    private func presentingViewController()
+        throws -> UIViewController
+    {
+        let activeScene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { scene in
+                scene.activationState == .foregroundActive
+            }
+
+        guard
+            let rootViewController =
+                activeScene?.keyWindow?.rootViewController
+        else {
+            throw GoogleSheetsError.missingPresentationContext
+        }
+
+        return topViewController(
+            from: rootViewController
+        )
+    }
+
+    private func topViewController(
+        from viewController: UIViewController
+    ) -> UIViewController {
+        if let presented =
+            viewController.presentedViewController
+        {
+            return topViewController(
+                from: presented
+            )
+        }
+
+        if let navigationController =
+            viewController as? UINavigationController,
+            let visible =
+                navigationController.visibleViewController
+        {
+            return topViewController(
+                from: visible
+            )
+        }
+
+        if let tabBarController =
+            viewController as? UITabBarController,
+            let selected =
+                tabBarController.selectedViewController
+        {
+            return topViewController(
+                from: selected
+            )
+        }
+
+        return viewController
     }
 }
 
 nonisolated enum GoogleSheetsError: Error {
-    case notSignedIn
     case missingDrivePermission
+    case missingPresentationContext
 }
 
 @MainActor
