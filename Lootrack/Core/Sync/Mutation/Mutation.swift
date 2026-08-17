@@ -95,3 +95,38 @@ final class EntitySyncState {
         self.revision = revision
     }
 }
+
+nonisolated struct MutationDTO: Codable, Identifiable {
+    let id: UUID
+
+    let operation: SyncOperation
+
+    let expectedRevision: Int?
+    let expectedMutationId: UUID?
+
+    let createdAt: Date
+
+    let base: EntitySnapshot?
+    let payload: EntitySnapshot
+
+    var entityId: UUID {
+        payload.id
+    }
+
+    var entityType: SyncEntityType {
+        payload.type
+    }
+}
+
+extension MutationDTO {
+    @MainActor
+    init(_ mutation: Mutation) {
+        self.id = mutation.id
+        self.operation = mutation.operation
+        self.expectedRevision = mutation.expectedRevision
+        self.expectedMutationId = mutation.expectedMutationId
+        self.createdAt = mutation.createdAt
+        self.base = mutation.base
+        self.payload = mutation.payload
+    }
+}
