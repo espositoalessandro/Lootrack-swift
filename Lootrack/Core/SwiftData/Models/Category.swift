@@ -44,7 +44,7 @@ struct CategoryDTO: Codable {
 }
 
 extension CategoryDTO {
-    init(category: Category) {
+    init(_ category: Category) {
         self.id = category.id
         self.createdAt = category.createdAt
         self.updatedAt = category.updatedAt

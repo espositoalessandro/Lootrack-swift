@@ -11,9 +11,9 @@ enum CategoryServiceError: Error {
 @Observable
 final class CategoryService {
     private let modelContext: ModelContext
-    private let sync: Sync
+    private let sync: MutationService
 
-    init(modelContext: ModelContext, sync: Sync) {
+    init(modelContext: ModelContext, sync: MutationService) {
         self.modelContext = modelContext
         self.sync = sync
     }
@@ -32,33 +32,10 @@ final class CategoryService {
             name: name
         )
 
-        let changes: [MutationChange] = [
-            .init(
-                field: "createdAt",
-                before: .null,
-                after: .date(now)
-            ),
-            .init(
-                field: "updatedAt",
-                before: .null,
-                after: .date(now)
-            ),
-            .init(
-                field: "type",
-                before: .null,
-                after: .transactionType(type)
-            ),
-            .init(
-                field: "name",
-                before: .null,
-                after: .string(name)
-            ),
-        ]
-
         try sync.createMutation(
-            category,
+            from: nil,
+            to: CategoryDTO.init(category),
             .upsert,
-            changes
         )
 
         modelContext.insert(category)
@@ -80,37 +57,17 @@ final class CategoryService {
 
         let now = Date.now
 
-        var changes = [
-            MutationChange.ifChanged(
-                field: "type",
-                from: .transactionType(category.type),
-                to: .transactionType(type)
-            ),
-            MutationChange.ifChanged(
-                field: "name",
-                from: .string(category.name),
-                to: .string(name)
-            ),
-        ]
-        .compactMap { $0 }
-
-        guard !changes.isEmpty else {
-            return
-        }
-
-        changes.append(
-            .init(
-                field: "updatedAt",
-                before: .date(category.updatedAt),
-                after: .date(now)
-            )
-        )
-
-        try sync.createMutation(category, .upsert, changes)
-
+        let old: CategoryDTO = .init(category)
         category.name = name
         category.type = type
         category.updatedAt = now
+        let new: CategoryDTO = .init(category)
+
+        try sync.createMutation(
+            from: old,
+            to: new,
+            .upsert,
+        )
 
         try modelContext.save()
     }
@@ -122,27 +79,18 @@ final class CategoryService {
 
         let now = Date.now
 
-        let changes: [MutationChange] = [
-            .init(
-                field: "deletedAt",
-                before: category.deletedAt.map(MutationValue.date) ?? .null,
-                after: .date(now)
-            ),
-            .init(
-                field: "updatedAt",
-                before: .date(category.updatedAt),
-                after: .date(now)
-            ),
-        ]
-
-        try sync.createMutation(
-            category,
-            .delete,
-            changes
-        )
+        let old: CategoryDTO = .init(category)
 
         category.deletedAt = now
         category.updatedAt = now
+
+        let new: CategoryDTO = .init(category)
+
+        try sync.createMutation(
+            from: old,
+            to: new,
+            .delete,
+        )
 
         try modelContext.save()
     }

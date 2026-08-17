@@ -59,7 +59,7 @@ struct TransactionDTO: Codable {
 }
 
 extension TransactionDTO {
-    init(transaction: Transaction) {
+    init(_ transaction: Transaction) {
         self.id = transaction.id
         self.createdAt = transaction.createdAt
         self.updatedAt = transaction.updatedAt

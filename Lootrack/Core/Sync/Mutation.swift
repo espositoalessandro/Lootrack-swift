@@ -11,39 +11,6 @@ nonisolated enum SyncOperation: String, Codable {
     case delete
 }
 
-nonisolated enum MutationValue: Codable, Equatable {
-    case string(String)
-    case int(Int)
-    case date(Date)
-    case uuid(UUID)
-    case transactionType(TransactionType)
-    case null
-}
-
-nonisolated struct MutationChange: Codable {
-    let field: String
-    let before: MutationValue
-    let after: MutationValue
-}
-
-extension MutationChange {
-    static func ifChanged(
-        field: String,
-        from before: MutationValue,
-        to after: MutationValue
-    ) -> MutationChange? {
-        guard before != after else {
-            return nil
-        }
-
-        return MutationChange(
-            field: field,
-            before: before,
-            after: after
-        )
-    }
-}
-
 nonisolated struct SyncEntityKey: Hashable {
     let type: SyncEntityType
     let id: UUID

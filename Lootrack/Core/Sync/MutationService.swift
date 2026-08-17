@@ -3,7 +3,7 @@ import SwiftData
 
 @MainActor
 @Observable
-final class Sync {
+final class MutationService {
 
     private let context: ModelContext
 
@@ -11,11 +11,14 @@ final class Sync {
         self.context = modelContext
     }
 
-    func createMutation<T: Entity>(
-        _ entity: T,
+    func createMutation<S: MutationSnapshot>(
+        from old: S?,
+        to new: S,
         _ operation: SyncOperation,
-        _ changes: [MutationChange]
     ) throws {
+
+        let changes: [MutationChange] = []
+        let entity: Entity;
         
         let mutation = mutationFrom(entity, operation, changes)
 

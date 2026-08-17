@@ -7,7 +7,7 @@ struct LootrackApp: App {
     private let modelContainer: ModelContainer
     private let transactionService: TransactionService
     private let categoryService: CategoryService
-    private let sync: Sync
+    private let sync: MutationService
 
     init() {
         do {
@@ -25,7 +25,7 @@ struct LootrackApp: App {
             #endif
 
             self.modelContainer = modelContainer
-            self.sync = Sync(
+            self.sync = MutationService(
                 modelContext: modelContainer.mainContext
             )
             self.transactionService = TransactionService(
