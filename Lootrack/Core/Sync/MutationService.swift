@@ -11,14 +11,11 @@ final class MutationService {
         self.context = modelContext
     }
 
-    func createMutation<S: MutationSnapshot>(
-        from old: S?,
-        to new: S,
+    func createMutation<T: Identifiable>(
+        from old: T,
+        to new: T,
         _ operation: SyncOperation,
     ) throws {
-
-        let changes: [MutationChange] = []
-        let entity: Entity;
         
         let mutation = mutationFrom(entity, operation, changes)
 
@@ -35,7 +32,7 @@ final class MutationService {
 
         } else {
             let newState = EntitySyncState(
-                entityId: entity.id,
+                entityId: new.id,
                 lastMutationId: mutation.id,
                 revision: 1
             )
@@ -45,31 +42,20 @@ final class MutationService {
         context.insert(mutation)
     }
 
-    private func mutationFrom<T: Entity>(
-        _ entity: T,
+    private func mutationFrom(
+        from old: EntitySnapshot,
+        to new: EntitySnapshot,
         _ operation: SyncOperation,
-        _ changes: [MutationChange]
     ) -> Mutation {
 
         let mutationId = UUID()
         let entityRef: EntityRef
 
-        switch entity {
-        case let transaction as Transaction:
-            entityRef = .transaction(transaction)
-
-        case let category as Category:
-            entityRef = .category(category)
-
-        default:
-            fatalError("Unsupported entity type: \(type(of: entity))")
-        }
-
         return .init(
             id: mutationId,
-            entity: entityRef,
+            from: old,
+            to: new,
             operation: operation,
-            changes: changes
         )
     }
 

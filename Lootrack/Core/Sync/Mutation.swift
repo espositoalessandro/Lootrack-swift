@@ -16,25 +16,29 @@ nonisolated struct SyncEntityKey: Hashable {
     let id: UUID
 }
 
-enum EntityRef {
-    case transaction(Transaction)
-    case category(Category)
+nonisolated enum EntitySnapshot: Codable {
+    case transaction(TransactionDTO)
+    case category(CategoryDTO)
 }
 
-extension EntityRef {
-    var key: SyncEntityKey {
+extension EntitySnapshot {
+    var id: UUID {
         switch self {
         case .transaction(let transaction):
-            return SyncEntityKey(
-                type: .transaction,
-                id: transaction.id
-            )
-
+            transaction.id
+            
         case .category(let category):
-            return SyncEntityKey(
-                type: .category,
-                id: category.id
-            )
+            category.id
+        }
+    }
+    
+    var type: SyncEntityType {
+        switch self {
+        case .transaction:
+                .transaction
+            
+        case .category:
+                .category
         }
     }
 }
@@ -43,51 +47,34 @@ extension EntityRef {
 final class Mutation: ImmutableEntity {
     @Attribute(.unique)
     var id: UUID
-    private var _transaction: Transaction?
-    private var _category: Category?
     var operation: SyncOperation
     var expectedRevision: Int?
     var expectedMutationId: UUID?
     var createdAt: Date
-    var changes: [MutationChange]
-    var entity: EntityRef {
-        if let transaction = _transaction {
-            return .transaction(transaction)
-        }
-        if let category = _category {
-            return .category(category)
-        }
-        fatalError("Mutation has no associated entity")
-    }
+    var base: EntitySnapshot?
+    var payload: EntitySnapshot
 
     init(
         id: UUID = UUID(),
-        entity: EntityRef,
+        from base: EntitySnapshot?,
+        to payload: EntitySnapshot,
         operation: SyncOperation,
         expectedRevision: Int? = nil,
         expectedMutationId: UUID? = nil,
         createdAt: Date = .now,
-        changes: [MutationChange] = []
     ) {
         self.id = id
         self.operation = operation
         self.expectedRevision = expectedRevision
         self.expectedMutationId = expectedMutationId
         self.createdAt = createdAt
-        self.changes = changes
-
-        switch entity {
-        case .transaction(let transaction):
-            self._transaction = transaction
-            self._category = nil
-        case .category(let category):
-            self._category = category
-            self._transaction = nil
-        }
+        self.base = base
+        self.payload = payload
     }
 }
 
-final class MutationDTO: Codable {
+final class MutationDTO: Codable, Identifiable {
+
     var id: UUID
     var entity: Data
     var operation: SyncOperation
