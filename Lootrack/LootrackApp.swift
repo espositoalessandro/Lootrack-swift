@@ -9,7 +9,8 @@ struct LootrackApp: App {
     private let mutationService: MutationService
     private let transactionService: TransactionService
     private let categoryService: CategoryService
-
+    private let googleSheetsProvider: GoogleSheetsProvider
+    
     init() {
         do {
             let modelContainer = try ModelContainer(
@@ -44,6 +45,25 @@ struct LootrackApp: App {
             self.mutationService = mutationService
             self.transactionService = transactionService
             self.categoryService = categoryService
+            
+            let googleSheetsConfiguration =
+            GoogleSheetsConfiguration.development
+            
+            let googleAuthorizationService =
+            GoogleAuthorizationService(
+                configuration: googleSheetsConfiguration
+            )
+            
+            let googleSheetsClient =
+            GoogleSheetsClient()
+            
+            let googleSheetsProvider =
+            GoogleSheetsProvider(
+                configuration: googleSheetsConfiguration,
+                authorization: googleAuthorizationService,
+                client: googleSheetsClient
+            )
+            self.googleSheetsProvider = googleSheetsProvider
 
         } catch {
             fatalError(
@@ -54,7 +74,7 @@ struct LootrackApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(googleSheetsProvider: googleSheetsProvider)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }

@@ -1,7 +1,8 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct RootView: View {
+    let googleSheetsProvider: GoogleSheetsProvider
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house") {
@@ -16,16 +17,17 @@ struct RootView: View {
                 }
             }
 
-            
             Tab("Categories", systemImage: "square.grid.2x2") {
                 NavigationStack {
                     CategoryListView()
                 }
             }
-            
+
             Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
                 NavigationStack {
-                    SyncView()
+                    SyncView(
+                        googleSheetsProvider: googleSheetsProvider
+                    )
                 }
             }
         }

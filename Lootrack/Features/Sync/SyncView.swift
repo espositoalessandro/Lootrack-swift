@@ -35,6 +35,11 @@ extension Mutation {
 }
 
 struct SyncView: View {
+    let googleSheetsProvider: GoogleSheetsProvider
+    
+    @State private var isTestingGoogle = false
+    @State private var googleTestResult: String?
+
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
 
@@ -55,8 +60,71 @@ struct SyncView: View {
         }
     }
 
+    private func testGooglePull() async {
+        isTestingGoogle = true
+        
+        defer {
+            isTestingGoogle = false
+        }
+        
+        do {
+            let snapshot =
+            try await googleSheetsProvider.pull()
+            
+            let transactionCount =
+            snapshot.records.filter {
+                $0.entityType == .transaction
+            }.count
+            
+            let categoryCount =
+            snapshot.records.filter {
+                $0.entityType == .category
+            }.count
+            
+            googleTestResult =
+            """
+            Success
+            Records: \(snapshot.records.count)
+            Transactions: \(transactionCount)
+            Categories: \(categoryCount)
+            """
+            
+            print(
+                "Google pull succeeded:",
+                snapshot.records
+            )
+        } catch {
+            googleTestResult =
+            "ERROR: \(String(describing: error))"
+            
+            print(
+                "Google pull failed:",
+                error
+            )
+        }
+    }
+    
     var body: some View {
         List {
+            Section("Google Sheets") {
+                Button {
+                    Task {
+                        await testGooglePull()
+                    }
+                } label: {
+                    if isTestingGoogle {
+                        ProgressView()
+                    } else {
+                        Text("Test Google pull")
+                    }
+                }
+                .disabled(isTestingGoogle)
+                
+                if let googleTestResult {
+                    Text(googleTestResult)
+                        .font(.caption.monospaced())
+                }
+            }
             ForEach(pendingEntities) { pending in
                 Section {
                     ForEach(
@@ -131,4 +199,6 @@ struct SyncView: View {
         }
         .navigationTitle("Mutation list")
     }
+    
+    
 }
