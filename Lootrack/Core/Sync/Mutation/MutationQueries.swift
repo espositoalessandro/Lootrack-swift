@@ -2,16 +2,17 @@ import Foundation
 import SwiftData
 
 enum MutationQueries {
-    static func getEntitySyncState(_ entityId: UUID) throws
-        -> FetchDescriptor<EntitySyncState>
-    {
-        FetchDescriptor(
-            predicate: #Predicate<EntitySyncState> { mutation in
-                mutation.entityId == entityId
-            },
-            sortBy: [
-                SortDescriptor(\EntitySyncState.revision, order: .reverse)
-            ]
+    static func getEntitySyncState(
+        _ key: SyncEntityKey
+    ) -> FetchDescriptor<EntitySyncState> {
+        let entityId = key.id
+        let entityType = key.type
+
+        return FetchDescriptor(
+            predicate: #Predicate<EntitySyncState> { state in
+                state.entityId == entityId
+                    && state.entityType == entityType
+            }
         )
     }
 
@@ -20,7 +21,7 @@ enum MutationQueries {
             sortBy: [
                 SortDescriptor(
                     \Mutation.createdAt,
-                     order: .forward
+                    order: .forward
                 )
             ]
         )

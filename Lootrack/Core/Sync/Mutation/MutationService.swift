@@ -33,7 +33,7 @@ final class MutationService {
         )
 
         let state = try modelContext.fetch(
-            MutationQueries.getEntitySyncState(new.id)
+            MutationQueries.getEntitySyncState(new.key)
         ).first
 
         if let state {
@@ -44,7 +44,7 @@ final class MutationService {
             state.lastMutationId = mutation.id
         } else {
             let newState = EntitySyncState(
-                entityId: new.id,
+                key: new.key,
                 lastMutationId: mutation.id,
                 revision: 1
             )
