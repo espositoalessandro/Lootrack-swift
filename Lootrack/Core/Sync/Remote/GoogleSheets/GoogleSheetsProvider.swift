@@ -1,11 +1,3 @@
-//
-//  GoogleSheetsConfiguration.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 17/08/2026.
-//
-
-
 import Foundation
 import GoogleSignIn
 import UIKit
@@ -15,7 +7,8 @@ nonisolated struct GoogleSheetsConfiguration {
     let spreadsheetId: String
 
     static let development = GoogleSheetsConfiguration(
-        clientId: "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com",
+        clientId:
+            "301925252646-k9ev1fi2eqcb0abkoc8glqjkupajrb5e.apps.googleusercontent.com",
         spreadsheetId: "14JFbnyDEHtHEzQ-fj4Eqj4cAGFlVh4vmv_uZjJKKaUU"
     )
 }
@@ -44,30 +37,36 @@ final class GoogleAuthorizationService {
     ) async throws {
         let result = try await GIDSignIn.sharedInstance.signIn(
             withPresenting: viewController,
+            hint: nil,
             additionalScopes: [
                 Self.driveFileScope
             ]
         )
 
-        guard result.user.grantedScopes?.contains(
-            Self.driveFileScope
-        ) == true else {
+        guard
+            result.user.grantedScopes?.contains(
+                Self.driveFileScope
+            ) == true
+        else {
             throw GoogleSheetsError.missingDrivePermission
         }
     }
 
     func accessToken() async throws -> String {
-        guard let currentUser =
-            GIDSignIn.sharedInstance.currentUser
+        guard
+            let currentUser =
+                GIDSignIn.sharedInstance.currentUser
         else {
             throw GoogleSheetsError.notSignedIn
         }
 
         let user = try await currentUser.refreshTokensIfNeeded()
 
-        guard user.grantedScopes?.contains(
-            Self.driveFileScope
-        ) == true else {
+        guard
+            user.grantedScopes?.contains(
+                Self.driveFileScope
+            ) == true
+        else {
             throw GoogleSheetsError.missingDrivePermission
         }
 
@@ -76,6 +75,24 @@ final class GoogleAuthorizationService {
 
     func signOut() {
         GIDSignIn.sharedInstance.signOut()
+    }
+}
+
+@MainActor
+final class GoogleSheetsClient {
+    func readSnapshot(
+        accessToken: String,
+        spreadsheetId: String
+    ) async throws -> RemoteSyncSnapshot {
+        fatalError("Not implemented yet")
+    }
+    
+    func push(
+        _ request: SyncPushRequest,
+        accessToken: String,
+        spreadsheetId: String
+    ) async throws -> SyncPushResult {
+        fatalError("Not implemented yet")
     }
 }
 
