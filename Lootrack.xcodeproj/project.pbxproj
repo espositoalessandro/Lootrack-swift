@@ -15,9 +15,22 @@
 		31626FB6302E146800F885C8 /* Lootrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lootrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		31F567223033813A00E07656 /* Exceptions for "Lootrack" folder in "Lootrack" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 31626FB5302E146800F885C8 /* Lootrack */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		31626FB8302E146800F885C8 /* Lootrack */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				31F567223033813A00E07656 /* Exceptions for "Lootrack" folder in "Lootrack" target */,
+			);
 			path = Lootrack;
 			sourceTree = "<group>";
 		};
@@ -261,6 +274,7 @@
 				DEVELOPMENT_TEAM = S949Q98CLJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Lootrack/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -293,6 +307,7 @@
 				DEVELOPMENT_TEAM = S949Q98CLJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Lootrack/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
