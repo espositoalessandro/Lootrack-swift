@@ -78,24 +78,6 @@ final class GoogleAuthorizationService {
     }
 }
 
-@MainActor
-final class GoogleSheetsClient {
-    func readSnapshot(
-        accessToken: String,
-        spreadsheetId: String
-    ) async throws -> RemoteSyncSnapshot {
-        fatalError("Not implemented yet")
-    }
-    
-    func push(
-        _ request: SyncPushRequest,
-        accessToken: String,
-        spreadsheetId: String
-    ) async throws -> SyncPushResult {
-        fatalError("Not implemented yet")
-    }
-}
-
 nonisolated enum GoogleSheetsError: Error {
     case notSignedIn
     case missingDrivePermission
