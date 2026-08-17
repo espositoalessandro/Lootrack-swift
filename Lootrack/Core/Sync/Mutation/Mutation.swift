@@ -82,19 +82,28 @@ final class Mutation: ImmutableEntity {
 final class EntitySyncState {
     @Attribute(.unique)
     var entityId: UUID
+    var entityType: SyncEntityType
     var lastMutationId: UUID?
     var revision: Int
+    var key: SyncEntityKey {
+        SyncEntityKey(
+            type: entityType,
+            id: entityId
+        )
+    }
 
     init(
-        entityId: UUID,
+        key: SyncEntityKey,
         lastMutationId: UUID? = nil,
         revision: Int
     ) {
-        self.entityId = entityId
+        self.entityId = key.id
+        self.entityType = key.type
         self.lastMutationId = lastMutationId
         self.revision = revision
     }
 }
+
 
 nonisolated struct MutationDTO: Codable, Identifiable {
     let id: UUID
