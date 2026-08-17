@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct LootrackApp: App {
@@ -54,6 +55,9 @@ struct LootrackApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
         .modelContainer(modelContainer)
         .environment(transactionService)
