@@ -11,11 +11,14 @@ enum CategoryServiceError: Error {
 @Observable
 final class CategoryService {
     private let modelContext: ModelContext
-    private let sync: MutationService
+    private let mutationService: MutationService
 
-    init(modelContext: ModelContext, sync: MutationService) {
+    init(
+        modelContext: ModelContext,
+        mutationService: MutationService
+    ) {
         self.modelContext = modelContext
-        self.sync = sync
+        self.mutationService = mutationService
     }
 
     @discardableResult
@@ -32,13 +35,16 @@ final class CategoryService {
             name: name
         )
 
-        try sync.createMutation(
+        let snapshot = CategoryDTO(category)
+
+        try mutationService.createMutation(
             from: nil,
-            to: CategoryDTO.init(category),
-            .upsert,
+            to: .category(snapshot),
+            .upsert
         )
 
         modelContext.insert(category)
+
         try modelContext.save()
 
         return category
@@ -49,6 +55,13 @@ final class CategoryService {
         name: String,
         type: TransactionType
     ) throws {
+        guard
+            category.name != name
+                || category.type != type
+        else {
+            return
+        }
+
         if category.type != type,
             try hasActiveTransactions(category)
         {
@@ -57,40 +70,60 @@ final class CategoryService {
 
         let now = Date.now
 
-        let old: CategoryDTO = .init(category)
+        let old = CategoryDTO(category)
+
+        let new = CategoryDTO(
+            id: old.id,
+            createdAt: old.createdAt,
+            updatedAt: now,
+            deletedAt: old.deletedAt,
+            type: type,
+            name: name
+        )
+
+        try mutationService.createMutation(
+            from: .category(old),
+            to: .category(new),
+            .upsert
+        )
+
         category.name = name
         category.type = type
         category.updatedAt = now
-        let new: CategoryDTO = .init(category)
-
-        try sync.createMutation(
-            from: old,
-            to: new,
-            .upsert,
-        )
 
         try modelContext.save()
     }
 
     func delete(_ category: Category) throws {
+        guard category.deletedAt == nil else {
+            return
+        }
+
         if try hasActiveTransactions(category) {
             throw CategoryServiceError.cannotDeleteWhileInUse
         }
 
         let now = Date.now
 
-        let old: CategoryDTO = .init(category)
+        let old = CategoryDTO(category)
+
+        let new = CategoryDTO(
+            id: old.id,
+            createdAt: old.createdAt,
+            updatedAt: now,
+            deletedAt: now,
+            type: old.type,
+            name: old.name
+        )
+
+        try mutationService.createMutation(
+            from: .category(old),
+            to: .category(new),
+            .delete
+        )
 
         category.deletedAt = now
         category.updatedAt = now
-
-        let new: CategoryDTO = .init(category)
-
-        try sync.createMutation(
-            from: old,
-            to: new,
-            .delete,
-        )
 
         try modelContext.save()
     }

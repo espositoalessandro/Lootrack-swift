@@ -32,18 +32,17 @@ final class Category: Entity {
     }
 }
 
-struct CategoryDTO: Codable {
+nonisolated struct CategoryDTO: Codable, Equatable {
     let id: UUID
-     
     let createdAt: Date
     let updatedAt: Date
     let deletedAt: Date?
-    
     let type: TransactionType
     let name: String
 }
 
 extension CategoryDTO {
+    @MainActor
     init(_ category: Category) {
         self.id = category.id
         self.createdAt = category.createdAt

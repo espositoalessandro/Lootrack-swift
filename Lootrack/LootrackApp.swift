@@ -1,13 +1,13 @@
-import OSLog
 import SwiftData
 import SwiftUI
 
 @main
 struct LootrackApp: App {
     private let modelContainer: ModelContainer
+
+    private let mutationService: MutationService
     private let transactionService: TransactionService
     private let categoryService: CategoryService
-    private let sync: MutationService
 
     init() {
         do {
@@ -24,18 +24,25 @@ struct LootrackApp: App {
                 )
             #endif
 
-            self.modelContainer = modelContainer
-            self.sync = MutationService(
+            let mutationService = MutationService(
                 modelContext: modelContainer.mainContext
             )
-            self.transactionService = TransactionService(
+
+            let transactionService = TransactionService(
                 modelContext: modelContainer.mainContext,
-                sync: sync
+                mutationService: mutationService
             )
-            self.categoryService = CategoryService(
+
+            let categoryService = CategoryService(
                 modelContext: modelContainer.mainContext,
-                sync: sync
+                mutationService: mutationService
             )
+
+            self.modelContainer = modelContainer
+
+            self.mutationService = mutationService
+            self.transactionService = transactionService
+            self.categoryService = categoryService
 
         } catch {
             fatalError(

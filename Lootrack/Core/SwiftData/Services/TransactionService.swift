@@ -6,11 +6,14 @@ import SwiftData
 @Observable
 final class TransactionService {
     private let modelContext: ModelContext
-    private let sync: MutationService
+    private let mutationService: MutationService
 
-    init(modelContext: ModelContext, sync: MutationService) {
+    init(
+        modelContext: ModelContext,
+        mutationService: MutationService
+    ) {
         self.modelContext = modelContext
-        self.sync = sync
+        self.mutationService = mutationService
     }
 
     @discardableResult
@@ -33,13 +36,16 @@ final class TransactionService {
             categoryId: categoryId
         )
 
-        try sync.createMutation(
+        let snapshot = TransactionDTO(transaction)
+
+        try mutationService.createMutation(
             from: nil,
-            to: TransactionDTO.init(transaction),
+            to: .transaction(snapshot),
             .upsert
         )
 
         modelContext.insert(transaction)
+
         try modelContext.save()
 
         return transaction
@@ -53,38 +59,76 @@ final class TransactionService {
         occurredOn: Date,
         categoryId: UUID?
     ) throws {
-        let now = Date.now
+        guard
+            transaction.type != type
+                || transaction.amountInCents != amountInCents
+                || transaction.note != note
+                || transaction.occurredOn != occurredOn
+                || transaction.categoryId != categoryId
+        else {
+            return
+        }
 
-        let old = TransactionDTO.init(transaction)
+        let now = Date.now
+        
+        let old = TransactionDTO(transaction)
+        let new = TransactionDTO(
+            id: old.id,
+            createdAt: old.createdAt,
+            updatedAt: now,
+            deletedAt: old.deletedAt,
+            type: type,
+            amountInCents: amountInCents,
+            note: note,
+            occurredOn: occurredOn,
+            categoryId: categoryId
+        )
+
+        try mutationService.createMutation(
+            from: .transaction(old),
+            to: .transaction(new),
+            .upsert
+        )
+
         transaction.type = type
         transaction.amountInCents = amountInCents
         transaction.note = note
         transaction.occurredOn = occurredOn
         transaction.categoryId = categoryId
         transaction.updatedAt = now
-        let new = TransactionDTO.init(transaction)
 
-        try sync.createMutation(
-            from: old,
-            to: new,
-            .upsert,
-        )
         try modelContext.save()
     }
 
     func delete(_ transaction: Transaction) throws {
+        guard transaction.deletedAt == nil else {
+            return
+        }
+
         let now = Date.now
 
-        let old = TransactionDTO.init(transaction)
+        let old = TransactionDTO(transaction)
+
+        let new = TransactionDTO(
+            id: old.id,
+            createdAt: old.createdAt,
+            updatedAt: now,
+            deletedAt: now,
+            type: old.type,
+            amountInCents: old.amountInCents,
+            note: old.note,
+            occurredOn: old.occurredOn,
+            categoryId: old.categoryId
+        )
+
+        try mutationService.createMutation(
+            from: .transaction(old),
+            to: .transaction(new),
+            .delete
+        )
+
         transaction.deletedAt = now
         transaction.updatedAt = now
-        let new = TransactionDTO.init(transaction)
-
-        try sync.createMutation(
-            from: old,
-            to: new,
-            .upsert,
-        )
 
         try modelContext.save()
     }

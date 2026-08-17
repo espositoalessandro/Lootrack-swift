@@ -1,11 +1,20 @@
 import Foundation
 
 struct PendingEntityChanges: Identifiable {
-    let entity: EntityRef
     let mutations: [Mutation]
 
+    init(mutations: [Mutation]) {
+        precondition(!mutations.isEmpty)
+
+        self.mutations = mutations
+    }
+
     var id: SyncEntityKey {
-        entity.key
+        latestMutation.payload.key
+    }
+
+    var entity: EntitySnapshot {
+        latestMutation.payload
     }
 
     var latestMutation: Mutation {

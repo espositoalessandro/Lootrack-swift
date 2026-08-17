@@ -1,66 +1,57 @@
 import Foundation
 import SwiftData
 
-@MainActor
-@Observable
-final class MutationService {
+nonisolated enum MutationServiceError: Error {
+    case snapshotIdentityMismatch
+}
 
-    private let context: ModelContext
+@MainActor
+final class MutationService {
+    private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
-        self.context = modelContext
+        self.modelContext = modelContext
     }
 
-    func createMutation<T: Identifiable>(
-        from old: T,
-        to new: T,
-        _ operation: SyncOperation,
+    func createMutation(
+        from old: EntitySnapshot?,
+        to new: EntitySnapshot,
+        _ operation: SyncOperation
     ) throws {
-        
-        let mutation = mutationFrom(entity, operation, changes)
+        if let old, old.key != new.key {
+            throw MutationServiceError.snapshotIdentityMismatch
+        }
 
-        let state = try context.fetch(
-            MutationQueries.getEntitySyncState(entity.id)
+        if let old, old == new {
+            return
+        }
+
+        let mutation = Mutation(
+            from: old,
+            to: new,
+            operation: operation
+        )
+
+        let state = try modelContext.fetch(
+            MutationQueries.getEntitySyncState(new.id)
         ).first
 
-        if state != nil {
-            mutation.expectedMutationId = state!.lastMutationId
-            mutation.expectedRevision = state!.revision
+        if let state {
+            mutation.expectedMutationId = state.lastMutationId
+            mutation.expectedRevision = state.revision
 
-            state!.revision += 1
-            state!.lastMutationId = mutation.id
-
+            state.revision += 1
+            state.lastMutationId = mutation.id
         } else {
             let newState = EntitySyncState(
                 entityId: new.id,
                 lastMutationId: mutation.id,
                 revision: 1
             )
-            context.insert(newState)
+
+            modelContext.insert(newState)
         }
 
-        context.insert(mutation)
+        modelContext.insert(mutation)
     }
-
-    private func mutationFrom(
-        from old: EntitySnapshot,
-        to new: EntitySnapshot,
-        _ operation: SyncOperation,
-    ) -> Mutation {
-
-        let mutationId = UUID()
-        let entityRef: EntityRef
-
-        return .init(
-            id: mutationId,
-            from: old,
-            to: new,
-            operation: operation,
-        )
-    }
-
-    private func encode<T: Encodable>(_ value: T) throws -> Data {
-        return try JSONEncoder().encode(value)
-    }
-
 }

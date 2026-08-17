@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-nonisolated enum TransactionType: String, Codable {
+nonisolated enum TransactionType: String, Codable, Equatable {
     case expense
     case income
 }
@@ -30,7 +30,7 @@ final class Transaction: Entity {
         amountInCents: Int,
         note: String,
         occurredOn: Date,
-        categoryId: UUID? = nil,
+        categoryId: UUID? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -44,13 +44,13 @@ final class Transaction: Entity {
     }
 }
 
-struct TransactionDTO: Codable {
+nonisolated struct TransactionDTO: Codable, Equatable {
     let id: UUID
 
     let createdAt: Date
     let updatedAt: Date
     let deletedAt: Date?
-    
+
     let type: TransactionType
     let amountInCents: Int
     let note: String
@@ -59,11 +59,13 @@ struct TransactionDTO: Codable {
 }
 
 extension TransactionDTO {
+    @MainActor
     init(_ transaction: Transaction) {
         self.id = transaction.id
         self.createdAt = transaction.createdAt
         self.updatedAt = transaction.updatedAt
         self.deletedAt = transaction.deletedAt
+
         self.type = transaction.type
         self.amountInCents = transaction.amountInCents
         self.note = transaction.note

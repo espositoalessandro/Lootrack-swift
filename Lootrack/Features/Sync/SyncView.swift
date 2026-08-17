@@ -10,8 +10,10 @@ enum PendingMutationKind {
         switch self {
         case .created:
             return "Created"
+
         case .updated:
             return "Updated"
+
         case .deleted:
             return "Deleted"
         }
@@ -24,12 +26,7 @@ extension Mutation {
             return .deleted
         }
 
-        if changes.contains(
-            where: {
-                $0.field == "createdAt"
-                    && $0.before == .null
-            }
-        ) {
+        if base == nil {
             return .created
         }
 
@@ -37,56 +34,24 @@ extension Mutation {
     }
 }
 
-extension MutationValue {
-    var displayValue: String {
-        switch self {
-        case .string(let value):
-            return value
-
-        case .int(let value):
-            return String(value)
-
-        case .date(let value):
-            return value.formatted(
-                date: .abbreviated,
-                time: .shortened
-            )
-
-        case .uuid(let value):
-            return value.uuidString
-
-        case .transactionType(let value):
-            return value.rawValue.capitalized
-
-        case .null:
-            return "None"
-        }
-    }
-}
-
 struct SyncView: View {
-
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
 
     private var pendingEntities: [PendingEntityChanges] {
         Dictionary(
             grouping: mutations,
-            by: { $0.entity.key }
+            by: { $0.payload.key }
         )
         .values
-        .compactMap { mutations in
-            guard let first = mutations.first else {
-                return nil
-            }
-
-            return PendingEntityChanges(
-                entity: first.entity,
+        .map { mutations in
+            PendingEntityChanges(
                 mutations: mutations
             )
         }
         .sorted {
-            $0.latestMutation.createdAt > $1.latestMutation.createdAt
+            $0.latestMutation.createdAt
+                > $1.latestMutation.createdAt
         }
     }
 
@@ -94,34 +59,52 @@ struct SyncView: View {
         List {
             ForEach(pendingEntities) { pending in
                 Section {
-                    ForEach(pending.mutations.reversed()) { mutation in
+                    ForEach(
+                        pending.mutations.reversed()
+                    ) { mutation in
                         DisclosureGroup {
                             VStack(
                                 alignment: .leading,
-                                spacing: 8
+                                spacing: 12
                             ) {
-                                ForEach(
-                                    Array(mutation.changes.enumerated()),
-                                    id: \.offset
-                                ) { _, change in
-                                    HStack {
-                                        Text(change.field)
+                                Text("Base")
+                                    .font(.headline)
 
-                                        Spacer()
+                                Text(
+                                    mutation.base.map {
+                                        String(describing: $0)
+                                    } ?? "nil"
+                                )
+                                .font(.caption.monospaced())
 
-                                        Text(change.before.displayValue)
-                                            .foregroundStyle(.secondary)
+                                Divider()
 
-                                        Image(systemName: "arrow.right")
+                                Text("Payload")
+                                    .font(.headline)
 
-                                        Text(change.after.displayValue)
-                                    }
-                                }
+                                Text(
+                                    String(
+                                        describing: mutation.payload
+                                    )
+                                )
+                                .font(.caption.monospaced())
+
+                                Divider()
+
+                                Text(
+                                    """
+                                    expectedRevision: \(String(describing: mutation.expectedRevision))
+                                    expectedMutationId: \(String(describing: mutation.expectedMutationId))
+                                    """
+                                )
+                                .font(.caption.monospaced())
                             }
                             .padding(.vertical, 8)
                         } label: {
                             HStack {
-                                Text(mutation.kind.displayName)
+                                Text(
+                                    mutation.kind.displayName
+                                )
 
                                 Spacer()
 
@@ -145,6 +128,7 @@ struct SyncView: View {
                     }
                 }
             }
-        }.navigationTitle("Mutation list")
+        }
+        .navigationTitle("Mutation list")
     }
 }
