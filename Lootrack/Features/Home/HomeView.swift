@@ -2,6 +2,10 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
+    
+    @Environment(SyncCoordinator.self)
+    private var syncCoordinator
+    
     @Query(TransactionQueries.active)
     private var transactions: [Transaction]
     
@@ -88,6 +92,9 @@ struct HomeView: View {
                 }
             }
             .padding()
+        }
+        .refreshable {
+            await syncCoordinator.synchronize()
         }
         .navigationTitle("Lootrack")
     }
