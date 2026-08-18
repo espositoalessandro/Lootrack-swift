@@ -387,19 +387,7 @@ struct TransactionListView: View {
             try transactionService.delete(
                 transaction
             )
-
             registerUndo(for: transaction)
-            
-            print(
-                "APP SHAKE SUPPORT:",
-                UIApplication.shared.applicationSupportsShakeToEdit
-            )
-            
-            print(
-                "USER SHAKE SETTING:",
-                UIAccessibility.isShakeToUndoEnabled
-            )
-            
         } catch {
             print(
                 "FAILED TO DELETE TRANSACTION:",
@@ -443,26 +431,5 @@ struct TransactionListView: View {
                 localized: "Delete Transaction"
             )
         )
-    }
-
-    private func restore(
-        _ transaction: Transaction
-    ) {
-        do {
-            try transactionService.restore(
-                transaction
-            )
-
-            undoManager?
-                .removeAllActions(
-                    withTarget:
-                        transactionService
-                )
-        } catch {
-            print(
-                "FAILED TO RESTORE TRANSACTION:",
-                error
-            )
-        }
     }
 }

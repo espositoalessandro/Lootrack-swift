@@ -1,11 +1,3 @@
-//
-//  UndoResponderView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 18/08/2026.
-//
-
-
 import SwiftUI
 import UIKit
 

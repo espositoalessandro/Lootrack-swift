@@ -132,25 +132,4 @@ struct CategoryListView: View {
             String(localized: "Delete Category")
         )
     }
-
-    private func restore(
-        _ category: Category
-    ) {
-        do {
-            try categoryService.restore(
-                category
-            )
-
-            undoManager?
-                .removeAllActions(
-                    withTarget:
-                        categoryService
-                )
-        } catch {
-            print(
-                "FAILED TO RESTORE CATEGORY:",
-                error
-            )
-        }
-    }
 }
