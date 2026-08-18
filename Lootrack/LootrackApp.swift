@@ -9,9 +9,7 @@ struct LootrackApp: App {
     private let mutationService: MutationService
     private let transactionService: TransactionService
     private let categoryService: CategoryService
-
-    private let syncEngine: SyncEngine
-    private let conflictResolutionService: ConflictResolutionService
+    private let syncCoordinator: SyncCoordinator
 
     init() {
         do {
@@ -52,7 +50,6 @@ struct LootrackApp: App {
             self.mutationService = mutationService
             self.transactionService = transactionService
             self.categoryService = categoryService
-            self.conflictResolutionService = conflictResolutionService
 
             let googleSheetsConfiguration =
                 GoogleSheetsConfiguration.development
@@ -81,7 +78,11 @@ struct LootrackApp: App {
                 provider: googleSheetsProvider
             )
 
-            self.syncEngine = syncEngine
+            self.syncCoordinator = SyncCoordinator(
+                syncEngine: syncEngine,
+                conflictResolutionService: conflictResolutionService
+            )
+
         } catch {
             fatalError(
                 "Failed to create SwiftData container: \(error)"
@@ -91,13 +92,11 @@ struct LootrackApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(
-                syncEngine: syncEngine,
-                conflictResolutionService: conflictResolutionService
-            )
-            .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
-            }
+            RootView()
+                .environment(syncCoordinator)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
         .modelContainer(modelContainer)
         .environment(transactionService)

@@ -7,7 +7,10 @@ struct CategoryListView: View {
 
     @Environment(\.undoManager)
     private var undoManager
-
+    
+    @Environment(SyncCoordinator.self)
+    private var syncCoordinator
+    
     @State
     private var showingAddCategory = false
 
@@ -58,6 +61,9 @@ struct CategoryListView: View {
                     .tint(.blue)
                 }
             }
+        }
+        .refreshable {
+            await syncCoordinator.synchronize()
         }
         .navigationTitle("Categories")
         .toolbar {

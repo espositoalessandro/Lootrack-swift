@@ -47,6 +47,9 @@ struct TransactionListView: View {
     @Environment(\.undoManager)
     private var undoManager
 
+    @Environment(SyncCoordinator.self)
+    private var syncCoordinator
+    
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
 
@@ -326,6 +329,9 @@ struct TransactionListView: View {
                     }
                 }
             }
+        }
+        .refreshable {
+            await syncCoordinator.synchronize()
         }
         .listSectionSpacing(12)
         .navigationTitle("Transactions")

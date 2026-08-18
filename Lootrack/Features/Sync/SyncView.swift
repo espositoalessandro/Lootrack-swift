@@ -85,18 +85,8 @@ extension SyncConflictCandidate {
 }
 
 struct SyncView: View {
-    let syncEngine: SyncEngine
-    let conflictResolutionService: ConflictResolutionService
-
-    @State private var isSyncing = false
-    @State private var syncResult: String?
-
-    /*
-     * Conflicts deliberately aren't persisted.
-     *
-     * They describe one particular reconciliation attempt.
-     */
-    @State private var conflicts: [SyncConflictCandidate] = []
+    @Environment(SyncCoordinator.self)
+    private var syncCoordinator
 
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
@@ -107,85 +97,10 @@ struct SyncView: View {
             by: { $0.payload.key }
         )
         .values
-        .map { mutations in
-            PendingEntityChanges(
-                mutations: mutations
-            )
+        .map { mutations in PendingEntityChanges(mutations: mutations)
         }
         .sorted {
-            $0.latestMutation.createdAt
-                > $1.latestMutation.createdAt
-        }
-    }
-
-    private func synchronize() async {
-        isSyncing = true
-
-        /*
-         * A new synchronization attempt produces a completely
-         * new reconciliation result.
-         */
-        conflicts = []
-        syncResult = nil
-
-        defer {
-            isSyncing = false
-        }
-
-        do {
-            try await syncEngine.synchronize()
-
-            syncResult = "Synchronization completed"
-
-        } catch let error as SyncRunConflictError {
-            conflicts = error.conflicts
-
-        } catch {
-            conflicts = []
-
-            syncResult =
-                "ERROR: \(String(describing: error))"
-
-            print(
-                "Synchronization failed:",
-                error
-            )
-        }
-    }
-
-    private func resolveConflict(
-        _ conflict: SyncConflictCandidate,
-        using resolution: ConflictResolution
-    ) {
-        do {
-            try conflictResolutionService.resolve(
-                conflict,
-                using: resolution
-            )
-
-            /*
-             * Only this conflict was resolved.
-             *
-             * Other conflicts still belong to the same failed
-             * synchronization attempt and remain visible.
-             */
-            conflicts.removeAll {
-                $0.id == conflict.id
-            }
-
-            if conflicts.isEmpty {
-                syncResult =
-                    "Conflicts resolved. Synchronize again to continue."
-            }
-
-        } catch {
-            syncResult =
-                "ERROR: \(String(describing: error))"
-
-            print(
-                "Conflict resolution failed:",
-                error
-            )
+            $0.latestMutation.createdAt > $1.latestMutation.createdAt
         }
     }
 
@@ -194,27 +109,27 @@ struct SyncView: View {
             Section("Synchronization") {
                 Button {
                     Task {
-                        await synchronize()
+                        await syncCoordinator.synchronize()
                     }
                 } label: {
-                    if isSyncing {
+                    if syncCoordinator.isSyncing {
                         ProgressView()
                     } else {
                         Text("Synchronize")
                     }
                 }
-                .disabled(isSyncing)
+                .disabled(syncCoordinator.isSyncing)
 
-                if let syncResult {
+                if let syncResult = syncCoordinator.syncResult {
                     Text(syncResult)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            if !conflicts.isEmpty {
+            if !syncCoordinator.conflicts.isEmpty {
                 Section {
-                    ForEach(conflicts) { conflict in
+                    ForEach(syncCoordinator.conflicts) { conflict in
                         VStack(
                             alignment: .leading,
                             spacing: 12
@@ -245,7 +160,7 @@ struct SyncView: View {
 
                             HStack {
                                 Button {
-                                    resolveConflict(
+                                    syncCoordinator.resolveConflict(
                                         conflict,
                                         using: .keepRemote
                                     )
@@ -261,7 +176,7 @@ struct SyncView: View {
                                 Spacer()
 
                                 Button {
-                                    resolveConflict(
+                                    syncCoordinator.resolveConflict(
                                         conflict,
                                         using: .keepLocal
                                     )
@@ -275,9 +190,9 @@ struct SyncView: View {
                     }
                 } header: {
                     Label(
-                        conflicts.count == 1
+                        syncCoordinator.conflicts.count == 1
                             ? "1 conflict needs attention"
-                            : "\(conflicts.count) conflicts need attention",
+                            : "\(syncCoordinator.conflicts.count) conflicts need attention",
                         systemImage: "exclamationmark.triangle"
                     )
                 } footer: {
