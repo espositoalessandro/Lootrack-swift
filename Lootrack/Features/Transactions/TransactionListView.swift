@@ -40,7 +40,6 @@ struct TransactionListView: View {
     @State private var searchQuery = ""
 
     @State private var currentMonth: Date?
-    @State private var snackbarNotification: SnackbarNotification?
 
     @Environment(TransactionService.self)
     private var transactionService
@@ -367,12 +366,6 @@ struct TransactionListView: View {
             .padding(.horizontal)
             .padding(.bottom, 12)
         }
-        .snackbar(
-            notification: $snackbarNotification,
-            position: .bottom,
-            edgePadding: 82,
-            duration: .seconds(5)
-        )
         .sheet(
             isPresented: $showingAddTransaction
         ) {
@@ -407,20 +400,6 @@ struct TransactionListView: View {
                 UIAccessibility.isShakeToUndoEnabled
             )
             
-            snackbarNotification = SnackbarNotification(
-                message: String(
-                    localized:
-                        "Transaction deleted"
-                ),
-                style: .danger,
-                icon: "trash.fill",
-                actionTitle: String(
-                    localized: "Undo"
-                ),
-                action: {
-                    restore(transaction)
-                }
-            )
         } catch {
             print(
                 "FAILED TO DELETE TRANSACTION:",

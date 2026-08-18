@@ -14,9 +14,6 @@ struct CategoryListView: View {
     @State
     private var editingCategory: Category?
 
-    @State
-    private var snackbarNotification: SnackbarNotification?
-
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
@@ -75,13 +72,6 @@ struct CategoryListView: View {
                 }
             }
         }
-        .snackbar(
-            notification:
-                $snackbarNotification,
-            position: .bottom,
-            edgePadding: 12,
-            duration: .seconds(5)
-        )
         .sheet(
             isPresented: $showingAddCategory
         ) {
@@ -101,24 +91,7 @@ struct CategoryListView: View {
     ) {
         do {
             try categoryService.delete(category)
-
             registerUndo(for: category)
-
-            snackbarNotification =
-                SnackbarNotification(
-                    message: String(
-                        localized:
-                            "Category deleted"
-                    ),
-                    style: .danger,
-                    icon: "trash.fill",
-                    actionTitle: String(
-                        localized: "Undo"
-                    ),
-                    action: {
-                        restore(category)
-                    }
-                )
         } catch {
             print(
                 "FAILED TO DELETE CATEGORY:",
