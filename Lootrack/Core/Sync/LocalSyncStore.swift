@@ -234,37 +234,18 @@ final class LocalSyncStore {
             }
         }
     }
-
+    
     private func apply(
         _ snapshot: TransactionDTO,
         transactionsById: inout [UUID: Transaction]
     ) {
         if let transaction = transactionsById[snapshot.id] {
-            transaction.createdAt = snapshot.createdAt
-            transaction.updatedAt = snapshot.updatedAt
-            transaction.deletedAt = snapshot.deletedAt
-
-            transaction.type = snapshot.type
-            transaction.amountInCents = snapshot.amountInCents
-            transaction.note = snapshot.note
-            transaction.occurredOn = snapshot.occurredOn
-            transaction.categoryId = snapshot.categoryId
-
+            transaction.apply(snapshot)
             return
         }
-
-        let transaction = Transaction(
-            id: snapshot.id,
-            createdAt: snapshot.createdAt,
-            updatedAt: snapshot.updatedAt,
-            deletedAt: snapshot.deletedAt,
-            type: snapshot.type,
-            amountInCents: snapshot.amountInCents,
-            note: snapshot.note,
-            occurredOn: snapshot.occurredOn,
-            categoryId: snapshot.categoryId
-        )
-
+        
+        let transaction = Transaction(snapshot)
+        
         modelContext.insert(transaction)
         transactionsById[snapshot.id] = transaction
     }
@@ -274,31 +255,16 @@ final class LocalSyncStore {
         categoriesById: inout [UUID: Category]
     ) {
         if let category = categoriesById[snapshot.id] {
-            category.createdAt = snapshot.createdAt
-            category.updatedAt = snapshot.updatedAt
-            category.deletedAt = snapshot.deletedAt
-            category.type = snapshot.type
-            category.name = snapshot.name
-            category.note = snapshot.note
-
+            category.apply(snapshot)
             return
         }
-
-        let category = Category(
-            id: snapshot.id,
-            createdAt: snapshot.createdAt,
-            updatedAt: snapshot.updatedAt,
-            deletedAt: snapshot.deletedAt,
-            type: snapshot.type,
-            name: snapshot.name,
-            note: snapshot.note
-        )
-
+        
+        let category = Category(snapshot)
+        
         modelContext.insert(category)
-
-        categoriesById[snapshot.id] =
-            category
+        categoriesById[snapshot.id] = category
     }
+    
     private func applyMetadata(
         _ record: RemoteSyncRecord,
         statesByKey: inout [SyncEntityKey: EntitySyncState]

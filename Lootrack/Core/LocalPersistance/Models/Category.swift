@@ -35,6 +35,30 @@ final class Category: Entity {
     }
 }
 
+extension Category {
+    convenience init(_ snapshot: CategoryDTO) {
+        self.init(
+            id: snapshot.id,
+            createdAt: snapshot.createdAt,
+            updatedAt: snapshot.updatedAt,
+            deletedAt: snapshot.deletedAt,
+            type: snapshot.type,
+            name: snapshot.name,
+            note: snapshot.note
+        )
+    }
+    
+    func apply(_ snapshot: CategoryDTO) {
+        createdAt = snapshot.createdAt
+        updatedAt = snapshot.updatedAt
+        deletedAt = snapshot.deletedAt
+        
+        type = snapshot.type
+        name = snapshot.name
+        note = snapshot.note
+    }
+}
+
 nonisolated struct CategoryDTO: Codable, Equatable {
     let id: UUID
     let createdAt: Date
@@ -45,7 +69,7 @@ nonisolated struct CategoryDTO: Codable, Equatable {
     let note: String
 }
 
-extension CategoryDTO {
+nonisolated extension CategoryDTO {
     @MainActor
     init(_ category: Category) {
         self.id = category.id
@@ -61,7 +85,7 @@ extension CategoryDTO {
 
 // MARK: - Backward-compatible decoding
 
-extension CategoryDTO {
+nonisolated extension CategoryDTO {
     private enum CodingKeys: String, CodingKey {
         case id
         case createdAt

@@ -287,31 +287,12 @@ final class ConflictResolutionService {
         ).first
 
         if let existing {
-            existing.createdAt = snapshot.createdAt
-            existing.updatedAt = snapshot.updatedAt
-            existing.deletedAt = snapshot.deletedAt
-
-            existing.type = snapshot.type
-            existing.amountInCents = snapshot.amountInCents
-            existing.note = snapshot.note
-            existing.occurredOn = snapshot.occurredOn
-            existing.categoryId = snapshot.categoryId
-
+            existing.apply(snapshot)
             return
         }
 
         modelContext.insert(
-            Transaction(
-                id: snapshot.id,
-                createdAt: snapshot.createdAt,
-                updatedAt: snapshot.updatedAt,
-                deletedAt: snapshot.deletedAt,
-                type: snapshot.type,
-                amountInCents: snapshot.amountInCents,
-                note: snapshot.note,
-                occurredOn: snapshot.occurredOn,
-                categoryId: snapshot.categoryId
-            )
+            Transaction(snapshot)
         )
     }
 
@@ -330,26 +311,12 @@ final class ConflictResolutionService {
         ).first
 
         if let existing {
-            existing.createdAt = snapshot.createdAt
-            existing.updatedAt = snapshot.updatedAt
-            existing.deletedAt = snapshot.deletedAt
-            existing.type = snapshot.type
-            existing.name = snapshot.name
-            existing.note = snapshot.note
-
+            existing.apply(snapshot)
             return
         }
 
         modelContext.insert(
-            Category(
-                id: snapshot.id,
-                createdAt: snapshot.createdAt,
-                updatedAt: snapshot.updatedAt,
-                deletedAt: snapshot.deletedAt,
-                type: snapshot.type,
-                name: snapshot.name,
-                note: snapshot.note
-            )
+            Category(snapshot)
         )
     }
 

@@ -44,6 +44,34 @@ final class Transaction: Entity {
     }
 }
 
+extension Transaction {
+    convenience init(_ snapshot: TransactionDTO) {
+        self.init(
+            id: snapshot.id,
+            createdAt: snapshot.createdAt,
+            updatedAt: snapshot.updatedAt,
+            deletedAt: snapshot.deletedAt,
+            type: snapshot.type,
+            amountInCents: snapshot.amountInCents,
+            note: snapshot.note,
+            occurredOn: snapshot.occurredOn,
+            categoryId: snapshot.categoryId
+        )
+    }
+    
+    func apply(_ snapshot: TransactionDTO) {
+        createdAt = snapshot.createdAt
+        updatedAt = snapshot.updatedAt
+        deletedAt = snapshot.deletedAt
+        
+        type = snapshot.type
+        amountInCents = snapshot.amountInCents
+        note = snapshot.note
+        occurredOn = snapshot.occurredOn
+        categoryId = snapshot.categoryId
+    }
+}
+
 nonisolated struct TransactionDTO: Codable, Equatable {
     let id: UUID
 
