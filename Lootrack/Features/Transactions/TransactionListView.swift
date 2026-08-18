@@ -168,36 +168,8 @@ struct TransactionListView: View {
                 Color(uiColor: .systemGroupedBackground)
             )
             .listRowSeparator(.hidden)
-            
-            ForEach(transactionGroups) { month in
-                Text(
-                    month.date.formatted(
-                        .dateTime
-                            .month(.wide)
-                            .year()
-                    )
-                )
-                .font(.title2.bold())
-                .foregroundStyle(.primary)
-                .textCase(nil)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(
-                    EdgeInsets(
-                        top: 24,
-                        leading: 10,
-                        bottom: 0,
-                        trailing: 20
-                    )
-                )
-                .onScrollVisibilityChange(threshold: 0.01) { isVisible in
-                    if isVisible {
-                        visibleMonthHeaders.insert(month.date)
-                    } else {
-                        visibleMonthHeaders.remove(month.date)
-                    }
-                }
 
+            ForEach(transactionGroups) { month in
                 ForEach(month.days) { day in
                     Section {
                         ForEach(day.transactions) { transaction in
@@ -214,9 +186,7 @@ struct TransactionListView: View {
                                     role: .destructive
                                 ) {
                                     do {
-                                        try transactionService.delete(
-                                            transaction
-                                        )
+                                        try transactionService.delete(transaction)
                                     } catch {
                                         print(
                                             "FAILED TO DELETE TRANSACTION:",
@@ -224,7 +194,7 @@ struct TransactionListView: View {
                                         )
                                     }
                                 }
-
+                                
                                 Button(
                                     "Edit",
                                     systemImage: "pencil"
@@ -257,28 +227,59 @@ struct TransactionListView: View {
                                         forKey: transaction.id
                                     )
                                 }
-
+                                
                                 currentMonth =
-                                    visibleTransactions
+                                visibleTransactions
                                     .values
                                     .max()
                             }
                         }
                     } header: {
-                        Text(
-                            day.date.formatted(
-                                .dateTime
-                                    .weekday(.wide)
-                                    .day()
-                                    .month(.abbreviated)
+                        VStack(
+                            alignment: .leading,
+                            spacing: 20
+                        ) {
+                            if day.id == month.days.first?.id {
+                                Text(
+                                    month.date.formatted(
+                                        .dateTime
+                                            .month(.wide)
+                                            .year()
+                                    )
+                                )
+                                .font(.title2.bold())
+                                .foregroundStyle(.primary)
+                                .onScrollVisibilityChange(
+                                    threshold: 0.01
+                                ) { isVisible in
+                                    if isVisible {
+                                        visibleMonthHeaders.insert(
+                                            month.date
+                                        )
+                                    } else {
+                                        visibleMonthHeaders.remove(
+                                            month.date
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            Text(
+                                day.date.formatted(
+                                    .dateTime
+                                        .weekday(.wide)
+                                        .day()
+                                        .month(.abbreviated)
+                                )
                             )
-                        )
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                            .font(
+                                .subheadline.weight(.semibold)
+                            )
+                            .foregroundStyle(.secondary)
+                        }
                         .textCase(nil)
                     }
-                }
-            }
+                }            }
         }
         .listSectionSpacing(12)
         .navigationTitle("Transactions")
