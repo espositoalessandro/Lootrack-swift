@@ -40,9 +40,13 @@ struct TransactionListView: View {
     @State private var searchQuery = ""
 
     @State private var currentMonth: Date?
+    @State private var snackbarNotification: SnackbarNotification?
 
     @Environment(TransactionService.self)
     private var transactionService
+
+    @Environment(\.undoManager)
+    private var undoManager
 
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
@@ -207,18 +211,8 @@ struct TransactionListView: View {
                                     systemImage: "trash",
                                     role: .destructive
                                 ) {
-                                    do {
-                                        try transactionService.delete(
-                                            transaction
-                                        )
-                                    } catch {
-                                        print(
-                                            "FAILED TO DELETE TRANSACTION:",
-                                            error
-                                        )
-                                    }
+                                    delete(transaction)
                                 }
-
                                 Button(
                                     "Edit",
                                     systemImage: "pencil"
@@ -373,6 +367,12 @@ struct TransactionListView: View {
             .padding(.horizontal)
             .padding(.bottom, 12)
         }
+        .snackbar(
+            notification: $snackbarNotification,
+            position: .bottom,
+            edgePadding: 82,
+            duration: .seconds(5)
+        )
         .sheet(
             isPresented: $showingAddTransaction
         ) {
@@ -383,6 +383,106 @@ struct TransactionListView: View {
         ) { transaction in
             EditTransactionView(
                 transaction: transaction
+            )
+        }
+    }
+
+    private func delete(
+        _ transaction: Transaction
+    ) {
+        do {
+            try transactionService.delete(
+                transaction
+            )
+
+            registerUndo(for: transaction)
+            
+            print(
+                "APP SHAKE SUPPORT:",
+                UIApplication.shared.applicationSupportsShakeToEdit
+            )
+            
+            print(
+                "USER SHAKE SETTING:",
+                UIAccessibility.isShakeToUndoEnabled
+            )
+            
+            snackbarNotification = SnackbarNotification(
+                message: String(
+                    localized:
+                        "Transaction deleted"
+                ),
+                style: .danger,
+                icon: "trash.fill",
+                actionTitle: String(
+                    localized: "Undo"
+                ),
+                action: {
+                    restore(transaction)
+                }
+            )
+        } catch {
+            print(
+                "FAILED TO DELETE TRANSACTION:",
+                error
+            )
+        }
+    }
+
+    private func registerUndo(
+        for transaction: Transaction
+    ) {
+        guard let undoManager else {
+            return
+        }
+
+        /*
+         * Only the latest accidental deletion
+         * remains undoable.
+         */
+        undoManager.removeAllActions(
+            withTarget: transactionService
+        )
+
+        undoManager.registerUndo(
+            withTarget: transactionService
+        ) { service in
+            do {
+                try service.restore(
+                    transaction
+                )
+            } catch {
+                print(
+                    "FAILED TO UNDO TRANSACTION DELETE:",
+                    error
+                )
+            }
+        }
+
+        undoManager.setActionName(
+            String(
+                localized: "Delete Transaction"
+            )
+        )
+    }
+
+    private func restore(
+        _ transaction: Transaction
+    ) {
+        do {
+            try transactionService.restore(
+                transaction
+            )
+
+            undoManager?
+                .removeAllActions(
+                    withTarget:
+                        transactionService
+                )
+        } catch {
+            print(
+                "FAILED TO RESTORE TRANSACTION:",
+                error
             )
         }
     }

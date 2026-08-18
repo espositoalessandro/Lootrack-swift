@@ -36,7 +36,9 @@ final class TransactionService {
             categoryId: categoryId
         )
 
-        let snapshot = TransactionDTO(transaction)
+        let snapshot = TransactionDTO(
+            transaction
+        )
 
         try mutationService.createMutation(
             from: nil,
@@ -61,17 +63,21 @@ final class TransactionService {
     ) throws {
         guard
             transaction.type != type
-                || transaction.amountInCents != amountInCents
+                || transaction.amountInCents
+                    != amountInCents
                 || transaction.note != note
-                || transaction.occurredOn != occurredOn
-                || transaction.categoryId != categoryId
+                || transaction.occurredOn
+                    != occurredOn
+                || transaction.categoryId
+                    != categoryId
         else {
             return
         }
 
         let now = Date.now
-        
+
         let old = TransactionDTO(transaction)
+
         let new = TransactionDTO(
             id: old.id,
             createdAt: old.createdAt,
@@ -91,7 +97,8 @@ final class TransactionService {
         )
 
         transaction.type = type
-        transaction.amountInCents = amountInCents
+        transaction.amountInCents =
+            amountInCents
         transaction.note = note
         transaction.occurredOn = occurredOn
         transaction.categoryId = categoryId
@@ -100,7 +107,9 @@ final class TransactionService {
         try modelContext.save()
     }
 
-    func delete(_ transaction: Transaction) throws {
+    func delete(
+        _ transaction: Transaction
+    ) throws {
         guard transaction.deletedAt == nil else {
             return
         }
@@ -128,6 +137,41 @@ final class TransactionService {
         )
 
         transaction.deletedAt = now
+        transaction.updatedAt = now
+
+        try modelContext.save()
+    }
+
+    func restore(
+        _ transaction: Transaction
+    ) throws {
+        guard transaction.deletedAt != nil else {
+            return
+        }
+
+        let now = Date.now
+
+        let old = TransactionDTO(transaction)
+
+        let restored = TransactionDTO(
+            id: old.id,
+            createdAt: old.createdAt,
+            updatedAt: now,
+            deletedAt: nil,
+            type: old.type,
+            amountInCents: old.amountInCents,
+            note: old.note,
+            occurredOn: old.occurredOn,
+            categoryId: old.categoryId
+        )
+
+        try mutationService.createMutation(
+            from: .transaction(old),
+            to: .transaction(restored),
+            .upsert
+        )
+
+        transaction.deletedAt = nil
         transaction.updatedAt = now
 
         try modelContext.save()

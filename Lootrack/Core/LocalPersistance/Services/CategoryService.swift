@@ -139,6 +139,39 @@ final class CategoryService {
         try modelContext.save()
     }
 
+    func restore(
+        _ category: Category
+    ) throws {
+        guard category.deletedAt != nil else {
+            return
+        }
+
+        let now = Date.now
+
+        let old = CategoryDTO(category)
+
+        let restored = CategoryDTO(
+            id: old.id,
+            createdAt: old.createdAt,
+            updatedAt: now,
+            deletedAt: nil,
+            type: old.type,
+            name: old.name,
+            note: old.note
+        )
+
+        try mutationService.createMutation(
+            from: .category(old),
+            to: .category(restored),
+            .upsert
+        )
+
+        category.deletedAt = nil
+        category.updatedAt = now
+
+        try modelContext.save()
+    }
+
     private func hasActiveTransactions(
         _ category: Category
     ) throws -> Bool {

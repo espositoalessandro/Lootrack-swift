@@ -35,5 +35,9 @@ struct RootView: View {
                 }
             }
         }
+        .background {
+            UndoResponderView()
+                .frame(width: 0, height: 0)
+        }
     }
 }
