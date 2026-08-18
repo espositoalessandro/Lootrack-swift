@@ -115,7 +115,7 @@ final class CategoryAISelector {
             return
         }
 
-        let contextKey = makeContextKey(
+        let contextKey = makePromptPrefix(
             type: type,
             categories: categories
         )
@@ -198,7 +198,7 @@ final class CategoryAISelector {
             dependencies: []
         )
 
-        let contextKey = makeContextKey(
+        let contextKey = makePromptPrefix(
             type: type,
             categories: categories
         )
@@ -282,19 +282,5 @@ final class CategoryAISelector {
 
             Transaction:
             """
-    }
-
-    private func makeContextKey(
-        type: TransactionType,
-        categories: [Category]
-    ) -> String {
-        let categoriesKey =
-            categories
-            .map { category in
-                "\(category.id.uuidString):\(category.name)"
-            }
-            .joined(separator: "|")
-
-        return "\(type.rawValue)|\(categoriesKey)"
     }
 }
