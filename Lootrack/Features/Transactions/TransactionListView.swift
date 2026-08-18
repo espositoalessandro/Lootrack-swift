@@ -39,7 +39,7 @@ struct TransactionListView: View {
 
     @State private var currentMonth: Date?
     @State private var visibleTransactions: [UUID: Date] = [:]
-    @State private var isFilterVisible = true
+    @State private var visibleMonthHeaders: Set<Date> = []
 
     @Environment(TransactionService.self)
     private var transactionService
@@ -164,12 +164,11 @@ struct TransactionListView: View {
                     trailing: 0
                 )
             )
-            .listRowBackground(Color.clear)
+            .listRowBackground(
+                Color(uiColor: .systemGroupedBackground)
+            )
             .listRowSeparator(.hidden)
-            .onScrollVisibilityChange(threshold: 0.1) { isVisible in
-                isFilterVisible = isVisible
-            }
-
+            
             ForEach(transactionGroups) { month in
                 Text(
                     month.date.formatted(
@@ -191,6 +190,13 @@ struct TransactionListView: View {
                         trailing: 20
                     )
                 )
+                .onScrollVisibilityChange(threshold: 0.01) { isVisible in
+                    if isVisible {
+                        visibleMonthHeaders.insert(month.date)
+                    } else {
+                        visibleMonthHeaders.remove(month.date)
+                    }
+                }
 
                 ForEach(month.days) { day in
                     Section {
@@ -277,8 +283,12 @@ struct TransactionListView: View {
         .listSectionSpacing(12)
         .navigationTitle("Transactions")
         .toolbar {
-            if !isFilterVisible,
-                let currentMonth
+            if let currentMonth,
+                let currentMonthStart = Calendar.current.dateInterval(
+                    of: .month,
+                    for: currentMonth
+                )?.start,
+                !visibleMonthHeaders.contains(currentMonthStart)
             {
                 ToolbarItem(placement: .title) {
                     Text(
