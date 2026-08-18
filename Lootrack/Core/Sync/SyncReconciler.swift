@@ -1,54 +1,5 @@
 import Foundation
 
-nonisolated enum SyncConflictReason: String, Codable {
-    case diverged
-    case remoteMissing = "remote-missing"
-    case invalidLocalChain = "invalid-local-chain"
-}
-
-nonisolated struct SyncConflictCandidate: Identifiable {
-    let key: SyncEntityKey
-    let reason: SyncConflictReason
-
-    let base: EntitySnapshot?
-    let local: EntitySnapshot
-    let remote: EntitySnapshot?
-
-    let pendingMutations: [MutationDTO]
-
-    var id: SyncEntityKey {
-        key
-    }
-}
-
-nonisolated struct SyncReconciliationPlan {
-    let remoteRecordsToApply: [RemoteSyncRecord]
-    let mutationsToPush: [MutationDTO]
-    let mutationIdsToAcknowledge: [UUID]
-    let conflicts: [SyncConflictCandidate]
-}
-
-nonisolated struct RemoteSyncRecord: Codable, Equatable, Identifiable {
-    let operation: SyncOperation
-    
-    let revision: Int
-    let mutationId: UUID
-    
-    let payload: EntitySnapshot
-    
-    var id: SyncEntityKey {
-        payload.key
-    }
-    
-    var entityId: UUID {
-        payload.id
-    }
-    
-    var entityType: SyncEntityType {
-        payload.type
-    }
-}
-
 nonisolated struct RemoteSyncSnapshot: Codable, Equatable {
     let records: [RemoteSyncRecord]
 }
@@ -60,7 +11,6 @@ nonisolated struct SyncPushRequest: Codable {
 nonisolated struct SyncPushResult: Codable, Equatable {
     let records: [RemoteSyncRecord]
 }
-
 
 nonisolated struct SyncReconciler {
     func reconcile(
@@ -194,8 +144,7 @@ nonisolated struct SyncReconciler {
                             reason: .invalidLocalChain,
                             base: firstRemaining.base,
                             local: lastPending.payload,
-                            remote: remoteRecord.payload,
-
+                            remote: remoteRecord,
                             /*
                              * The whole sync run will eventually
                              * be cancelled if conflicts exist.
@@ -243,7 +192,7 @@ nonisolated struct SyncReconciler {
                         : .diverged,
                     base: firstPending.base,
                     local: lastPending.payload,
-                    remote: remoteRecord?.payload,
+                    remote: remoteRecord,
                     pendingMutations: pending
                 )
             )
