@@ -106,27 +106,6 @@ struct SyncView: View {
 
     var body: some View {
         List {
-            Section("Synchronization") {
-                Button {
-                    Task {
-                        await syncCoordinator.synchronize()
-                    }
-                } label: {
-                    if syncCoordinator.isSyncing {
-                        ProgressView()
-                    } else {
-                        Text("Synchronize")
-                    }
-                }
-                .disabled(syncCoordinator.isSyncing)
-
-                if let syncResult = syncCoordinator.syncResult {
-                    Text(syncResult)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             if !syncCoordinator.conflicts.isEmpty {
                 Section {
                     ForEach(syncCoordinator.conflicts) { conflict in
@@ -276,6 +255,6 @@ struct SyncView: View {
                 }
             }
         }
-        .navigationTitle("Sync")
+        .navigationTitle("Pending modifications")
     }
 }
