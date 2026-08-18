@@ -174,9 +174,11 @@ struct TransactionForm: View {
         }
         .task {
             if autoSelectCategoryWithAI {
-                categoryAISelector.prewarm()
+                categoryAISelector.prewarm(
+                    type: draft.type,
+                    categories: matchingCategories
+                )
             }
-            
             if quickAmountEntry {
                 await Task.yield()
                 focusedField = .amount
@@ -262,7 +264,6 @@ struct TransactionForm: View {
         let requestId = UUID()
 
         let requestedDescription = description
-        let requestedAmount = draft.amountInCents
         let requestedType = draft.type
         let requestedCategories = matchingCategories
 
@@ -272,7 +273,7 @@ struct TransactionForm: View {
         aiSelectionTask = Task {
             do {
                 try await Task.sleep(
-                    for: .milliseconds(650)
+                    for: .milliseconds(200)
                 )
 
                 try Task.checkCancellation()
@@ -280,7 +281,6 @@ struct TransactionForm: View {
                 let categoryId =
                     try await categoryAISelector.selectCategoryId(
                         description: requestedDescription,
-                        amountInCents: requestedAmount,
                         type: requestedType,
                         categories: requestedCategories
                     )

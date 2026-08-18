@@ -19,146 +19,6 @@ enum CategoryAISelectorError: LocalizedError {
         }
     }
 }
-@MainActor
-final class CategoryAISelector {
-    
-    static var isAvailable: Bool {
-        SystemLanguageModel.default.isAvailable
-    }
-
-    private var prewarmedSession: LanguageModelSession?
-    
-    func prewarm() {
-        guard Self.isAvailable else {
-            return
-        }
-        
-        guard prewarmedSession == nil else {
-            return
-        }
-        
-        let session = makeSession()
-        
-        prewarmedSession = session
-        session.prewarm()
-    }
-    
-    private func makeSession() -> LanguageModelSession {
-        LanguageModelSession(
-            instructions: """
-            The person's locale is it_IT.
-            
-            Categorize personal finance transactions.
-            
-            Choose exactly one category from the categories provided by the app.
-            Base the decision primarily on the transaction description and the
-            meaning of each category.
-            """
-        )
-    }
-    
-    func selectCategoryId(
-        description: String,
-        amountInCents: Int? = nil,
-        type: TransactionType,
-        categories: [Category]
-    ) async throws -> UUID {
-        guard !categories.isEmpty else {
-            throw CategoryAISelectorError.noCategories
-        }
-
-        let model = SystemLanguageModel.default
-
-        guard model.isAvailable else {
-            throw CategoryAISelectorError.modelUnavailable
-        }
-
-        let allowedCategoryIds = categories.map {
-            $0.id.uuidString
-        }
-
-        // The model is only allowed to produce one of these UUIDs.
-        let categoryIdSchema = DynamicGenerationSchema(
-            type: String.self,
-            guides: [
-                .anyOf(allowedCategoryIds)
-            ]
-        )
-
-        let selectionSchema = DynamicGenerationSchema(
-            name: "CategorySelection",
-            description:
-                "The best category for a personal finance transaction.",
-            properties: [
-                DynamicGenerationSchema.Property(
-                    name: "categoryId",
-                    description: "The id of the most appropriate category.",
-                    schema: categoryIdSchema
-                )
-            ]
-        )
-
-        let schema = try GenerationSchema(
-            root: selectionSchema,
-            dependencies: []
-        )
-
-        let amountContext: String
-
-        if let amountInCents {
-            amountContext = "Amount: \(amountInCents) cents"
-        } else {
-            amountContext = "Amount: not provided"
-        }
-
-        let categoryContext =
-            categories
-            .map { category in
-                """
-                ID: \(category.id.uuidString)
-                Name: \(category.name)
-                Meaning: \(category.aiDescription)
-                """
-            }
-            .joined(separator: "\n\n")
-
-        let session = prewarmedSession ?? makeSession()
-        
-        // The prewarmed session is consumed by this request.
-        // Any later categorization gets a fresh session so previous
-        // transactions don't become part of its conversational context.
-        prewarmedSession = nil
-
-        let response = try await session.respond(
-            to: """
-                Categorize this transaction.
-
-                Type: \(type.rawValue)
-                \(amountContext)
-                Description: \(description)
-
-                Available categories:
-
-                \(categoryContext)
-                """,
-            schema: schema
-        )
-
-        let categoryIdString: String = try response.content.value(
-            String.self,
-            forProperty: "categoryId"
-        )
-
-        guard
-            let categoryId = UUID(uuidString: categoryIdString),
-            categories.contains(where: { $0.id == categoryId })
-        else {
-            throw CategoryAISelectorError.invalidSelection
-        }
-
-        return categoryId
-    }
-}
 
 // MARK: - Temporary AI metadata
 
@@ -177,7 +37,7 @@ extension Category {
         case "going out":
             return """
                 Restaurants, bars, cafés, cinema, entertainment and social
-                activities outside the home.
+                activities. Also groceries for social events.
                 """
 
         case "groceries":
@@ -193,7 +53,7 @@ extension Category {
         case "travel":
             return """
                 Flights, hotels, transport and expenses primarily related to trips
-                and holidays.
+                and holidays. Also, any expense that ends with a country/city name (like coffee Kenya or lunch Budapest)
                 """
 
         case "clothes":
@@ -203,7 +63,7 @@ extension Category {
 
         case "health":
             return """
-                Medicines, doctors, healthcare, pharmacy, personal care and medical expenses.
+                Medicines, doctors, healthcare, pharmacy, personal care (like barber, cosmetics) and medical expenses.
                 """
 
         case "subscriptions":
@@ -213,8 +73,7 @@ extension Category {
 
         case "extra":
             return """
-                Irregular or miscellaneous expenses that do not reasonably fit
-                another category, or any hobby related expenses.
+                Hobbies and related expenses, like tools, materials, electronics, devices.
                 """
 
         case "salary":
@@ -232,5 +91,210 @@ extension Category {
                 Transactions that naturally belong to the category named "\(name)".
                 """
         }
+    }
+}
+
+@MainActor
+final class CategoryAISelector {
+
+    static var isAvailable: Bool {
+        SystemLanguageModel.default.isAvailable
+    }
+
+    private var prewarmedSession: LanguageModelSession?
+    private var prewarmedContextKey: String?
+
+    func prewarm(
+        type: TransactionType,
+        categories: [Category]
+    ) {
+        guard Self.isAvailable else {
+            return
+        }
+        guard !categories.isEmpty else {
+            return
+        }
+
+        let contextKey = makeContextKey(
+            type: type,
+            categories: categories
+        )
+
+        guard prewarmedContextKey != contextKey else {
+            return
+        }
+
+        let session = makeSession()
+        prewarmedSession = session
+        prewarmedContextKey = contextKey
+
+        let promptPrefix = makePromptPrefix(
+            type: type,
+            categories: categories
+        )
+
+        #if DEBUG
+            let clock = ContinuousClock()
+            let start = clock.now
+        #endif
+
+        session.prewarm(
+            promptPrefix: Prompt(promptPrefix)
+        )
+
+        #if DEBUG
+            print(
+                "CATEGORY AI SESSION PREWARMING:",
+                start.duration(to: clock.now)
+            )
+        #endif
+
+    }
+
+    private func makeSession() -> LanguageModelSession {
+        LanguageModelSession(
+            instructions: """
+                Categorize personal finance transactions for an Italian user.
+                Choose exactly one of the categories provided by the app.
+                """
+        )
+    }
+
+    func selectCategoryId(
+        description: String,
+        type: TransactionType,
+        categories: [Category]
+    ) async throws -> UUID {
+        guard !categories.isEmpty else {
+            throw CategoryAISelectorError.noCategories
+        }
+
+        guard Self.isAvailable else {
+            throw CategoryAISelectorError.modelUnavailable
+        }
+
+        let categoryCodes = categories.indices.map(String.init)
+
+        let categoryCodeSchema = DynamicGenerationSchema(
+            type: String.self,
+            guides: [
+                .anyOf(categoryCodes)
+            ]
+        )
+
+        let selectionSchema = DynamicGenerationSchema(
+            name: "CategorySelection",
+            properties: [
+                DynamicGenerationSchema.Property(
+                    name: "categoryCode",
+                    description: "Code of the best matching category.",
+                    schema: categoryCodeSchema
+                )
+            ]
+        )
+
+        let schema = try GenerationSchema(
+            root: selectionSchema,
+            dependencies: []
+        )
+
+        let contextKey = makeContextKey(
+            type: type,
+            categories: categories
+        )
+
+        let session: LanguageModelSession
+
+        if prewarmedContextKey == contextKey,
+            let prewarmedSession
+        {
+            session = prewarmedSession
+        } else {
+            session = makeSession()
+        }
+
+        self.prewarmedSession = nil
+        prewarmedContextKey = nil
+
+        let prompt =
+            makePromptPrefix(
+                type: type,
+                categories: categories
+            )
+                + """
+                Description: \(description)
+                """
+
+        #if DEBUG
+            let clock = ContinuousClock()
+            let start = clock.now
+        #endif
+
+        let response = try await session.respond(
+            to: Prompt(prompt),
+            schema: schema
+        )
+
+        #if DEBUG
+            print(
+                "CATEGORY AI INFERENCE:",
+                start.duration(to: clock.now)
+            )
+        #endif
+
+        let categoryCode: String =
+            try response.content.value(
+                String.self,
+                forProperty: "categoryCode"
+            )
+
+        guard
+            let categoryIndex = Int(categoryCode),
+            categories.indices.contains(categoryIndex)
+        else {
+            throw CategoryAISelectorError.invalidSelection
+        }
+
+        return categories[categoryIndex].id
+    }
+
+    private func makePromptPrefix(
+        type: TransactionType,
+        categories: [Category]
+    ) -> String {
+        let categoryContext =
+            categories
+            .enumerated()
+            .map { index, category in
+                """
+                \(index): \(category.name)
+                \(category.aiDescription)
+                """
+            }
+            .joined(separator: "\n\n")
+
+        return """
+            Categorize this \(type.rawValue) transaction.
+
+            Available categories:
+
+            \(categoryContext)
+
+            Transaction:
+            """
+    }
+
+    private func makeContextKey(
+        type: TransactionType,
+        categories: [Category]
+    ) -> String {
+        let categoriesKey =
+            categories
+            .map { category in
+                "\(category.id.uuidString):\(category.name)"
+            }
+            .joined(separator: "|")
+
+        return "\(type.rawValue)|\(categoriesKey)"
     }
 }
