@@ -19,14 +19,45 @@ enum CategoryAISelectorError: LocalizedError {
         }
     }
 }
-
 @MainActor
-enum CategoryAISelector {
+final class CategoryAISelector {
+    
     static var isAvailable: Bool {
         SystemLanguageModel.default.isAvailable
     }
 
-    static func selectCategoryId(
+    private var prewarmedSession: LanguageModelSession?
+    
+    func prewarm() {
+        guard Self.isAvailable else {
+            return
+        }
+        
+        guard prewarmedSession == nil else {
+            return
+        }
+        
+        let session = makeSession()
+        
+        prewarmedSession = session
+        session.prewarm()
+    }
+    
+    private func makeSession() -> LanguageModelSession {
+        LanguageModelSession(
+            instructions: """
+            The person's locale is it_IT.
+            
+            Categorize personal finance transactions.
+            
+            Choose exactly one category from the categories provided by the app.
+            Base the decision primarily on the transaction description and the
+            meaning of each category.
+            """
+        )
+    }
+    
+    func selectCategoryId(
         description: String,
         amountInCents: Int? = nil,
         type: TransactionType,
@@ -91,17 +122,12 @@ enum CategoryAISelector {
             }
             .joined(separator: "\n\n")
 
-        let session = LanguageModelSession(
-            instructions: """
-                The person's locale is it_IT.
-
-                Categorize personal finance transactions.
-
-                Choose exactly one category from the categories provided by the app.
-                Base the decision primarily on the transaction description and the
-                meaning of each category.
-                """
-        )
+        let session = prewarmedSession ?? makeSession()
+        
+        // The prewarmed session is consumed by this request.
+        // Any later categorization gets a fresh session so previous
+        // transactions don't become part of its conversational context.
+        prewarmedSession = nil
 
         let response = try await session.respond(
             to: """

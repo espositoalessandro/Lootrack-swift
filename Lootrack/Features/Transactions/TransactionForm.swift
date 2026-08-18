@@ -24,6 +24,7 @@ struct TransactionForm: View {
 
     @FocusState private var focusedField: TransactionFormField?
 
+    @State private var categoryAISelector = CategoryAISelector()
     @State private var categorySelectionOrigin: CategorySelectionOrigin = .none
     @State private var aiSelectionTask: Task<Void, Never>?
     @State private var activeAIRequestId: UUID?
@@ -172,17 +173,20 @@ struct TransactionForm: View {
             }
         }
         .task {
-            guard quickAmountEntry else {
-                return
+            if autoSelectCategoryWithAI {
+                categoryAISelector.prewarm()
             }
-            await Task.yield()
-            focusedField = .amount
+            
+            if quickAmountEntry {
+                await Task.yield()
+                focusedField = .amount
+            }
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 if focusedField == .amount {
                     Spacer()
-                    
+
                     Button("Next") {
                         focusedField = .description
                     }
@@ -274,7 +278,7 @@ struct TransactionForm: View {
                 try Task.checkCancellation()
 
                 let categoryId =
-                    try await CategoryAISelector.selectCategoryId(
+                    try await categoryAISelector.selectCategoryId(
                         description: requestedDescription,
                         amountInCents: requestedAmount,
                         type: requestedType,
