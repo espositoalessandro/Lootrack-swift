@@ -1,30 +1,68 @@
 import SwiftData
 import SwiftUI
 
+private enum AppTab: Hashable {
+    case addTransaction
+    case home
+    case transactions
+    case categories
+}
+
 struct RootView: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-    
+
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
-    
+
+    @State private var selectedTab: AppTab = .home
+
     @State private var isSyncPresented = false
-    
+    @State private var isAddTransactionPresented = false
+
     private var hasConflicts: Bool {
         !syncCoordinator.conflicts.isEmpty
     }
-    
+
     private var syncBadgeCount: Int {
         if hasConflicts {
             return syncCoordinator.conflicts.count
         }
-        
+
         return mutations.count
     }
-    
+
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: {
+                selectedTab
+            },
+            set: { newTab in
+                if newTab == .addTransaction {
+                    isAddTransactionPresented = true
+                } else {
+                    selectedTab = newTab
+                }
+            }
+        )
+    }
+
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "house") {
+        TabView(selection: tabSelection) {
+            Tab(
+                "Add",
+                systemImage: "plus",
+                value: AppTab.addTransaction,
+                role: .prominent
+            ) {
+                EmptyView()
+            }
+
+            Tab(
+                "Home",
+                systemImage: "house",
+                value: AppTab.home
+            ) {
                 NavigationStack {
                     HomeView()
                         .toolbar {
@@ -32,8 +70,12 @@ struct RootView: View {
                         }
                 }
             }
-            
-            Tab("Transactions", systemImage: "list.bullet") {
+
+            Tab(
+                "Transactions",
+                systemImage: "list.bullet",
+                value: AppTab.transactions
+            ) {
                 NavigationStack {
                     TransactionListView()
                         .toolbar {
@@ -41,8 +83,12 @@ struct RootView: View {
                         }
                 }
             }
-            
-            Tab("Categories", systemImage: "square.grid.2x2") {
+
+            Tab(
+                "Categories",
+                systemImage: "square.grid.2x2",
+                value: AppTab.categories
+            ) {
                 NavigationStack {
                     CategoryListView()
                         .toolbar {
@@ -50,6 +96,11 @@ struct RootView: View {
                         }
                 }
             }
+        }
+        .sheet(
+            isPresented: $isAddTransactionPresented
+        ) {
+            AddTransactionView()
         }
         .sheet(
             isPresented: $isSyncPresented
@@ -63,7 +114,7 @@ struct RootView: View {
                 .frame(width: 0, height: 0)
         }
     }
-    
+
     @ToolbarContentBuilder
     private var appToolbar: some ToolbarContent {
         ToolbarItem(
@@ -72,7 +123,7 @@ struct RootView: View {
             syncStatusButton
         }
     }
-    
+
     private var syncStatusButton: some View {
         Button {
             isSyncPresented = true
@@ -80,8 +131,8 @@ struct RootView: View {
             Image(
                 systemName:
                     hasConflicts
-                ? "exclamationmark.triangle.fill"
-                : "arrow.triangle.2.circlepath"
+                    ? "exclamationmark.triangle.fill"
+                    : "arrow.triangle.2.circlepath"
             )
             .overlay(
                 alignment: .topTrailing
@@ -89,8 +140,8 @@ struct RootView: View {
                 if syncBadgeCount > 0 {
                     Text(
                         syncBadgeCount > 99
-                        ? "99+"
-                        : "\(syncBadgeCount)"
+                            ? "99+"
+                            : "\(syncBadgeCount)"
                     )
                     .font(.caption2.bold())
                     .foregroundStyle(.white)
@@ -101,8 +152,8 @@ struct RootView: View {
                     )
                     .background(
                         hasConflicts
-                        ? Color.red
-                        : Color.accentColor,
+                            ? Color.red
+                            : Color.accentColor,
                         in: Capsule()
                     )
                     .offset(
@@ -114,8 +165,8 @@ struct RootView: View {
         }
         .accessibilityLabel(
             hasConflicts
-            ? "Synchronization conflicts"
-            : "Synchronization"
+                ? "Synchronization conflicts"
+                : "Synchronization"
         )
     }
 }

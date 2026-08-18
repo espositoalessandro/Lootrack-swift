@@ -33,7 +33,6 @@ private struct TransactionMonthGroup: Identifiable {
 }
 
 struct TransactionListView: View {
-    @State private var showingAddTransaction = false
     @State private var editingTransaction: Transaction?
 
     @State private var selectedFilter: TransactionListFilter = .all
@@ -348,35 +347,10 @@ struct TransactionListView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            Color.clear
-                .frame(height: 80)
-        }
         .searchable(
             text: $searchQuery,
             prompt: "Search transactions"
         )
-        .overlay(alignment: .bottom) {
-            Button {
-                showingAddTransaction = true
-            } label: {
-                Label(
-                    "Add transaction",
-                    systemImage: "plus"
-                )
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-            }
-            .buttonStyle(.glass)
-            .padding(.horizontal)
-            .padding(.bottom, 12)
-        }
-        .sheet(
-            isPresented: $showingAddTransaction
-        ) {
-            AddTransactionView()
-        }
         .sheet(
             item: $editingTransaction
         ) { transaction in
