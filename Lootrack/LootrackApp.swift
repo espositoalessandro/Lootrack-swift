@@ -1,6 +1,6 @@
+import GoogleSignIn
 import SwiftData
 import SwiftUI
-import GoogleSignIn
 
 @main
 struct LootrackApp: App {
@@ -9,8 +9,8 @@ struct LootrackApp: App {
     private let mutationService: MutationService
     private let transactionService: TransactionService
     private let categoryService: CategoryService
-    private let googleSheetsProvider: GoogleSheetsProvider
-    
+    private let syncEngine: SyncEngine
+
     init() {
         do {
             let modelContainer = try ModelContainer(
@@ -45,26 +45,34 @@ struct LootrackApp: App {
             self.mutationService = mutationService
             self.transactionService = transactionService
             self.categoryService = categoryService
-            
-            let googleSheetsConfiguration =
-            GoogleSheetsConfiguration.development
-            
-            let googleAuthorizationService =
-            GoogleAuthorizationService(
-                configuration: googleSheetsConfiguration
-            )
-            
-            let googleSheetsClient =
-            GoogleSheetsClient()
-            
-            let googleSheetsProvider =
-            GoogleSheetsProvider(
-                configuration: googleSheetsConfiguration,
-                authorization: googleAuthorizationService,
-                client: googleSheetsClient
-            )
-            self.googleSheetsProvider = googleSheetsProvider
 
+            let googleSheetsConfiguration =
+                GoogleSheetsConfiguration.development
+
+            let googleAuthorizationService =
+                GoogleAuthorizationService(
+                    configuration: googleSheetsConfiguration
+                )
+
+            let googleSheetsClient =
+                GoogleSheetsClient()
+
+            let googleSheetsProvider =
+                GoogleSheetsProvider(
+                    configuration: googleSheetsConfiguration,
+                    authorization: googleAuthorizationService,
+                    client: googleSheetsClient
+                )
+            let localSyncStore = LocalSyncStore(
+                modelContext: modelContainer.mainContext
+            )
+
+            let syncEngine = SyncEngine(
+                localStore: localSyncStore,
+                provider: googleSheetsProvider
+            )
+
+            self.syncEngine = syncEngine
         } catch {
             fatalError(
                 "Failed to create SwiftData container: \(error)"
@@ -74,10 +82,11 @@ struct LootrackApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(googleSheetsProvider: googleSheetsProvider)
-                .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
-                }
+            RootView(
+                syncEngine: syncEngine
+            ).onOpenURL { url in
+                GIDSignIn.sharedInstance.handle(url)
+            }
         }
         .modelContainer(modelContainer)
         .environment(transactionService)

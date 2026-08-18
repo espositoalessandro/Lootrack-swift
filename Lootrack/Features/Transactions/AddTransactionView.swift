@@ -5,12 +5,15 @@ struct AddTransactionView: View {
 
     @Environment(TransactionService.self)
     private var transactionService
-    
+
     @State private var draft = TransactionDraft()
 
     var body: some View {
         NavigationStack {
-            TransactionForm(draft: $draft)
+            TransactionForm(
+                draft: $draft,
+                autoSelectCategoryWithAI: true
+            )
             .navigationTitle("New Transaction")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -27,7 +30,7 @@ struct AddTransactionView: View {
             }
         }
     }
-    
+
     private func save() {
         guard let amountInCents = draft.amountInCents else {
             return
@@ -48,4 +51,3 @@ struct AddTransactionView: View {
         }
     }
 }
-

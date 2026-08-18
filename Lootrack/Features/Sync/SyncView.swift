@@ -35,10 +35,10 @@ extension Mutation {
 }
 
 struct SyncView: View {
-    let googleSheetsProvider: GoogleSheetsProvider
+    let syncEngine: SyncEngine
     
-    @State private var isTestingGoogle = false
-    @State private var googleTestResult: String?
+    @State private var isSyncing = false
+    @State private var syncResult: String?
 
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
@@ -60,45 +60,32 @@ struct SyncView: View {
         }
     }
 
-    private func testGooglePull() async {
-        isTestingGoogle = true
+    private func synchronize() async {
+        isSyncing = true
         
         defer {
-            isTestingGoogle = false
+            isSyncing = false
         }
         
         do {
-            let snapshot =
-            try await googleSheetsProvider.pull()
+            try await syncEngine.synchronize()
             
-            let transactionCount =
-            snapshot.records.filter {
-                $0.entityType == .transaction
-            }.count
-            
-            let categoryCount =
-            snapshot.records.filter {
-                $0.entityType == .category
-            }.count
-            
-            googleTestResult =
+            syncResult = "Synchronization completed"
+        } catch let error as SyncRunConflictError {
+            syncResult =
             """
-            Success
-            Records: \(snapshot.records.count)
-            Transactions: \(transactionCount)
-            Categories: \(categoryCount)
-            """
+            Conflicts: \(error.conflicts.count)
             
-            print(
-                "Google pull succeeded:",
-                snapshot.records
-            )
+            \(error.conflicts.map {
+                "\($0.key.type.rawValue) \($0.key.id): \($0.reason.rawValue)"
+            }.joined(separator: "\n"))
+            """
         } catch {
-            googleTestResult =
+            syncResult =
             "ERROR: \(String(describing: error))"
             
             print(
-                "Google pull failed:",
+                "Synchronization failed:",
                 error
             )
         }
@@ -106,22 +93,22 @@ struct SyncView: View {
     
     var body: some View {
         List {
-            Section("Google Sheets") {
+            Section("Synchronization") {
                 Button {
                     Task {
-                        await testGooglePull()
+                        await synchronize()
                     }
                 } label: {
-                    if isTestingGoogle {
+                    if isSyncing {
                         ProgressView()
                     } else {
-                        Text("Test Google pull")
+                        Text("Synchronize")
                     }
                 }
-                .disabled(isTestingGoogle)
+                .disabled(isSyncing)
                 
-                if let googleTestResult {
-                    Text(googleTestResult)
+                if let syncResult {
+                    Text(syncResult)
                         .font(.caption.monospaced())
                 }
             }

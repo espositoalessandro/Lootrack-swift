@@ -32,6 +32,8 @@ private struct TransactionMonthGroup: Identifiable {
 
 struct TransactionListView: View {
     @State private var showingAddTransaction = false
+    @State private var showingAddTransactionAI = false
+    
     @State private var editingTransaction: Transaction?
     @State private var selectedFilter: TransactionListFilter = .all
     @State private var searchQuery = ""
