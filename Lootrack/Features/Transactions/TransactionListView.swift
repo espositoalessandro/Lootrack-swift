@@ -32,17 +32,32 @@ private struct TransactionMonthGroup: Identifiable {
 
 struct TransactionListView: View {
     @State private var showingAddTransaction = false
-    @State private var showingAddTransactionAI = false
-
     @State private var editingTransaction: Transaction?
+
     @State private var selectedFilter: TransactionListFilter = .all
     @State private var searchQuery = ""
+
+    @State private var currentMonth: Date?
+    @State private var visibleTransactions: [UUID: Date] = [:]
+    @State private var isFilterVisible = true
 
     @Environment(TransactionService.self)
     private var transactionService
 
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
+
+    @Query(CategoryQueries.activeByName)
+    private var categories: [Category]
+
+    private var categoryNamesById: [UUID: String] {
+        Dictionary(
+            uniqueKeysWithValues: categories.map { category in
+                (category.id, category.name)
+            }
+        )
+    }
+
     private var filteredTransactions: [Transaction] {
         let normalizedSearch =
             searchQuery
@@ -126,21 +141,16 @@ struct TransactionListView: View {
             .sorted { $0.date > $1.date }
     }
 
-    @Query(CategoryQueries.activeByName)
-    private var categories: [Category]
-
-    private var categoryNamesById: [UUID: String] {
-        Dictionary(
-            uniqueKeysWithValues: categories.map { category in
-                (category.id, category.name)
-            }
-        )
-    }
-
     var body: some View {
         List {
-            Picker("Transaction type", selection: $selectedFilter) {
-                ForEach(TransactionListFilter.allCases, id: \.self) { filter in
+            Picker(
+                "Transaction type",
+                selection: $selectedFilter
+            ) {
+                ForEach(
+                    TransactionListFilter.allCases,
+                    id: \.self
+                ) { filter in
                     Text(filter.label)
                         .tag(filter)
                 }
@@ -156,10 +166,11 @@ struct TransactionListView: View {
             )
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            .onScrollVisibilityChange(threshold: 0.1) { isVisible in
+                isFilterVisible = isVisible
+            }
 
             ForEach(transactionGroups) { month in
-
-                // MONTH HEADER
                 Text(
                     month.date.formatted(
                         .dateTime
@@ -181,7 +192,6 @@ struct TransactionListView: View {
                     )
                 )
 
-                // DAYS
                 ForEach(month.days) { day in
                     Section {
                         ForEach(day.transactions) { transaction in
@@ -209,7 +219,10 @@ struct TransactionListView: View {
                                     }
                                 }
 
-                                Button("Edit", systemImage: "pencil") {
+                                Button(
+                                    "Edit",
+                                    systemImage: "pencil"
+                                ) {
                                     editingTransaction = transaction
                                 }
                                 .tint(.blue)
@@ -218,10 +231,31 @@ struct TransactionListView: View {
                                 edge: .leading,
                                 allowsFullSwipe: true
                             ) {
-                                Button("Edit", systemImage: "pencil") {
+                                Button(
+                                    "Edit",
+                                    systemImage: "pencil"
+                                ) {
                                     editingTransaction = transaction
                                 }
                                 .tint(.blue)
+                            }
+                            .onScrollVisibilityChange(
+                                threshold: 0.1
+                            ) { isVisible in
+                                if isVisible {
+                                    visibleTransactions[
+                                        transaction.id
+                                    ] = transaction.occurredOn
+                                } else {
+                                    visibleTransactions.removeValue(
+                                        forKey: transaction.id
+                                    )
+                                }
+
+                                currentMonth =
+                                    visibleTransactions
+                                    .values
+                                    .max()
                             }
                         }
                     } header: {
@@ -240,7 +274,23 @@ struct TransactionListView: View {
                 }
             }
         }
+        .listSectionSpacing(12)
         .navigationTitle("Transactions")
+        .toolbar {
+            if !isFilterVisible,
+                let currentMonth
+            {
+                ToolbarItem(placement: .title) {
+                    Text(
+                        currentMonth.formatted(
+                            .dateTime
+                                .month(.wide)
+                                .year()
+                        )
+                    )
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             Color.clear
                 .frame(height: 80)
@@ -253,10 +303,13 @@ struct TransactionListView: View {
             Button {
                 showingAddTransaction = true
             } label: {
-                Label("Add transaction", systemImage: "plus")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                Label(
+                    "Add transaction",
+                    systemImage: "plus"
+                )
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
             }
             .buttonStyle(.glass)
             .padding(.horizontal)
@@ -266,7 +319,9 @@ struct TransactionListView: View {
             AddTransactionView()
         }
         .sheet(item: $editingTransaction) { transaction in
-            EditTransactionView(transaction: transaction)
+            EditTransactionView(
+                transaction: transaction
+            )
         }
     }
 }
