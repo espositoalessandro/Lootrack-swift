@@ -8,26 +8,35 @@ private enum CategorySelectionOrigin {
     case human
 }
 
+enum TransactionFormField: Hashable {
+    case amount
+    case description
+}
+
 struct TransactionForm: View {
     @Binding var draft: TransactionDraft
 
     let autoSelectCategoryWithAI: Bool
+    let quickAmountEntry: Bool
 
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
-    @State private var categorySelectionOrigin: CategorySelectionOrigin = .none
+    @FocusState private var focusedField: TransactionFormField?
 
+    @State private var categorySelectionOrigin: CategorySelectionOrigin = .none
     @State private var aiSelectionTask: Task<Void, Never>?
     @State private var activeAIRequestId: UUID?
     @State private var isSelectingCategoryWithAI = false
 
     init(
         draft: Binding<TransactionDraft>,
-        autoSelectCategoryWithAI: Bool = false
+        autoSelectCategoryWithAI: Bool = false,
+        quickAmountEntry: Bool = false
     ) {
         self._draft = draft
         self.autoSelectCategoryWithAI = autoSelectCategoryWithAI
+        self.quickAmountEntry = quickAmountEntry
     }
 
     private var matchingCategories: [Category] {
@@ -65,19 +74,31 @@ struct TransactionForm: View {
     var body: some View {
         Form {
             Section("Transaction") {
+                if quickAmountEntry {
+                    TransactionAmountInput(
+                        amount: $draft.amount,
+                        focus: $focusedField
+                    )
+                    .listRowSeparator(.hidden, edges: .bottom)
+                } else {
+                    TextField(
+                        "Amount",
+                        text: $draft.amount
+                    )
+                    .keyboardType(.decimalPad)
+                }
+
                 TextField(
                     "Description",
                     text: $draft.note
                 )
+                .focused(
+                    $focusedField,
+                    equals: .description
+                )
                 .onChange(of: draft.note) {
                     descriptionDidChange()
                 }
-
-                TextField(
-                    "Amount",
-                    text: $draft.amount
-                )
-                .keyboardType(.decimalPad)
 
                 Picker(
                     "Type",
@@ -93,20 +114,20 @@ struct TransactionForm: View {
                 .onChange(of: draft.type) {
                     transactionTypeDidChange()
                 }
-                
+
                 Picker(
                     selection: categorySelection
                 ) {
                     Text("Uncategorized")
                         .tag(UUID?.none)
-                    
+
                     ForEach(matchingCategories) { category in
                         HStack(spacing: 5) {
                             Text(category.name)
-                            
+
                             if categorySelectionOrigin == .ai,
-                               draft.categoryId == category.id
-                                {
+                                draft.categoryId == category.id
+                            {
                                 Image(systemName: "sparkles")
                             }
                         }
@@ -115,7 +136,7 @@ struct TransactionForm: View {
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("Category")
-                        
+
                         if isSelectingCategoryWithAI {
                             Image(systemName: "apple.intelligence")
                                 .foregroundStyle(
@@ -124,7 +145,7 @@ struct TransactionForm: View {
                                             .pink,
                                             .purple,
                                             .blue,
-                                            .cyan
+                                            .cyan,
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -148,6 +169,24 @@ struct TransactionForm: View {
                     selection: $draft.occurredOn,
                     displayedComponents: .date
                 )
+            }
+        }
+        .task {
+            guard quickAmountEntry else {
+                return
+            }
+            await Task.yield()
+            focusedField = .amount
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                if focusedField == .amount {
+                    Spacer()
+                    
+                    Button("Next") {
+                        focusedField = .description
+                    }
+                }
             }
         }
         .onDisappear {

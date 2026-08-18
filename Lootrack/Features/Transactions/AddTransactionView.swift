@@ -12,7 +12,8 @@ struct AddTransactionView: View {
         NavigationStack {
             TransactionForm(
                 draft: $draft,
-                autoSelectCategoryWithAI: true
+                autoSelectCategoryWithAI: true,
+                quickAmountEntry: true
             )
             .navigationTitle("New Transaction")
             .toolbar {
