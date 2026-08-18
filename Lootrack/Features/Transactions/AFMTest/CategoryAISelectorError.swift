@@ -9,9 +9,11 @@ enum CategoryAISelectorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelUnavailable:
-            return "Apple Intelligence isn't available on this device right now."
+            return
+                "Apple Intelligence isn't available on this device right now."
         case .noCategories:
-            return "There are no categories available for this transaction type."
+            return
+                "There are no categories available for this transaction type."
         case .invalidSelection:
             return "The model returned an invalid category."
         }
@@ -26,7 +28,7 @@ enum CategoryAISelector {
 
     static func selectCategoryId(
         description: String,
-        amountInCents: Int,
+        amountInCents: Int? = nil,
         type: TransactionType,
         categories: [Category]
     ) async throws -> UUID {
@@ -54,7 +56,8 @@ enum CategoryAISelector {
 
         let selectionSchema = DynamicGenerationSchema(
             name: "CategorySelection",
-            description: "The best category for a personal finance transaction.",
+            description:
+                "The best category for a personal finance transaction.",
             properties: [
                 DynamicGenerationSchema.Property(
                     name: "categoryId",
@@ -69,7 +72,16 @@ enum CategoryAISelector {
             dependencies: []
         )
 
-        let categoryContext = categories
+        let amountContext: String
+
+        if let amountInCents {
+            amountContext = "Amount: \(amountInCents) cents"
+        } else {
+            amountContext = "Amount: not provided"
+        }
+
+        let categoryContext =
+            categories
             .map { category in
                 """
                 ID: \(category.id.uuidString)
@@ -81,28 +93,28 @@ enum CategoryAISelector {
 
         let session = LanguageModelSession(
             instructions: """
-            The person's locale is it_IT.
-            
-            Categorize personal finance transactions.
-            
-            Choose exactly one category from the categories provided by the app.
-            Base the decision primarily on the transaction description and the
-            meaning of each category.
-            """
+                The person's locale is it_IT.
+
+                Categorize personal finance transactions.
+
+                Choose exactly one category from the categories provided by the app.
+                Base the decision primarily on the transaction description and the
+                meaning of each category.
+                """
         )
 
         let response = try await session.respond(
             to: """
-            Categorize this transaction.
+                Categorize this transaction.
 
-            Type: \(type.rawValue)
-            Amount: \(amountInCents) cents
-            Description: \(description)
+                Type: \(type.rawValue)
+                \(amountContext)
+                Description: \(description)
 
-            Available categories:
+                Available categories:
 
-            \(categoryContext)
-            """,
+                \(categoryContext)
+                """,
             schema: schema
         )
 
@@ -132,67 +144,67 @@ extension Category {
         {
         case "home":
             return """
-            Rent, utilities, furniture, appliances, household products,
-            maintenance and other home-related expenses.
-            """
+                Rent, utilities, furniture, appliances, household products,
+                maintenance and other home-related expenses.
+                """
 
         case "going out":
             return """
-            Restaurants, bars, cafés, cinema, entertainment and social
-            activities outside the home.
-            """
+                Restaurants, bars, cafés, cinema, entertainment and social
+                activities outside the home.
+                """
 
         case "groceries":
             return """
-            Supermarkets, food, drinks and everyday household groceries.
-            """
+                Supermarkets, food, drinks and everyday household groceries.
+                """
 
         case "car":
             return """
-            Fuel, parking, tolls, maintenance, repairs and other car expenses.
-            """
+                Fuel, parking, tolls, maintenance, repairs and other car expenses.
+                """
 
         case "travel":
             return """
-            Flights, hotels, transport and expenses primarily related to trips
-            and holidays.
-            """
+                Flights, hotels, transport and expenses primarily related to trips
+                and holidays.
+                """
 
         case "clothes":
             return """
-            Clothes of any kind
-            """
+                Clothes of any kind
+                """
 
         case "health":
             return """
-            Medicines, doctors, healthcare, pharmacy, personal care and medical expenses.
-            """
+                Medicines, doctors, healthcare, pharmacy, personal care and medical expenses.
+                """
 
         case "subscriptions":
             return """
-            Recurring digital or physical subscriptions and membership fees.
-            """
+                Recurring digital or physical subscriptions and membership fees.
+                """
 
         case "extra":
             return """
-            Irregular or miscellaneous expenses that do not reasonably fit
-            another category, or any hobby related expenses.
-            """
+                Irregular or miscellaneous expenses that do not reasonably fit
+                another category, or any hobby related expenses.
+                """
 
         case "salary":
             return """
-            Salary, wages and regular employment income.
-            """
+                Salary, wages and regular employment income.
+                """
 
         case "gifts":
             return """
-            Gifts purchased for other people or money received as a gift.
-            """
+                Gifts purchased for other people or money received as a gift.
+                """
 
         default:
             return """
-            Transactions that naturally belong to the category named "\(name)".
-            """
+                Transactions that naturally belong to the category named "\(name)".
+                """
         }
     }
 }

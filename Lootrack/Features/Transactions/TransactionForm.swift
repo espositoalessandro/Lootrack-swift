@@ -78,9 +78,6 @@ struct TransactionForm: View {
                     text: $draft.amount
                 )
                 .keyboardType(.decimalPad)
-                .onChange(of: draft.amount) {
-                    amountDidChange()
-                }
 
                 Picker(
                     "Type",
@@ -96,37 +93,54 @@ struct TransactionForm: View {
                 .onChange(of: draft.type) {
                     transactionTypeDidChange()
                 }
-
+                
                 Picker(
-                    "Category",
                     selection: categorySelection
                 ) {
                     Text("Uncategorized")
                         .tag(UUID?.none)
-
+                    
                     ForEach(matchingCategories) { category in
                         HStack(spacing: 5) {
                             Text(category.name)
-
+                            
                             if categorySelectionOrigin == .ai,
-                                draft.categoryId == category.id
-                            {
+                               draft.categoryId == category.id
+                                {
                                 Image(systemName: "sparkles")
                             }
                         }
                         .tag(Optional(category.id))
                     }
-                }
-
-                if isSelectingCategoryWithAI {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.mini)
-
-                        Text("Selecting with Apple Intelligence…")
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("Category")
+                        
+                        if isSelectingCategoryWithAI {
+                            Image(systemName: "apple.intelligence")
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            .pink,
+                                            .purple,
+                                            .blue,
+                                            .cyan
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .symbolEffect(
+                                    .breathe,
+                                    options: .repeat(.continuous),
+                                    isActive: isSelectingCategoryWithAI
+                                )
+                            Text("Selecting...")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 }
 
                 DatePicker(
@@ -166,28 +180,6 @@ struct TransactionForm: View {
         scheduleAISelection()
     }
 
-    private func amountDidChange() {
-        guard autoSelectCategoryWithAI else {
-            return
-        }
-
-        // Amount isn't normally enough reason to replace an
-        // existing category.
-        //
-        // This listener exists so that:
-        //
-        // 1. user types description first
-        // 2. amount is still empty
-        // 3. user then types amount
-        // 4. AI can finally run
-        guard categorySelectionOrigin == .none else {
-            return
-        }
-
-        cancelAISelection()
-        scheduleAISelection()
-    }
-
     private func transactionTypeDidChange() {
         cancelAISelection()
 
@@ -214,14 +206,6 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            let amountInCents = draft.amountInCents,
-            amountInCents > 0
-        else {
-            isSelectingCategoryWithAI = false
-            return
-        }
-
         guard !matchingCategories.isEmpty else {
             isSelectingCategoryWithAI = false
             return
@@ -234,9 +218,8 @@ struct TransactionForm: View {
 
         let requestId = UUID()
 
-        // Capture everything belonging to THIS request.
         let requestedDescription = description
-        let requestedAmount = amountInCents
+        let requestedAmount = draft.amountInCents
         let requestedType = draft.type
         let requestedCategories = matchingCategories
 
@@ -245,11 +228,6 @@ struct TransactionForm: View {
 
         aiSelectionTask = Task {
             do {
-                // Debounce:
-                //
-                // every new character cancels this task and starts
-                // another one, so AFM only gets called once the user
-                // has stopped typing for a moment.
                 try await Task.sleep(
                     for: .milliseconds(650)
                 )
@@ -266,14 +244,10 @@ struct TransactionForm: View {
 
                 try Task.checkCancellation()
 
-                // The request may technically have completed after
-                // being invalidated. Never allow an old result to win.
                 guard activeAIRequestId == requestId else {
                     return
                 }
 
-                // Most important safety check:
-                // human input always wins.
                 guard categorySelectionOrigin != .human else {
                     return
                 }
@@ -282,8 +256,7 @@ struct TransactionForm: View {
                 categorySelectionOrigin = .ai
 
             } catch is CancellationError {
-                // Expected while typing or when the user selects
-                // a category manually.
+                // Normal while typing / manually selecting.
             } catch {
                 guard activeAIRequestId == requestId else {
                     return
