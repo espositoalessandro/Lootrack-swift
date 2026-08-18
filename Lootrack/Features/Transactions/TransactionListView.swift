@@ -33,7 +33,7 @@ private struct TransactionMonthGroup: Identifiable {
 struct TransactionListView: View {
     @State private var showingAddTransaction = false
     @State private var showingAddTransactionAI = false
-    
+
     @State private var editingTransaction: Transaction?
     @State private var selectedFilter: TransactionListFilter = .all
     @State private var searchQuery = ""
@@ -138,76 +138,105 @@ struct TransactionListView: View {
     }
 
     var body: some View {
-        Picker("Transaction type", selection: $selectedFilter) {
-            ForEach(TransactionListFilter.allCases, id: \.self) { filter in
-                Text(filter.label)
-                    .tag(filter)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
         List {
+            Picker("Transaction type", selection: $selectedFilter) {
+                ForEach(TransactionListFilter.allCases, id: \.self) { filter in
+                    Text(filter.label)
+                        .tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .listRowInsets(
+                EdgeInsets(
+                    top: 8,
+                    leading: 0,
+                    bottom: 8,
+                    trailing: 0
+                )
+            )
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+
             ForEach(transactionGroups) { month in
-                Section {
-                    ForEach(month.days) { day in
-                        Section {
-                            ForEach(day.transactions) { transaction in
-                                TransactionRow(
-                                    transaction: transaction,
-                                    categoryName: transaction.categoryId.flatMap
-                                    {
-                                        categoryNamesById[$0]
-                                    }
-                                )
-                                .swipeActions(edge: .trailing) {
-                                    Button(
-                                        "Delete",
-                                        systemImage: "trash",
-                                        role: .destructive
-                                    ) {
-                                        do {
-                                            try transactionService.delete(
-                                                transaction
-                                            )
-                                        } catch {
-                                            print(
-                                                "FAILED TO DELETE TRANSACTION:",
-                                                error
-                                            )
-                                        }
-                                    }
-                                    Button("Edit", systemImage: "pencil") {
-                                        editingTransaction = transaction
-                                    }.tint(.blue)
-                                }
-                                .swipeActions(
-                                    edge: .leading,
-                                    allowsFullSwipe: true
-                                ) {
-                                    Button("Edit", systemImage: "pencil") {
-                                        editingTransaction = transaction
-                                    }.tint(.blue)
-                                }
-                            }
-                        } header: {
-                            Text(
-                                day.date.formatted(
-                                    .dateTime
-                                        .weekday(.wide)
-                                        .day()
-                                        .month(.abbreviated)
-                                )
-                            )
-                        }
-                    }
-                } header: {
-                    Text(
-                        month.date.formatted(
-                            .dateTime
-                                .month(.wide)
-                                .year()
-                        )
+
+                // MONTH HEADER
+                Text(
+                    month.date.formatted(
+                        .dateTime
+                            .month(.wide)
+                            .year()
                     )
+                )
+                .font(.title2.bold())
+                .foregroundStyle(.primary)
+                .textCase(nil)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(
+                    EdgeInsets(
+                        top: 24,
+                        leading: 10,
+                        bottom: 0,
+                        trailing: 20
+                    )
+                )
+
+                // DAYS
+                ForEach(month.days) { day in
+                    Section {
+                        ForEach(day.transactions) { transaction in
+                            TransactionRow(
+                                transaction: transaction,
+                                categoryName: transaction.categoryId.flatMap {
+                                    categoryNamesById[$0]
+                                }
+                            )
+                            .swipeActions(edge: .trailing) {
+                                Button(
+                                    "Delete",
+                                    systemImage: "trash",
+                                    role: .destructive
+                                ) {
+                                    do {
+                                        try transactionService.delete(
+                                            transaction
+                                        )
+                                    } catch {
+                                        print(
+                                            "FAILED TO DELETE TRANSACTION:",
+                                            error
+                                        )
+                                    }
+                                }
+
+                                Button("Edit", systemImage: "pencil") {
+                                    editingTransaction = transaction
+                                }
+                                .tint(.blue)
+                            }
+                            .swipeActions(
+                                edge: .leading,
+                                allowsFullSwipe: true
+                            ) {
+                                Button("Edit", systemImage: "pencil") {
+                                    editingTransaction = transaction
+                                }
+                                .tint(.blue)
+                            }
+                        }
+                    } header: {
+                        Text(
+                            day.date.formatted(
+                                .dateTime
+                                    .weekday(.wide)
+                                    .day()
+                                    .month(.abbreviated)
+                            )
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                    }
                 }
             }
         }
