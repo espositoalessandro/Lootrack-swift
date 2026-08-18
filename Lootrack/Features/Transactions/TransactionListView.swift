@@ -21,12 +21,14 @@ private enum TransactionListFilter: CaseIterable {
 private struct TransactionDayGroup: Identifiable {
     let date: Date
     let transactions: [Transaction]
+
     var id: Date { date }
 }
 
 private struct TransactionMonthGroup: Identifiable {
     let date: Date
     let days: [TransactionDayGroup]
+
     var id: Date { date }
 }
 
@@ -38,8 +40,6 @@ struct TransactionListView: View {
     @State private var searchQuery = ""
 
     @State private var currentMonth: Date?
-    @State private var visibleTransactions: [UUID: Date] = [:]
-    @State private var visibleMonthHeaders: Set<Date> = []
 
     @Environment(TransactionService.self)
     private var transactionService
@@ -69,8 +69,10 @@ struct TransactionListView: View {
                 switch selectedFilter {
                 case .all:
                     true
+
                 case .expense:
                     transaction.type == .expense
+
                 case .income:
                     transaction.type == .income
                 }
@@ -141,6 +143,26 @@ struct TransactionListView: View {
             .sorted { $0.date > $1.date }
     }
 
+    private func monthStart(for date: Date) -> Date {
+        Calendar.current.dateInterval(
+            of: .month,
+            for: date
+        )!.start
+    }
+
+    private func newerMonth(than month: Date) -> Date? {
+        guard
+            let index = transactionGroups.firstIndex(
+                where: { $0.date == month }
+            ),
+            index > 0
+        else {
+            return nil
+        }
+
+        return transactionGroups[index - 1].date
+    }
+
     var body: some View {
         List {
             Picker(
@@ -186,7 +208,9 @@ struct TransactionListView: View {
                                     role: .destructive
                                 ) {
                                     do {
-                                        try transactionService.delete(transaction)
+                                        try transactionService.delete(
+                                            transaction
+                                        )
                                     } catch {
                                         print(
                                             "FAILED TO DELETE TRANSACTION:",
@@ -194,7 +218,7 @@ struct TransactionListView: View {
                                         )
                                     }
                                 }
-                                
+
                                 Button(
                                     "Edit",
                                     systemImage: "pencil"
@@ -215,23 +239,27 @@ struct TransactionListView: View {
                                 }
                                 .tint(.blue)
                             }
-                            .onScrollVisibilityChange(
-                                threshold: 0.1
-                            ) { isVisible in
-                                if isVisible {
-                                    visibleTransactions[
-                                        transaction.id
-                                    ] = transaction.occurredOn
-                                } else {
-                                    visibleTransactions.removeValue(
-                                        forKey: transaction.id
-                                    )
+                            .onGeometryChange(
+                                for: Bool.self
+                            ) { proxy in
+                                let frame = proxy.frame(
+                                    in: .scrollView
+                                )
+
+                                return
+                                    frame.minY <= 0
+                                    && frame.maxY > 0
+                            } action: { isCrossingTop in
+                                guard
+                                    isCrossingTop,
+                                    currentMonth != nil
+                                else {
+                                    return
                                 }
-                                
-                                currentMonth =
-                                visibleTransactions
-                                    .values
-                                    .max()
+
+                                currentMonth = monthStart(
+                                    for: transaction.occurredOn
+                                )
                             }
                         }
                     } header: {
@@ -249,21 +277,23 @@ struct TransactionListView: View {
                                 )
                                 .font(.title2.bold())
                                 .foregroundStyle(.primary)
-                                .onScrollVisibilityChange(
-                                    threshold: 0.01
-                                ) { isVisible in
-                                    if isVisible {
-                                        visibleMonthHeaders.insert(
-                                            month.date
-                                        )
-                                    } else {
-                                        visibleMonthHeaders.remove(
-                                            month.date
+                                .onGeometryChange(
+                                    for: Bool.self
+                                ) { proxy in
+                                    proxy.frame(
+                                        in: .scrollView
+                                    ).maxY <= 0
+                                } action: { isPastTop in
+                                    if isPastTop {
+                                        currentMonth = month.date
+                                    } else if currentMonth == month.date {
+                                        currentMonth = newerMonth(
+                                            than: month.date
                                         )
                                     }
                                 }
                             }
-                            
+
                             Text(
                                 day.date.formatted(
                                     .dateTime
@@ -276,21 +306,38 @@ struct TransactionListView: View {
                                 .subheadline.weight(.semibold)
                             )
                             .foregroundStyle(.secondary)
+                            .onGeometryChange(
+                                for: Bool.self
+                            ) { proxy in
+                                let frame = proxy.frame(
+                                    in: .scrollView
+                                )
+
+                                return
+                                    frame.minY <= 0
+                                    && frame.maxY > 0
+                            } action: { isCrossingTop in
+                                guard
+                                    isCrossingTop,
+                                    currentMonth != nil
+                                else {
+                                    return
+                                }
+
+                                currentMonth = monthStart(
+                                    for: day.date
+                                )
+                            }
                         }
                         .textCase(nil)
                     }
-                }            }
+                }
+            }
         }
         .listSectionSpacing(12)
         .navigationTitle("Transactions")
         .toolbar {
-            if let currentMonth,
-                let currentMonthStart = Calendar.current.dateInterval(
-                    of: .month,
-                    for: currentMonth
-                )?.start,
-                !visibleMonthHeaders.contains(currentMonthStart)
-            {
+            if let currentMonth {
                 ToolbarItem(placement: .title) {
                     Text(
                         currentMonth.formatted(
@@ -326,10 +373,14 @@ struct TransactionListView: View {
             .padding(.horizontal)
             .padding(.bottom, 12)
         }
-        .sheet(isPresented: $showingAddTransaction) {
+        .sheet(
+            isPresented: $showingAddTransaction
+        ) {
             AddTransactionView()
         }
-        .sheet(item: $editingTransaction) { transaction in
+        .sheet(
+            item: $editingTransaction
+        ) { transaction in
             EditTransactionView(
                 transaction: transaction
             )
