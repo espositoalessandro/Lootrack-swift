@@ -3,6 +3,8 @@ import SwiftUI
 
 struct RootView: View {
     let syncEngine: SyncEngine
+    let conflictResolutionService: ConflictResolutionService
+
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house") {
@@ -26,7 +28,9 @@ struct RootView: View {
             Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
                 NavigationStack {
                     SyncView(
-                        syncEngine: syncEngine
+                        syncEngine: syncEngine,
+                        conflictResolutionService:
+                            conflictResolutionService
                     )
                 }
             }

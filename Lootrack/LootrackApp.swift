@@ -9,7 +9,9 @@ struct LootrackApp: App {
     private let mutationService: MutationService
     private let transactionService: TransactionService
     private let categoryService: CategoryService
+
     private let syncEngine: SyncEngine
+    private let conflictResolutionService: ConflictResolutionService
 
     init() {
         do {
@@ -40,11 +42,17 @@ struct LootrackApp: App {
                 mutationService: mutationService
             )
 
+            let conflictResolutionService = ConflictResolutionService(
+                modelContext: modelContainer.mainContext,
+                mutationService: mutationService
+            )
+
             self.modelContainer = modelContainer
 
             self.mutationService = mutationService
             self.transactionService = transactionService
             self.categoryService = categoryService
+            self.conflictResolutionService = conflictResolutionService
 
             let googleSheetsConfiguration =
                 GoogleSheetsConfiguration.development
@@ -63,6 +71,7 @@ struct LootrackApp: App {
                     authorization: googleAuthorizationService,
                     client: googleSheetsClient
                 )
+
             let localSyncStore = LocalSyncStore(
                 modelContext: modelContainer.mainContext
             )
@@ -83,8 +92,10 @@ struct LootrackApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(
-                syncEngine: syncEngine
-            ).onOpenURL { url in
+                syncEngine: syncEngine,
+                conflictResolutionService: conflictResolutionService
+            )
+            .onOpenURL { url in
                 GIDSignIn.sharedInstance.handle(url)
             }
         }
