@@ -2,10 +2,10 @@ import SwiftUI
 
 struct AddCategoryView: View {
     @Environment(\.dismiss) private var dismiss
-    
+
     @Environment(CategoryService.self)
     private var categoryService
-    
+
     @State private var draft = CategoryDraft()
 
     var body: some View {
@@ -13,13 +13,17 @@ struct AddCategoryView: View {
             CategoryForm(draft: $draft)
                 .navigationTitle("New Category")
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
+                    ToolbarItem(
+                        placement: .cancellationAction
+                    ) {
                         Button("Cancel") {
                             dismiss()
                         }
                     }
 
-                    ToolbarItem(placement: .confirmationAction) {
+                    ToolbarItem(
+                        placement: .confirmationAction
+                    ) {
                         Button("Save") {
                             save()
                         }
@@ -33,11 +37,16 @@ struct AddCategoryView: View {
         do {
             try categoryService.create(
                 name: draft.name,
-                type: draft.type
+                type: draft.type,
+                note: draft.note
             )
+
             dismiss()
         } catch {
-            print("FAILED TO CREATE CATEGORY:", error)
+            print(
+                "FAILED TO CREATE CATEGORY:",
+                error
+            )
         }
     }
-}
+}   

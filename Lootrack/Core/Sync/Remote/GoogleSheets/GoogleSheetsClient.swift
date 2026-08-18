@@ -23,6 +23,7 @@ final class GoogleSheetsClient {
         "id",
         "type",
         "name",
+        "note",
         "createdAt",
         "updatedAt",
         "deletedAt",
@@ -52,7 +53,7 @@ final class GoogleSheetsClient {
             ),
             URLQueryItem(
                 name: "ranges",
-                value: "Categories!A1:H"
+                value: "Categories!A1:I"
             ),
             URLQueryItem(
                 name: "ranges",
@@ -269,7 +270,7 @@ final class GoogleSheetsClient {
                 ),
                 WriteValueRange(
                     range:
-                        "Categories!A1:H\(categoryValues.count)",
+                        "Categories!A1:I\(categoryValues.count)",
                     majorDimension: "ROWS",
                     values: categoryValues
                 ),
@@ -486,25 +487,24 @@ final class GoogleSheetsClient {
                     category.name
                 ),
                 .string(
+                    category.note
+                ),
+                .string(
                     Self.iso8601Fractional
                         .string(
-                            from:
-                                category.createdAt
+                            from: category.createdAt
                         )
                 ),
                 .string(
                     Self.iso8601Fractional
                         .string(
-                            from:
-                                category.updatedAt
+                            from: category.updatedAt
                         )
                 ),
                 .string(
                     category.deletedAt.map {
                         Self.iso8601Fractional
-                            .string(
-                                from: $0
-                            )
+                            .string(from: $0)
                     } ?? ""
                 ),
                 .number(
@@ -716,10 +716,18 @@ final class GoogleSheetsClient {
                     field: "name"
                 )
 
+            let note =
+                try readStringOrEmpty(
+                    row,
+                    index: 3,
+                    context: context,
+                    field: "note"
+                )
+
             let createdAt =
                 try readDate(
                     row,
-                    index: 3,
+                    index: 4,
                     context: context,
                     field: "createdAt"
                 )
@@ -727,7 +735,7 @@ final class GoogleSheetsClient {
             let updatedAt =
                 try readDate(
                     row,
-                    index: 4,
+                    index: 5,
                     context: context,
                     field: "updatedAt"
                 )
@@ -735,7 +743,7 @@ final class GoogleSheetsClient {
             let deletedAt =
                 try readOptionalDate(
                     row,
-                    index: 5,
+                    index: 6,
                     context: context,
                     field: "deletedAt"
                 )
@@ -743,7 +751,7 @@ final class GoogleSheetsClient {
             let revision =
                 try readInteger(
                     row,
-                    index: 6,
+                    index: 7,
                     context: context,
                     field: "revision",
                     minimum: 1
@@ -752,7 +760,7 @@ final class GoogleSheetsClient {
             let mutationId =
                 try readUUID(
                     row,
-                    index: 7,
+                    index: 8,
                     context: context,
                     field: "lastMutationId"
                 )
@@ -764,7 +772,8 @@ final class GoogleSheetsClient {
                     updatedAt: updatedAt,
                     deletedAt: deletedAt,
                     type: type,
-                    name: name
+                    name: name,
+                    note: note
                 )
 
             return RemoteSyncRecord(
@@ -826,7 +835,7 @@ final class GoogleSheetsClient {
 
         guard
             metadata["schemaVersion"]
-                == "1"
+                == "2"
         else {
             throw
                 GoogleSheetsClientError

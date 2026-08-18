@@ -24,7 +24,8 @@ final class CategoryService {
     @discardableResult
     func create(
         name: String,
-        type: TransactionType
+        type: TransactionType,
+        note: String
     ) throws -> Category {
         let now = Date.now
 
@@ -32,7 +33,8 @@ final class CategoryService {
             createdAt: now,
             updatedAt: now,
             type: type,
-            name: name
+            name: name,
+            note: note
         )
 
         let snapshot = CategoryDTO(category)
@@ -53,11 +55,13 @@ final class CategoryService {
     func update(
         _ category: Category,
         name: String,
-        type: TransactionType
+        type: TransactionType,
+        note: String
     ) throws {
         guard
             category.name != name
                 || category.type != type
+                || category.note != note
         else {
             return
         }
@@ -65,7 +69,8 @@ final class CategoryService {
         if category.type != type,
             try hasActiveTransactions(category)
         {
-            throw CategoryServiceError.cannotChangeTypeWhileInUse
+            throw CategoryServiceError
+                .cannotChangeTypeWhileInUse
         }
 
         let now = Date.now
@@ -78,7 +83,8 @@ final class CategoryService {
             updatedAt: now,
             deletedAt: old.deletedAt,
             type: type,
-            name: name
+            name: name,
+            note: note
         )
 
         try mutationService.createMutation(
@@ -89,18 +95,22 @@ final class CategoryService {
 
         category.name = name
         category.type = type
+        category.note = note
         category.updatedAt = now
 
         try modelContext.save()
     }
 
-    func delete(_ category: Category) throws {
+    func delete(
+        _ category: Category
+    ) throws {
         guard category.deletedAt == nil else {
             return
         }
 
         if try hasActiveTransactions(category) {
-            throw CategoryServiceError.cannotDeleteWhileInUse
+            throw CategoryServiceError
+                .cannotDeleteWhileInUse
         }
 
         let now = Date.now
@@ -113,7 +123,8 @@ final class CategoryService {
             updatedAt: now,
             deletedAt: now,
             type: old.type,
-            name: old.name
+            name: old.name,
+            note: old.note
         )
 
         try mutationService.createMutation(
@@ -133,13 +144,21 @@ final class CategoryService {
     ) throws -> Bool {
         let categoryId = category.id
 
-        let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate<Transaction> { transaction in
-                transaction.deletedAt == nil
-                    && transaction.categoryId == categoryId
-            }
-        )
+        let descriptor =
+            FetchDescriptor<Transaction>(
+                predicate:
+                    #Predicate<Transaction> {
+                        transaction in
 
-        return try !modelContext.fetch(descriptor).isEmpty
+                        transaction.deletedAt == nil
+                            && transaction.categoryId
+                                == categoryId
+                    }
+            )
+
+        return try
+            !modelContext
+            .fetch(descriptor)
+            .isEmpty
     }
 }

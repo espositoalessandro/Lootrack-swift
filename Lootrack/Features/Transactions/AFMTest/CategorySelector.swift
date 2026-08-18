@@ -11,150 +11,70 @@ enum CategoryAISelectorError: LocalizedError {
         case .modelUnavailable:
             return
                 "Apple Intelligence isn't available on this device right now."
+
         case .noCategories:
             return
-                "There are no categories available for this transaction type."
+                "There are no categories available."
+
         case .invalidSelection:
-            return "The model returned an invalid category."
-        }
-    }
-}
-
-// MARK: - Temporary AI metadata
-
-extension Category {
-    var aiDescription: String {
-        switch name
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        {
-        case "home":
-            return """
-                Rent, utilities, furniture, appliances, household products,
-                maintenance and other home-related expenses.
-                """
-
-        case "going out":
-            return """
-                Restaurants, bars, cafés, cinema, entertainment and social
-                activities. Also groceries for social events.
-                """
-
-        case "groceries":
-            return """
-                Supermarkets, food, drinks and everyday household groceries.
-                """
-
-        case "car":
-            return """
-                Fuel, parking, tolls, maintenance, repairs and other car expenses.
-                """
-
-        case "travel":
-            return """
-                Flights, hotels, transport and expenses primarily related to trips
-                and holidays. Also, any expense that ends with a country/city name (like coffee Kenya or lunch Budapest)
-                """
-
-        case "clothes":
-            return """
-                Clothes of any kind
-                """
-
-        case "health":
-            return """
-                Medicines, doctors, healthcare, pharmacy, personal care (like barber, cosmetics) and medical expenses.
-                """
-
-        case "subscriptions":
-            return """
-                Recurring digital or physical subscriptions and membership fees.
-                """
-
-        case "extra":
-            return """
-                Hobbies and related expenses, like tools, materials, electronics, devices.
-                """
-
-        case "salary":
-            return """
-                Salary, wages and regular employment income.
-                """
-
-        case "gifts":
-            return """
-                Gifts purchased for other people or money received as a gift.
-                """
-
-        default:
-            return """
-                Transactions that naturally belong to the category named "\(name)".
-                """
+            return
+                "The model returned an invalid category."
         }
     }
 }
 
 @MainActor
 final class CategoryAISelector {
-
     static var isAvailable: Bool {
         SystemLanguageModel.default.isAvailable
     }
 
     private var prewarmedSession: LanguageModelSession?
+
     private var prewarmedContextKey: String?
 
     func prewarm(
-        type: TransactionType,
         categories: [Category]
     ) {
         guard Self.isAvailable else {
             return
         }
+
         guard !categories.isEmpty else {
             return
         }
 
-        let contextKey = makePromptPrefix(
-            type: type,
-            categories: categories
-        )
+        let promptPrefix =
+            makePromptPrefix(
+                categories: categories
+            )
 
-        guard prewarmedContextKey != contextKey else {
+        guard
+            prewarmedContextKey
+                != promptPrefix
+        else {
             return
         }
 
         let session = makeSession()
+
         prewarmedSession = session
-        prewarmedContextKey = contextKey
-
-        let promptPrefix = makePromptPrefix(
-            type: type,
-            categories: categories
-        )
-
-        #if DEBUG
-            let clock = ContinuousClock()
-            let start = clock.now
-        #endif
+        prewarmedContextKey = promptPrefix
 
         session.prewarm(
-            promptPrefix: Prompt(promptPrefix)
-        )
-
-        #if DEBUG
-            print(
-                "CATEGORY AI SESSION PREWARMING:",
-                start.duration(to: clock.now)
+            promptPrefix: Prompt(
+                promptPrefix
             )
-        #endif
-
+        )
     }
 
-    private func makeSession() -> LanguageModelSession {
+    private func makeSession()
+        -> LanguageModelSession
+    {
         LanguageModelSession(
             instructions: """
                 Categorize personal finance transactions for an Italian user.
+
                 Choose exactly one of the categories provided by the app.
                 """
         )
@@ -162,7 +82,6 @@ final class CategoryAISelector {
 
     func selectCategoryId(
         description: String,
-        type: TransactionType,
         categories: [Category]
     ) async throws -> UUID {
         guard !categories.isEmpty else {
@@ -173,114 +92,150 @@ final class CategoryAISelector {
             throw CategoryAISelectorError.modelUnavailable
         }
 
-        let categoryCodes = categories.indices.map(String.init)
+        let categoryCodes =
+            categories.indices.map(
+                String.init
+            )
 
-        let categoryCodeSchema = DynamicGenerationSchema(
-            type: String.self,
-            guides: [
-                .anyOf(categoryCodes)
-            ]
-        )
+        let categoryCodeSchema =
+            DynamicGenerationSchema(
+                type: String.self,
+                guides: [
+                    .anyOf(
+                        categoryCodes
+                    )
+                ]
+            )
 
-        let selectionSchema = DynamicGenerationSchema(
-            name: "CategorySelection",
-            properties: [
-                DynamicGenerationSchema.Property(
-                    name: "categoryCode",
-                    description: "Code of the best matching category.",
-                    schema: categoryCodeSchema
-                )
-            ]
-        )
+        let selectionSchema =
+            DynamicGenerationSchema(
+                name: "CategorySelection",
+                properties: [
+                    DynamicGenerationSchema
+                        .Property(
+                            name: "categoryCode",
+                            description:
+                                "Code of the best matching category.",
+                            schema:
+                                categoryCodeSchema
+                        )
+                ]
+            )
 
-        let schema = try GenerationSchema(
-            root: selectionSchema,
-            dependencies: []
-        )
+        let schema =
+            try GenerationSchema(
+                root: selectionSchema,
+                dependencies: []
+            )
 
-        let contextKey = makePromptPrefix(
-            type: type,
-            categories: categories
-        )
+        let promptPrefix =
+            makePromptPrefix(
+                categories: categories
+            )
 
         let session: LanguageModelSession
 
-        if prewarmedContextKey == contextKey,
+        if prewarmedContextKey
+            == promptPrefix,
             let prewarmedSession
         {
-            session = prewarmedSession
+            session =
+                prewarmedSession
         } else {
-            session = makeSession()
+            session =
+                makeSession()
         }
 
         self.prewarmedSession = nil
         prewarmedContextKey = nil
 
         let prompt =
-            makePromptPrefix(
-                type: type,
-                categories: categories
-            )
-                + """
-                Description: \(description)
-                """
+            promptPrefix
+            + "\n"
+            + description
 
         #if DEBUG
             let clock = ContinuousClock()
             let start = clock.now
         #endif
 
-        let response = try await session.respond(
-            to: Prompt(prompt),
-            schema: schema
-        )
+        let response =
+            try await session.respond(
+                to: Prompt(prompt),
+                schema: schema
+            )
 
         #if DEBUG
             print(
                 "CATEGORY AI INFERENCE:",
-                start.duration(to: clock.now)
+                start.duration(
+                    to: clock.now
+                )
             )
         #endif
 
         let categoryCode: String =
             try response.content.value(
                 String.self,
-                forProperty: "categoryCode"
+                forProperty:
+                    "categoryCode"
             )
 
         guard
-            let categoryIndex = Int(categoryCode),
-            categories.indices.contains(categoryIndex)
+            let categoryIndex =
+                Int(categoryCode),
+            categories.indices
+                .contains(categoryIndex)
         else {
-            throw CategoryAISelectorError.invalidSelection
+            throw
+                CategoryAISelectorError
+                .invalidSelection
         }
 
-        return categories[categoryIndex].id
+        return categories[
+            categoryIndex
+        ].id
     }
 
     private func makePromptPrefix(
-        type: TransactionType,
         categories: [Category]
     ) -> String {
         let categoryContext =
             categories
             .enumerated()
-            .map { index, category in
-                """
-                \(index): \(category.name)
-                \(category.aiDescription)
-                """
+            .map {
+                index,
+                category in
+
+                let note =
+                    category.note
+                    .trimmingCharacters(
+                        in:
+                            .whitespacesAndNewlines
+                    )
+
+                if note.isEmpty {
+                    return
+                        "\(index): \(category.name)"
+                }
+
+                return """
+                    \(index): \(category.name)
+                    \(note)
+                    """
             }
-            .joined(separator: "\n\n")
+            .joined(
+                separator: "\n\n"
+            )
 
         return """
-            Categorize this \(type.rawValue) transaction.
+            Choose the category that best matches this personal finance transaction.
 
             Available categories:
 
             \(categoryContext)
 
-            Transaction:
+            Description:
             """
     }
 }

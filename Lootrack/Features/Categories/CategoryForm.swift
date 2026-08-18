@@ -8,9 +8,15 @@ struct CategoryForm: View {
     var body: some View {
         Form {
             Section("Category") {
-                TextField("Name", text: $draft.name)
+                TextField(
+                    "Name",
+                    text: $draft.name
+                )
 
-                Picker("Type", selection: $draft.type) {
+                Picker(
+                    "Type",
+                    selection: $draft.type
+                ) {
                     Text("Expense")
                         .tag(TransactionType.expense)
 
@@ -19,6 +25,13 @@ struct CategoryForm: View {
                 }
                 .pickerStyle(.segmented)
                 .disabled(typeDisabled)
+
+                TextField(
+                    "Note",
+                    text: $draft.note,
+                    axis: .vertical
+                )
+                .lineLimit(2...5)
             }
         }
     }

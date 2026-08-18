@@ -1,10 +1,13 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct EditCategoryView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(CategoryService.self) private var categoryService
-    
+    @Environment(\.dismiss)
+    private var dismiss
+
+    @Environment(CategoryService.self)
+    private var categoryService
+
     let category: Category
 
     @State private var draft: CategoryDraft
@@ -22,7 +25,9 @@ struct EditCategoryView: View {
         self.category = category
 
         _draft = State(
-            initialValue: CategoryDraft(category: category)
+            initialValue: CategoryDraft(
+                category: category
+            )
         )
     }
 
@@ -34,13 +39,17 @@ struct EditCategoryView: View {
             )
             .navigationTitle("Edit Category")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(
+                    placement: .cancellationAction
+                ) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(
+                    placement: .confirmationAction
+                ) {
                     Button("Save") {
                         save()
                     }
@@ -55,12 +64,16 @@ struct EditCategoryView: View {
             try categoryService.update(
                 category,
                 name: draft.name,
-                type: draft.type
+                type: draft.type,
+                note: draft.note
             )
 
             dismiss()
         } catch {
-            print("FAILED TO UPDATE CATEGORY:", error)
+            print(
+                "FAILED TO UPDATE CATEGORY:",
+                error
+            )
         }
     }
 }

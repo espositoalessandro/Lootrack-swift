@@ -175,7 +175,6 @@ struct TransactionForm: View {
         .task {
             if autoSelectCategoryWithAI {
                 categoryAISelector.prewarm(
-                    type: draft.type,
                     categories: matchingCategories
                 )
             }
@@ -227,16 +226,18 @@ struct TransactionForm: View {
 
     private func transactionTypeDidChange() {
         cancelAISelection()
-
-        // A category from the previous type is invalid regardless
-        // of whether it was chosen by AI or by the user.
+        
         draft.categoryId = nil
         categorySelectionOrigin = .none
-
+        
         guard autoSelectCategoryWithAI else {
             return
         }
-
+        
+        categoryAISelector.prewarm(
+            categories: matchingCategories
+        )
+        
         scheduleAISelection()
     }
 
@@ -264,7 +265,6 @@ struct TransactionForm: View {
         let requestId = UUID()
 
         let requestedDescription = description
-        let requestedType = draft.type
         let requestedCategories = matchingCategories
 
         activeAIRequestId = requestId
@@ -281,7 +281,6 @@ struct TransactionForm: View {
                 let categoryId =
                     try await categoryAISelector.selectCategoryId(
                         description: requestedDescription,
-                        type: requestedType,
                         categories: requestedCategories
                     )
 

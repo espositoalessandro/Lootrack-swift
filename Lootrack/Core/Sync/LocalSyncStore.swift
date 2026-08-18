@@ -277,9 +277,9 @@ final class LocalSyncStore {
             category.createdAt = snapshot.createdAt
             category.updatedAt = snapshot.updatedAt
             category.deletedAt = snapshot.deletedAt
-
             category.type = snapshot.type
             category.name = snapshot.name
+            category.note = snapshot.note
 
             return
         }
@@ -290,13 +290,15 @@ final class LocalSyncStore {
             updatedAt: snapshot.updatedAt,
             deletedAt: snapshot.deletedAt,
             type: snapshot.type,
-            name: snapshot.name
+            name: snapshot.name,
+            note: snapshot.note
         )
 
         modelContext.insert(category)
-        categoriesById[snapshot.id] = category
-    }
 
+        categoriesById[snapshot.id] =
+            category
+    }
     private func applyMetadata(
         _ record: RemoteSyncRecord,
         statesByKey: inout [SyncEntityKey: EntitySyncState]

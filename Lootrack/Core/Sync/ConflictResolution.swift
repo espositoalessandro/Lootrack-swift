@@ -322,9 +322,10 @@ final class ConflictResolutionService {
 
         let existing = try modelContext.fetch(
             FetchDescriptor<Category>(
-                predicate: #Predicate<Category> { category in
-                    category.id == id
-                }
+                predicate:
+                    #Predicate<Category> { category in
+                        category.id == id
+                    }
             )
         ).first
 
@@ -332,9 +333,9 @@ final class ConflictResolutionService {
             existing.createdAt = snapshot.createdAt
             existing.updatedAt = snapshot.updatedAt
             existing.deletedAt = snapshot.deletedAt
-
             existing.type = snapshot.type
             existing.name = snapshot.name
+            existing.note = snapshot.note
 
             return
         }
@@ -346,7 +347,8 @@ final class ConflictResolutionService {
                 updatedAt: snapshot.updatedAt,
                 deletedAt: snapshot.deletedAt,
                 type: snapshot.type,
-                name: snapshot.name
+                name: snapshot.name,
+                note: snapshot.note
             )
         )
     }
