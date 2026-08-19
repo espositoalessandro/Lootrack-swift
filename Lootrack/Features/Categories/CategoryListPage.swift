@@ -1,6 +1,25 @@
 import SwiftData
 import SwiftUI
 
+private enum CategoryListFilter: CaseIterable {
+    case all
+    case expense
+    case income
+
+    var label: String {
+        switch self {
+        case .all:
+            return String(localized: "All")
+
+        case .expense:
+            return String(localized: "Expenses")
+
+        case .income:
+            return String(localized: "Income")
+        }
+    }
+}
+
 struct CategoryListView: View {
     @Environment(CategoryService.self)
     private var categoryService
@@ -17,22 +36,81 @@ struct CategoryListView: View {
     @State
     private var editingCategory: Category?
 
+    @State
+    private var selectedFilter: CategoryListFilter = .all
+
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
     @Query(SubcategoryQueries.activeByName)
     private var subcategories: [Subcategory]
 
+    private var filteredCategories: [Category] {
+        categories.filter { category in
+            switch selectedFilter {
+            case .all:
+                true
+
+            case .expense:
+                category.type == .expense
+
+            case .income:
+                category.type == .income
+            }
+        }
+    }
+
     var body: some View {
         List {
-            ForEach(categories) { category in
-                let categorySubcategories =
-                    subcategories.filter { subcategory in
-                        subcategory.categoryId == category.id
-                    }
+            Picker(
+                "Category type",
+                selection: $selectedFilter
+            ) {
+                ForEach(
+                    CategoryListFilter.allCases,
+                    id: \.self
+                ) { filter in
+                    Text(filter.label)
+                        .tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .listRowBackground(
+                Color(uiColor: .systemGroupedBackground)
+            )
+            .listRowSeparator(.hidden)
+            
+            Section {
+                ForEach(filteredCategories) { category in
+                    let categorySubcategories =
+                        subcategories.filter { subcategory in
+                            subcategory.categoryId == category.id
+                        }
 
-                if categorySubcategories.isEmpty {
-                    categoryRow(category)
+                    if categorySubcategories.isEmpty {
+                        categoryRow(category)
+                            .swipeActions(
+                                edge: .trailing,
+                                allowsFullSwipe: false
+                            ) {
+                                deleteButton(category)
+                            }
+                            .swipeActions(
+                                edge: .leading,
+                                allowsFullSwipe: true
+                            ) {
+                                editButton(category)
+                            }
+                    } else {
+                        DisclosureGroup {
+                            ForEach(categorySubcategories) { subcategory in
+                                Text(subcategory.name)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 8)
+                            }
+                        } label: {
+                            categoryRow(category)
+                        }
                         .swipeActions(
                             edge: .trailing,
                             allowsFullSwipe: false
@@ -45,27 +123,6 @@ struct CategoryListView: View {
                         ) {
                             editButton(category)
                         }
-                } else {
-                    DisclosureGroup {
-                        ForEach(categorySubcategories) { subcategory in
-                            Text(subcategory.name)
-                                .foregroundStyle(.secondary)
-                                .padding(.leading, 8)
-                        }
-                    } label: {
-                        categoryRow(category)
-                    }
-                    .swipeActions(
-                        edge: .trailing,
-                        allowsFullSwipe: false
-                    ) {
-                        deleteButton(category)
-                    }
-                    .swipeActions(
-                        edge: .leading,
-                        allowsFullSwipe: true
-                    ) {
-                        editButton(category)
                     }
                 }
             }
