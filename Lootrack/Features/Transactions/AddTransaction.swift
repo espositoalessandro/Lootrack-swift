@@ -16,6 +16,7 @@ struct AddTransactionView: View {
             TransactionForm(
                 draft: $draft,
                 autoSelectCategoryWithAI: true,
+                autoSelectSubcategoryWithAI: true,
                 quickAmountEntry: true
             )
             .navigationTitle(

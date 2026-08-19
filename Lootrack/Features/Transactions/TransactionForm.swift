@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-private enum CategorySelectionOrigin {
+private enum AISelectionOrigin {
     case none
     case ai
     case human
@@ -21,6 +21,7 @@ struct TransactionForm: View {
     @Binding var draft: TransactionDraft
 
     let autoSelectCategoryWithAI: Bool
+    let autoSelectSubcategoryWithAI: Bool
     let quickAmountEntry: Bool
 
     @Query(CategoryQueries.activeByName)
@@ -35,34 +36,67 @@ struct TransactionForm: View {
     @FocusState
     private var focusedField: TransactionFormField?
 
+    // MARK: - AI Selectors
+
     @State
     private var categoryAISelector =
         CategoryAISelector()
 
     @State
-    private var categorySelectionOrigin: CategorySelectionOrigin = .none
+    private var subcategoryAISelector =
+        SubcategoryAISelector()
+
+    // MARK: - Selection Ownership
 
     @State
-    private var aiSelectionTask: Task<Void, Never>?
+    private var categorySelectionOrigin: AISelectionOrigin = .none
 
     @State
-    private var activeAIRequestId: UUID?
+    private var subcategorySelectionOrigin: AISelectionOrigin = .none
+
+    // MARK: - Category AI State
+
+    @State
+    private var categoryAISelectionTask: Task<Void, Never>?
+
+    @State
+    private var activeCategoryAIRequestId: UUID?
 
     @State
     private var isSelectingCategoryWithAI =
         false
 
+    // MARK: - Subcategory AI State
+
+    @State
+    private var subcategoryAISelectionTask: Task<Void, Never>?
+
+    @State
+    private var activeSubcategoryAIRequestId: UUID?
+
+    @State
+    private var isSelectingSubcategoryWithAI =
+        false
+
     init(
         draft: Binding<TransactionDraft>,
         autoSelectCategoryWithAI: Bool = false,
+        autoSelectSubcategoryWithAI: Bool = false,
         quickAmountEntry: Bool = false
     ) {
         self._draft = draft
+
         self.autoSelectCategoryWithAI =
             autoSelectCategoryWithAI
+
+        self.autoSelectSubcategoryWithAI =
+            autoSelectSubcategoryWithAI
+
         self.quickAmountEntry =
             quickAmountEntry
     }
+
+    // MARK: - Available Values
 
     private var matchingCategories: [Category] {
         categories.filter { category in
@@ -86,6 +120,24 @@ struct TransactionForm: View {
         }
     }
 
+    private var selectedCategory: Category? {
+        guard
+            let categoryId =
+                draft.categoryId
+        else {
+            return nil
+        }
+
+        return categories.first {
+            category in
+
+            category.id
+                == categoryId
+        }
+    }
+
+    // MARK: - Picker Bindings
+
     private var categorySelection: Binding<UUID?> {
         Binding(
             get: {
@@ -93,19 +145,51 @@ struct TransactionForm: View {
             },
             set: { categoryId in
                 /*
-                 * This setter is only invoked by the
-                 * Picker, so this is explicitly a human
-                 * category choice.
+                 * This setter is invoked by the
+                 * Picker, therefore this is an
+                 * explicitly human-owned choice.
                  */
-                cancelAISelection()
+
+                cancelCategoryAISelection()
+                cancelSubcategoryAISelection()
 
                 setCategory(
                     categoryId,
                     origin: .human
                 )
+
+                /*
+                 * A manually selected category can
+                 * still have its subcategory inferred.
+                 */
+                prewarmSubcategoryAI()
+                scheduleSubcategoryAISelection()
             }
         )
     }
+
+    private var subcategorySelection: Binding<UUID?> {
+        Binding(
+            get: {
+                draft.subcategoryId
+            },
+            set: { subcategoryId in
+                /*
+                 * Once the user touches this Picker,
+                 * AFM no longer owns the field.
+                 */
+
+                cancelSubcategoryAISelection()
+
+                setSubcategory(
+                    subcategoryId,
+                    origin: .human
+                )
+            }
+        )
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -125,7 +209,9 @@ struct TransactionForm: View {
                             "Amount",
                             text: $draft.amount
                         )
-                        .keyboardType(.decimalPad)
+                        .keyboardType(
+                            .decimalPad
+                        )
                     }
 
                     TextField(
@@ -136,7 +222,9 @@ struct TransactionForm: View {
                         $focusedField,
                         equals: .description
                     )
-                    .onChange(of: draft.note) {
+                    .onChange(
+                        of: draft.note
+                    ) {
                         descriptionDidChange()
                     }
 
@@ -154,114 +242,18 @@ struct TransactionForm: View {
                                 TransactionType.income
                             )
                     }
-                    .pickerStyle(.segmented)
-                    .onChange(of: draft.type) {
+                    .pickerStyle(
+                        .segmented
+                    )
+                    .onChange(
+                        of: draft.type
+                    ) {
                         transactionTypeDidChange()
                     }
 
-                    Picker(
-                        selection:
-                            categorySelection
-                    ) {
-                        Text("Uncategorized")
-                            .tag(UUID?.none)
+                    categoryPicker
 
-                        ForEach(
-                            matchingCategories
-                        ) { category in
-                            HStack(spacing: 5) {
-                                Text(category.name)
-
-                                if categorySelectionOrigin
-                                    == .ai,
-                                    draft.categoryId
-                                        == category.id
-                                {
-                                    Image(
-                                        systemName:
-                                            "sparkles"
-                                    )
-                                }
-                            }
-                            .tag(
-                                Optional(
-                                    category.id
-                                )
-                            )
-                        }
-                    } label: {
-                        HStack(
-                            alignment:
-                                .firstTextBaseline,
-                            spacing: 6
-                        ) {
-                            Text("Category")
-
-                            if isSelectingCategoryWithAI {
-                                Image(
-                                    systemName:
-                                        "apple.intelligence"
-                                )
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [
-                                            .pink,
-                                            .purple,
-                                            .blue,
-                                            .cyan,
-                                        ],
-                                        startPoint:
-                                            .topLeading,
-                                        endPoint:
-                                            .bottomTrailing
-                                    )
-                                )
-                                .symbolEffect(
-                                    .breathe,
-                                    options:
-                                        .repeat(
-                                            .continuous
-                                        ),
-                                    isActive:
-                                        isSelectingCategoryWithAI
-                                )
-
-                                Text(
-                                    "Selecting..."
-                                )
-                                .font(.caption2)
-                                .foregroundStyle(
-                                    .secondary
-                                )
-                                .lineLimit(1)
-                            }
-                        }
-                    }
-
-                    Picker(
-                        "Subcategory",
-                        selection:
-                            $draft.subcategoryId
-                    ) {
-                        Text("None")
-                            .tag(UUID?.none)
-
-                        ForEach(
-                            matchingSubcategories
-                        ) { subcategory in
-                            Text(
-                                subcategory.name
-                            )
-                            .tag(
-                                Optional(
-                                    subcategory.id
-                                )
-                            )
-                        }
-                    }
-                    .disabled(
-                        draft.categoryId == nil
-                    )
+                    subcategoryPicker
 
                     DatePicker(
                         "Occurred on",
@@ -274,8 +266,10 @@ struct TransactionForm: View {
 
                 Section("Tags") {
                     TagInput(
-                        tags: $draft.tags,
-                        availableTags: tags,
+                        tags:
+                            $draft.tags,
+                        availableTags:
+                            tags,
                         onNeedsVisibility: {
                             withAnimation(
                                 .easeInOut(
@@ -283,14 +277,16 @@ struct TransactionForm: View {
                                 )
                             ) {
                                 proxy.scrollTo(
-                                    TransactionFormScrollTarget.tags,
+                                    TransactionFormScrollTarget
+                                        .tags,
                                     anchor: .bottom
                                 )
                             }
                         }
                     )
                     .id(
-                        TransactionFormScrollTarget.tags
+                        TransactionFormScrollTarget
+                            .tags
                     )
                 }
             }
@@ -303,16 +299,24 @@ struct TransactionForm: View {
                 )
             }
 
+            if autoSelectSubcategoryWithAI {
+                prewarmSubcategoryAI()
+            }
+
             if quickAmountEntry {
                 await Task.yield()
-                focusedField = .amount
+
+                focusedField =
+                    .amount
             }
         }
         .toolbar {
             ToolbarItemGroup(
                 placement: .keyboard
             ) {
-                if focusedField == .amount {
+                if focusedField
+                    == .amount
+                {
                     Spacer()
 
                     Button("Next") {
@@ -323,54 +327,243 @@ struct TransactionForm: View {
             }
         }
         .onDisappear {
-            cancelAISelection()
+            cancelAllAISelection()
         }
     }
 
-    // MARK: - Input changes
+    // MARK: - Category Picker
+
+    private var categoryPicker: some View {
+        Picker(
+            selection:
+                categorySelection
+        ) {
+            Text("Uncategorized")
+                .tag(
+                    UUID?.none
+                )
+
+            ForEach(
+                matchingCategories
+            ) { category in
+                HStack(spacing: 5) {
+                    Text(
+                        category.name
+                    )
+
+                    if categorySelectionOrigin
+                        == .ai,
+                        draft.categoryId
+                            == category.id
+                    {
+                        Image(
+                            systemName:
+                                "sparkles"
+                        )
+                    }
+                }
+                .tag(
+                    Optional(
+                        category.id
+                    )
+                )
+            }
+        } label: {
+            HStack(
+                alignment:
+                    .firstTextBaseline,
+                spacing: 6
+            ) {
+                Text("Category")
+
+                if isSelectingCategoryWithAI {
+                    aiSelectionIndicator(
+                        isActive:
+                            isSelectingCategoryWithAI
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Subcategory Picker
+
+    private var subcategoryPicker: some View {
+        Picker(
+            selection:
+                subcategorySelection
+        ) {
+            Text("None")
+                .tag(
+                    UUID?.none
+                )
+
+            ForEach(
+                matchingSubcategories
+            ) { subcategory in
+                HStack(spacing: 5) {
+                    Text(
+                        subcategory.name
+                    )
+
+                    if subcategorySelectionOrigin
+                        == .ai,
+                        draft.subcategoryId
+                            == subcategory.id
+                    {
+                        Image(
+                            systemName:
+                                "sparkles"
+                        )
+                    }
+                }
+                .tag(
+                    Optional(
+                        subcategory.id
+                    )
+                )
+            }
+        } label: {
+            HStack(
+                alignment:
+                    .firstTextBaseline,
+                spacing: 6
+            ) {
+                Text("Subcategory")
+
+                if isSelectingSubcategoryWithAI {
+                    aiSelectionIndicator(
+                        isActive:
+                            isSelectingSubcategoryWithAI
+                    )
+                }
+            }
+        }
+        .disabled(
+            draft.categoryId == nil
+        )
+    }
+
+    // MARK: - AI Indicator
+
+    private func aiSelectionIndicator(
+        isActive: Bool
+    ) -> some View {
+        HStack(spacing: 5) {
+            Image(
+                systemName:
+                    "apple.intelligence"
+            )
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [
+                        .pink,
+                        .purple,
+                        .blue,
+                        .cyan,
+                    ],
+                    startPoint:
+                        .topLeading,
+                    endPoint:
+                        .bottomTrailing
+                )
+            )
+            .symbolEffect(
+                .breathe,
+                options:
+                    .repeat(
+                        .continuous
+                    ),
+                isActive:
+                    isActive
+            )
+
+            Text("Selecting...")
+                .font(.caption2)
+                .foregroundStyle(
+                    .secondary
+                )
+                .lineLimit(1)
+        }
+    }
+
+    // MARK: - Input Changes
 
     private func descriptionDidChange() {
-        guard
-            autoSelectCategoryWithAI
-        else {
+        /*
+         * If AFM still owns Category, it must
+         * resolve Category first.
+         *
+         * Subcategory selection will be started
+         * as soon as Category finishes.
+         */
+        if autoSelectCategoryWithAI,
+            categorySelectionOrigin
+                != .human
+        {
+            cancelCategoryAISelection()
+            cancelSubcategoryAISelection()
+
+            /*
+             * Existing AFM values become stale
+             * immediately when the description
+             * changes.
+             */
+            if categorySelectionOrigin
+                == .ai
+            {
+                setCategory(
+                    nil,
+                    origin: .none
+                )
+            }
+
+            scheduleCategoryAISelection()
+
             return
         }
 
         /*
-         * A human-selected category owns the
-         * field. Description changes must not
-         * touch it.
+         * Category is human-owned or its AI
+         * autocomplete is disabled.
+         *
+         * Subcategory can therefore be inferred
+         * independently.
          */
         guard
-            categorySelectionOrigin
+            autoSelectSubcategoryWithAI
+        else {
+            return
+        }
+
+        guard
+            subcategorySelectionOrigin
                 != .human
         else {
             return
         }
 
-        cancelAISelection()
+        cancelSubcategoryAISelection()
 
-        /*
-         * An AI suggestion is stale as soon as
-         * the description changes.
-         */
-        if categorySelectionOrigin == .ai {
-            setCategory(
+        if subcategorySelectionOrigin
+            == .ai
+        {
+            setSubcategory(
                 nil,
                 origin: .none
             )
         }
 
-        scheduleAISelection()
+        prewarmSubcategoryAI()
+        scheduleSubcategoryAISelection()
     }
 
     private func transactionTypeDidChange() {
-        cancelAISelection()
+        cancelAllAISelection()
 
         /*
-         * Type changes invalidate the category;
-         * category changes always invalidate the
-         * subcategory as agreed.
+         * Type invalidates Category.
+         * Category invalidates Subcategory.
          */
         setCategory(
             nil,
@@ -388,59 +581,101 @@ struct TransactionForm: View {
                 matchingCategories
         )
 
-        scheduleAISelection()
+        scheduleCategoryAISelection()
     }
+
+    // MARK: - Value Setters
 
     private func setCategory(
         _ categoryId: UUID?,
-        origin: CategorySelectionOrigin
+        origin: AISelectionOrigin
     ) {
-        if draft.categoryId != categoryId {
-            draft.categoryId = categoryId
+        if draft.categoryId
+            != categoryId
+        {
+            draft.categoryId =
+                categoryId
 
             /*
-             * Hard invariant for the form:
-             * ANY category change resets
-             * subcategory to nil.
+             * Hard form invariant:
+             * any Category change invalidates
+             * the selected Subcategory.
              */
-            draft.subcategoryId = nil
+            draft.subcategoryId =
+                nil
+
+            subcategorySelectionOrigin =
+                .none
         } else {
-            draft.categoryId = categoryId
+            draft.categoryId =
+                categoryId
         }
 
-        categorySelectionOrigin = origin
+        categorySelectionOrigin =
+            origin
     }
 
-    // MARK: - AI selection
+    private func setSubcategory(
+        _ subcategoryId: UUID?,
+        origin: AISelectionOrigin
+    ) {
+        draft.subcategoryId =
+            subcategoryId
 
-    private func scheduleAISelection() {
-        let description = draft.note
+        subcategorySelectionOrigin =
+            origin
+    }
+
+    // MARK: - Category AI
+
+    private func scheduleCategoryAISelection() {
+        let description =
+            draft.note
             .trimmingCharacters(
                 in:
                     .whitespacesAndNewlines
             )
 
-        guard !description.isEmpty else {
+        guard
+            !description.isEmpty
+        else {
             isSelectingCategoryWithAI =
                 false
-            return
-        }
 
-        guard !matchingCategories.isEmpty else {
-            isSelectingCategoryWithAI =
-                false
             return
         }
 
         guard
-            CategoryAISelector.isAvailable
+            !matchingCategories.isEmpty
         else {
             isSelectingCategoryWithAI =
                 false
+
             return
         }
 
-        let requestId = UUID()
+        guard
+            CategoryAISelector
+                .isAvailable
+        else {
+            isSelectingCategoryWithAI =
+                false
+
+            return
+        }
+
+        guard
+            categorySelectionOrigin
+                != .human
+        else {
+            isSelectingCategoryWithAI =
+                false
+
+            return
+        }
+
+        let requestId =
+            UUID()
 
         let requestedDescription =
             description
@@ -448,86 +683,338 @@ struct TransactionForm: View {
         let requestedCategories =
             matchingCategories
 
-        activeAIRequestId = requestId
-        isSelectingCategoryWithAI = true
+        activeCategoryAIRequestId =
+            requestId
 
-        aiSelectionTask = Task {
-            do {
-                try await Task.sleep(
-                    for:
-                        .milliseconds(
-                            200
-                        )
-                )
+        isSelectingCategoryWithAI =
+            true
 
-                try Task.checkCancellation()
-
-                let categoryId =
-                    try await categoryAISelector
-                    .selectCategoryId(
-                        description:
-                            requestedDescription,
-                        categories:
-                            requestedCategories
+        categoryAISelectionTask =
+            Task {
+                do {
+                    try await Task.sleep(
+                        for:
+                            .milliseconds(
+                                200
+                            )
                     )
 
-                try Task.checkCancellation()
+                    try Task
+                        .checkCancellation()
 
-                guard
-                    activeAIRequestId
-                        == requestId
-                else {
-                    return
+                    let categoryId =
+                        try await categoryAISelector
+                        .selectCategoryId(
+                            description:
+                                requestedDescription,
+                            categories:
+                                requestedCategories
+                        )
+
+                    try Task
+                        .checkCancellation()
+
+                    guard
+                        activeCategoryAIRequestId
+                            == requestId
+                    else {
+                        return
+                    }
+
+                    guard
+                        categorySelectionOrigin
+                            != .human
+                    else {
+                        return
+                    }
+
+                    setCategory(
+                        categoryId,
+                        origin: .ai
+                    )
+
+                    /*
+                     * Category is now known.
+                     * Subcategory inference can
+                     * immediately follow it.
+                     */
+                    if autoSelectSubcategoryWithAI {
+                        prewarmSubcategoryAI()
+                        scheduleSubcategoryAISelection()
+                    }
+
+                } catch is CancellationError {
+                    /*
+                     * Expected while typing or
+                     * manually selecting.
+                     */
+                } catch {
+                    guard
+                        activeCategoryAIRequestId
+                            == requestId
+                    else {
+                        return
+                    }
+
+                    print(
+                        "FAILED TO AUTO-SELECT CATEGORY:",
+                        error
+                    )
                 }
 
-                guard
-                    categorySelectionOrigin
-                        != .human
-                else {
-                    return
+                if activeCategoryAIRequestId
+                    == requestId
+                {
+                    activeCategoryAIRequestId =
+                        nil
+
+                    categoryAISelectionTask =
+                        nil
+
+                    isSelectingCategoryWithAI =
+                        false
                 }
-
-                setCategory(
-                    categoryId,
-                    origin: .ai
-                )
-
-            } catch is CancellationError {
-                /*
-                 * Normal while typing or
-                 * manually selecting.
-                 */
-            } catch {
-                guard
-                    activeAIRequestId
-                        == requestId
-                else {
-                    return
-                }
-
-                print(
-                    "FAILED TO AUTO-SELECT CATEGORY:",
-                    error
-                )
             }
-
-            if activeAIRequestId
-                == requestId
-            {
-                activeAIRequestId = nil
-                aiSelectionTask = nil
-                isSelectingCategoryWithAI =
-                    false
-            }
-        }
     }
 
-    private func cancelAISelection() {
-        aiSelectionTask?.cancel()
-        aiSelectionTask = nil
+    private func cancelCategoryAISelection() {
+        categoryAISelectionTask?
+            .cancel()
 
-        activeAIRequestId = nil
+        categoryAISelectionTask =
+            nil
+
+        activeCategoryAIRequestId =
+            nil
+
         isSelectingCategoryWithAI =
             false
+    }
+
+    // MARK: - Subcategory AI
+
+    private func prewarmSubcategoryAI() {
+        guard
+            autoSelectSubcategoryWithAI
+        else {
+            return
+        }
+
+        guard
+            let category =
+                selectedCategory
+        else {
+            return
+        }
+
+        guard
+            !matchingSubcategories.isEmpty
+        else {
+            return
+        }
+
+        subcategoryAISelector.prewarm(
+            category:
+                category,
+            subcategories:
+                matchingSubcategories
+        )
+    }
+
+    private func scheduleSubcategoryAISelection() {
+        guard
+            autoSelectSubcategoryWithAI
+        else {
+            return
+        }
+
+        guard
+            subcategorySelectionOrigin
+                != .human
+        else {
+            isSelectingSubcategoryWithAI =
+                false
+
+            return
+        }
+
+        let description =
+            draft.note
+            .trimmingCharacters(
+                in:
+                    .whitespacesAndNewlines
+            )
+
+        guard
+            !description.isEmpty
+        else {
+            isSelectingSubcategoryWithAI =
+                false
+
+            return
+        }
+
+        guard
+            let categoryId =
+                draft.categoryId,
+            let category =
+                selectedCategory
+        else {
+            isSelectingSubcategoryWithAI =
+                false
+
+            return
+        }
+
+        guard
+            !matchingSubcategories.isEmpty
+        else {
+            isSelectingSubcategoryWithAI =
+                false
+
+            return
+        }
+
+        guard
+            SubcategoryAISelector
+                .isAvailable
+        else {
+            isSelectingSubcategoryWithAI =
+                false
+
+            return
+        }
+
+        let requestId =
+            UUID()
+
+        let requestedDescription =
+            description
+
+        let requestedCategoryId =
+            categoryId
+
+        let requestedCategory =
+            category
+
+        let requestedSubcategories =
+            matchingSubcategories
+
+        activeSubcategoryAIRequestId =
+            requestId
+
+        isSelectingSubcategoryWithAI =
+            true
+
+        subcategoryAISelectionTask =
+            Task {
+                do {
+                    try await Task.sleep(
+                        for:
+                            .milliseconds(
+                                200
+                            )
+                    )
+
+                    try Task
+                        .checkCancellation()
+
+                    let subcategoryId =
+                        try await subcategoryAISelector
+                        .selectSubcategoryId(
+                            description:
+                                requestedDescription,
+                            category:
+                                requestedCategory,
+                            subcategories:
+                                requestedSubcategories
+                        )
+
+                    try Task
+                        .checkCancellation()
+
+                    guard
+                        activeSubcategoryAIRequestId
+                            == requestId
+                    else {
+                        return
+                    }
+
+                    /*
+                     * Never apply a stale result
+                     * generated for a previous
+                     * Category.
+                     */
+                    guard
+                        draft.categoryId
+                            == requestedCategoryId
+                    else {
+                        return
+                    }
+
+                    guard
+                        subcategorySelectionOrigin
+                            != .human
+                    else {
+                        return
+                    }
+
+                    setSubcategory(
+                        subcategoryId,
+                        origin: .ai
+                    )
+
+                } catch is CancellationError {
+                    /*
+                     * Expected while typing,
+                     * changing Category, or manually
+                     * selecting a Subcategory.
+                     */
+                } catch {
+                    guard
+                        activeSubcategoryAIRequestId
+                            == requestId
+                    else {
+                        return
+                    }
+
+                    print(
+                        "FAILED TO AUTO-SELECT SUBCATEGORY:",
+                        error
+                    )
+                }
+
+                if activeSubcategoryAIRequestId
+                    == requestId
+                {
+                    activeSubcategoryAIRequestId =
+                        nil
+
+                    subcategoryAISelectionTask =
+                        nil
+
+                    isSelectingSubcategoryWithAI =
+                        false
+                }
+            }
+    }
+
+    private func cancelSubcategoryAISelection() {
+        subcategoryAISelectionTask?
+            .cancel()
+
+        subcategoryAISelectionTask =
+            nil
+
+        activeSubcategoryAIRequestId =
+            nil
+
+        isSelectingSubcategoryWithAI =
+            false
+    }
+
+    private func cancelAllAISelection() {
+        cancelCategoryAISelection()
+        cancelSubcategoryAISelection()
     }
 }
