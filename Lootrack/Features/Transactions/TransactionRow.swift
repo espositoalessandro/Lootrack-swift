@@ -160,15 +160,7 @@ struct TransactionRow: View {
         ) {
             Divider()
 
-            metadataRow(
-                title: String(localized: "Tags"),
-                value:
-                    transaction.tags.isEmpty
-                    ? String(localized: "None")
-                    : transaction.tags.joined(
-                        separator: ", "
-                    )
-            )
+            tagsRow
 
             metadataRow(
                 title: String(localized: "Created"),
@@ -187,6 +179,43 @@ struct TransactionRow: View {
         .padding(.bottom, 16)
     }
 
+    private var tagsRow: some View {
+        HStack(
+            alignment: .top,
+            spacing: 16
+        ) {
+            Text("Tags")
+                .foregroundStyle(.primary)
+            
+            Spacer(
+                minLength: 16
+            )
+            
+            if transaction.tags.isEmpty {
+                Text("None")
+                    .foregroundStyle(.secondary)
+            } else {
+                TagFlowLayout(
+                    horizontalSpacing: 6,
+                    verticalSpacing: 6
+                ) {
+                    ForEach(
+                        transaction.tags,
+                        id: \.self
+                    ) { tag in
+                        TagChip(
+                            tag: tag
+                        )
+                    }
+                }
+                .frame(
+                    maxWidth: 220,
+                    alignment: .trailing
+                )
+            }
+        }
+    }
+    
     private func metadataRow(
         title: String,
         value: String
