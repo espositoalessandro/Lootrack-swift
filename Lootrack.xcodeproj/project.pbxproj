@@ -103,6 +103,7 @@
 				31626FB2302E146800F885C8 /* Sources */,
 				31626FB3302E146800F885C8 /* Frameworks */,
 				31626FB4302E146800F885C8 /* Resources */,
+				312FDFC630359BF500B6007D /* Stamp Bundle Version */,
 			);
 			buildRules = (
 			);
@@ -174,6 +175,20 @@
 			shellScript = (
 				"# Type a script or drag a script file from your workspace to insert its path.",
 				"/bin/sh \"${SRCROOT}/Versioning/generate-build-info.sh\"",
+				"",
+			);
+		};
+		312FDFC630359BF500B6007D /* Stamp Bundle Version */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Stamp Bundle Version";
+			shellPath = /bin/sh;
+			shellScript = (
+				"# Type a script or drag a script file from your workspace to insert its path.",
+				"/bin/sh \"${SRCROOT}/Versioning/stamp-bundle-version.sh\"",
 				"",
 			);
 		};
