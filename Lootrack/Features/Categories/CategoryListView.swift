@@ -7,10 +7,10 @@ struct CategoryListView: View {
 
     @Environment(\.undoManager)
     private var undoManager
-    
+
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-    
+
     @State
     private var showingAddCategory = false
 
@@ -20,45 +20,53 @@ struct CategoryListView: View {
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
+    @Query(SubcategoryQueries.activeByName)
+    private var subcategories: [Subcategory]
+
     var body: some View {
         List {
             ForEach(categories) { category in
-                HStack {
-                    Text(category.name)
-
-                    Spacer()
-
-                    Text(
-                        category.type == .expense
-                            ? "Expense"
-                            : "Income"
-                    )
-                    .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-                .swipeActions(
-                    edge: .trailing,
-                    allowsFullSwipe: false
-                ) {
-                    Button(
-                        "Delete",
-                        systemImage: "trash"
-                    ) {
-                        delete(category)
+                let categorySubcategories =
+                    subcategories.filter { subcategory in
+                        subcategory.categoryId == category.id
                     }
-                    .tint(.red)
-                }
-                .swipeActions(
-                    edge: .leading,
-                    allowsFullSwipe: true
-                ) {
-                    Button(
-                        "Edit",
-                        systemImage: "pencil"
-                    ) {
-                        editingCategory = category
+
+                if categorySubcategories.isEmpty {
+                    categoryRow(category)
+                        .swipeActions(
+                            edge: .trailing,
+                            allowsFullSwipe: false
+                        ) {
+                            deleteButton(category)
+                        }
+                        .swipeActions(
+                            edge: .leading,
+                            allowsFullSwipe: true
+                        ) {
+                            editButton(category)
+                        }
+                } else {
+                    DisclosureGroup {
+                        ForEach(categorySubcategories) { subcategory in
+                            Text(subcategory.name)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 8)
+                        }
+                    } label: {
+                        categoryRow(category)
                     }
-                    .tint(.blue)
+                    .swipeActions(
+                        edge: .trailing,
+                        allowsFullSwipe: false
+                    ) {
+                        deleteButton(category)
+                    }
+                    .swipeActions(
+                        edge: .leading,
+                        allowsFullSwipe: true
+                    ) {
+                        editButton(category)
+                    }
                 }
             }
         }
@@ -90,6 +98,52 @@ struct CategoryListView: View {
                 category: category
             )
         }
+    }
+
+    // MARK: - Rows
+
+    private func categoryRow(
+        _ category: Category
+    ) -> some View {
+        HStack {
+            Text(category.name)
+
+            Spacer()
+
+            Text(
+                category.type == .expense
+                    ? "Expense"
+                    : "Income"
+            )
+            .foregroundStyle(.secondary)
+        }
+        .contentShape(Rectangle())
+    }
+
+    // MARK: - Actions
+
+    private func editButton(
+        _ category: Category
+    ) -> some View {
+        Button(
+            "Edit",
+            systemImage: "pencil"
+        ) {
+            editingCategory = category
+        }
+        .tint(.blue)
+    }
+
+    private func deleteButton(
+        _ category: Category
+    ) -> some View {
+        Button(
+            "Delete",
+            systemImage: "trash"
+        ) {
+            delete(category)
+        }
+        .tint(.red)
     }
 
     private func delete(
