@@ -2,7 +2,6 @@ import SwiftData
 import SwiftUI
 
 private enum AppTab: Hashable {
-    case addTransaction
     case home
     case transactions
     case categories
@@ -15,10 +14,11 @@ struct RootView: View {
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
 
-    @State private var selectedTab: AppTab = .home
+    @State
+    private var selectedTab: AppTab = .home
 
-    @State private var isSyncPresented = false
-    @State private var isAddTransactionPresented = false
+    @State
+    private var isSyncPresented = false
 
     private var hasConflicts: Bool {
         !syncCoordinator.conflicts.isEmpty
@@ -28,35 +28,14 @@ struct RootView: View {
         if hasConflicts {
             return syncCoordinator.conflicts.count
         }
+
         return mutations.count
     }
 
-    private var tabSelection: Binding<AppTab> {
-        Binding(
-            get: {
-                selectedTab
-            },
-            set: { newTab in
-                if newTab == .addTransaction {
-                    isAddTransactionPresented = true
-                } else {
-                    selectedTab = newTab
-                }
-            }
-        )
-    }
-
     var body: some View {
-        TabView(selection: tabSelection) {
-            Tab(
-                "Add",
-                systemImage: "plus",
-                value: AppTab.addTransaction,
-                role: .prominent
-            ) {
-                EmptyView()
-            }
-
+        TabView(
+            selection: $selectedTab
+        ) {
             Tab(
                 "Home",
                 systemImage: "house",
@@ -96,11 +75,7 @@ struct RootView: View {
                 }
             }
         }
-        .sheet(
-            isPresented: $isAddTransactionPresented
-        ) {
-            AddTransactionView()
-        }
+        .tabBarMinimizeBehavior(.onScrollDown)
         .sheet(
             isPresented: $isSyncPresented
         ) {
@@ -110,7 +85,10 @@ struct RootView: View {
         }
         .background {
             UndoResponderView()
-                .frame(width: 0, height: 0)
+                .frame(
+                    width: 0,
+                    height: 0
+                )
         }
     }
 
@@ -142,9 +120,16 @@ struct RootView: View {
                             ? "99+"
                             : "\(syncBadgeCount)"
                     )
-                    .font(.caption2.bold())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 4)
+                    .font(
+                        .caption2.bold()
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+                    .padding(
+                        .horizontal,
+                        4
+                    )
                     .frame(
                         minWidth: 16,
                         minHeight: 16

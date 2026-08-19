@@ -1,44 +1,28 @@
 import SwiftData
 import SwiftUI
 
-private enum TransactionListFilter: CaseIterable {
-    case all
-    case expense
-    case income
-
-    var label: String {
-        switch self {
-        case .all:
-            return String(localized: "All")
-        case .expense:
-            return String(localized: "Expenses")
-        case .income:
-            return String(localized: "Income")
-        }
-    }
-}
-
-private struct TransactionDayGroup: Identifiable {
-    let date: Date
-    let transactions: [Transaction]
-
-    var id: Date { date }
-}
-
-private struct TransactionMonthGroup: Identifiable {
-    let date: Date
-    let days: [TransactionDayGroup]
-
-    var id: Date { date }
+private enum TransactionScrollTarget: Hashable {
+    case top
+    case monthHeader(Date)
+    case day(Date, month: Date)
+    case transaction(UUID, month: Date)
 }
 
 struct TransactionListView: View {
-    @State private var editingTransaction: Transaction?
+    @State
+    private var editingTransaction: Transaction?
 
-    @State private var selectedFilter: TransactionListFilter = .all
-    @State private var searchQuery = ""
+    @State
+    private var showingAddTransaction = false
 
-    @State private var currentMonth: Date?
+    @State
+    private var selectedFilter: TransactionListFilter = .all
+
+    @State
+    private var searchQuery = ""
+
+    @State
+    private var scrolledTarget: TransactionScrollTarget?
 
     @Environment(TransactionService.self)
     private var transactionService
@@ -48,41 +32,50 @@ struct TransactionListView: View {
 
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-    
+
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
 
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
+    @Query(SubcategoryQueries.activeByName)
+    private var subcategories: [Subcategory]
+
     private var categoryNamesById: [UUID: String] {
         Dictionary(
-            uniqueKeysWithValues: categories.map { category in
-                (category.id, category.name)
-            }
+            uniqueKeysWithValues:
+                categories.map { category in
+                    (
+                        category.id,
+                        category.name
+                    )
+                }
+        )
+    }
+
+    private var subcategoryNamesById: [UUID: String] {
+        Dictionary(
+            uniqueKeysWithValues:
+                subcategories.map { subcategory in
+                    (
+                        subcategory.id,
+                        subcategory.name
+                    )
+                }
         )
     }
 
     private var filteredTransactions: [Transaction] {
         let normalizedSearch =
             searchQuery
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
             .lowercased()
 
         return transactions.filter { transaction in
-            let matchesFilter =
-                switch selectedFilter {
-                case .all:
-                    true
-
-                case .expense:
-                    transaction.type == .expense
-
-                case .income:
-                    transaction.type == .income
-                }
-
-            guard matchesFilter else {
+            guard matchesFilter(transaction) else {
                 return false
             }
 
@@ -90,255 +83,136 @@ struct TransactionListView: View {
                 return true
             }
 
-            let categoryName =
-                transaction.categoryId
-                .flatMap { categoryNamesById[$0] }
-                ?? String(localized: "Uncategorized")
-
-            let searchableText = [
-                transaction.note,
-                categoryName,
-                transaction.type == .expense ? "expense" : "income",
-            ]
-            .joined(separator: " ")
-            .lowercased()
-
-            return searchableText.contains(normalizedSearch)
+            return searchableText(
+                for: transaction
+            )
+            .contains(normalizedSearch)
         }
     }
 
     private var transactionGroups: [TransactionMonthGroup] {
-        let calendar = Calendar.current
-
-        let transactionsByMonth = Dictionary(
-            grouping: filteredTransactions
-        ) { transaction in
-            calendar.dateInterval(
-                of: .month,
-                for: transaction.occurredOn
-            )!.start
-        }
-
-        return
-            transactionsByMonth
-            .map { monthDate, transactions in
-                let transactionsByDay = Dictionary(
-                    grouping: transactions
-                ) { transaction in
-                    calendar.startOfDay(
-                        for: transaction.occurredOn
-                    )
-                }
-
-                let days =
-                    transactionsByDay
-                    .map { dayDate, transactions in
-                        TransactionDayGroup(
-                            date: dayDate,
-                            transactions: transactions
-                        )
-                    }
-                    .sorted { $0.date > $1.date }
-
-                return TransactionMonthGroup(
-                    date: monthDate,
-                    days: days
-                )
-            }
-            .sorted { $0.date > $1.date }
+        TransactionListGrouping.groups(
+            from: filteredTransactions
+        )
     }
 
-    private func monthStart(for date: Date) -> Date {
-        Calendar.current.dateInterval(
-            of: .month,
-            for: date
-        )!.start
-    }
-
-    private func newerMonth(than month: Date) -> Date? {
-        guard
-            let index = transactionGroups.firstIndex(
-                where: { $0.date == month }
-            ),
-            index > 0
-        else {
+    private var toolbarMonth: Date? {
+        guard let scrolledTarget else {
             return nil
         }
 
-        return transactionGroups[index - 1].date
+        switch scrolledTarget {
+        case .top:
+            return nil
+
+        case .monthHeader(let month):
+            if month == transactionGroups.first?.date {
+                return nil
+            }
+
+            return month
+
+        case .day(_, let month):
+            return month
+
+        case .transaction(_, let month):
+            return month
+        }
+    }
+
+    private var showsAddTransactionFAB: Bool {
+        guard let scrolledTarget else {
+            return true
+        }
+
+        return scrolledTarget == .top
     }
 
     var body: some View {
-        List {
-            Picker(
-                "Transaction type",
-                selection: $selectedFilter
+        ScrollView {
+            LazyVStack(
+                alignment: .leading,
+                spacing: 0
             ) {
-                ForEach(
-                    TransactionListFilter.allCases,
-                    id: \.self
-                ) { filter in
-                    Text(filter.label)
-                        .tag(filter)
-                }
-            }
-            .pickerStyle(.segmented)
-            .listRowInsets(
-                EdgeInsets(
-                    top: 0,
-                    leading: 0,
-                    bottom: 0,
-                    trailing: 0
-                )
-            )
-            .listRowBackground(
-                Color(uiColor: .systemGroupedBackground)
-            )
-            .listRowSeparator(.hidden)
+                filterPicker
+                    .id(
+                        TransactionScrollTarget.top
+                    )
 
-            ForEach(transactionGroups) { month in
-                ForEach(month.days) { day in
-                    Section {
+                ForEach(transactionGroups) { month in
+                    monthHeader(month)
+                        .id(
+                            TransactionScrollTarget
+                                .monthHeader(
+                                    month.date
+                                )
+                        )
+
+                    ForEach(month.days) { day in
+                        dayHeader(
+                            day,
+                            isFirst:
+                                day.id
+                                == month.days.first?.id
+                        )
+                        .id(
+                            TransactionScrollTarget.day(
+                                day.date,
+                                month: month.date
+                            )
+                        )
+
                         ForEach(day.transactions) { transaction in
-                            TransactionRow(
-                                transaction: transaction,
-                                categoryName: transaction.categoryId.flatMap {
-                                    categoryNamesById[$0]
-                                }
+                            transactionRow(
+                                transaction
                             )
-                            .swipeActions(edge: .trailing) {
-                                Button(
-                                    "Delete",
-                                    systemImage: "trash",
-                                    role: .destructive
-                                ) {
-                                    delete(transaction)
-                                }
-                                Button(
-                                    "Edit",
-                                    systemImage: "pencil"
-                                ) {
-                                    editingTransaction = transaction
-                                }
-                                .tint(.blue)
-                            }
-                            .swipeActions(
-                                edge: .leading,
-                                allowsFullSwipe: true
-                            ) {
-                                Button(
-                                    "Edit",
-                                    systemImage: "pencil"
-                                ) {
-                                    editingTransaction = transaction
-                                }
-                                .tint(.blue)
-                            }
-                            .onGeometryChange(
-                                for: Bool.self
-                            ) { proxy in
-                                let frame = proxy.frame(
-                                    in: .scrollView
-                                )
-
-                                return
-                                    frame.minY <= 0
-                                    && frame.maxY > 0
-                            } action: { isCrossingTop in
-                                guard
-                                    isCrossingTop,
-                                    currentMonth != nil
-                                else {
-                                    return
-                                }
-
-                                currentMonth = monthStart(
-                                    for: transaction.occurredOn
-                                )
-                            }
-                        }
-                    } header: {
-                        VStack(
-                            alignment: .leading,
-                            spacing: 20
-                        ) {
-                            if day.id == month.days.first?.id {
-                                Text(
-                                    month.date.formatted(
-                                        .dateTime
-                                            .month(.wide)
-                                            .year()
+                            .padding(
+                                .bottom,
+                                8
+                            )
+                            .id(
+                                TransactionScrollTarget
+                                    .transaction(
+                                        transaction.id,
+                                        month: month.date
                                     )
-                                )
-                                .font(.title2.bold())
-                                .foregroundStyle(.primary)
-                                .onGeometryChange(
-                                    for: Bool.self
-                                ) { proxy in
-                                    proxy.frame(
-                                        in: .scrollView
-                                    ).maxY <= 0
-                                } action: { isPastTop in
-                                    if isPastTop {
-                                        currentMonth = month.date
-                                    } else if currentMonth == month.date {
-                                        currentMonth = newerMonth(
-                                            than: month.date
-                                        )
-                                    }
-                                }
-                            }
-
-                            Text(
-                                day.date.formatted(
-                                    .dateTime
-                                        .weekday(.wide)
-                                        .day()
-                                        .month(.abbreviated)
-                                )
                             )
-                            .font(
-                                .subheadline.weight(.semibold)
-                            )
-                            .foregroundStyle(.secondary)
-                            .onGeometryChange(
-                                for: Bool.self
-                            ) { proxy in
-                                let frame = proxy.frame(
-                                    in: .scrollView
-                                )
-
-                                return
-                                    frame.minY <= 0
-                                    && frame.maxY > 0
-                            } action: { isCrossingTop in
-                                guard
-                                    isCrossingTop,
-                                    currentMonth != nil
-                                else {
-                                    return
-                                }
-
-                                currentMonth = monthStart(
-                                    for: day.date
-                                )
-                            }
                         }
-                        .textCase(nil)
                     }
                 }
             }
+            .scrollTargetLayout()
+            .padding(
+                .bottom,
+                16
+            )
         }
         .refreshable {
             await syncCoordinator.synchronize()
         }
-        .listSectionSpacing(12)
-        .navigationTitle("Transactions")
+        .scrollPosition(
+            id: $scrolledTarget,
+            anchor: .top
+        )
+        .swipeActionsContainer()
+        .background(
+            Color(
+                uiColor: .systemGroupedBackground
+            )
+        )
+        .scrollDismissesKeyboard(
+            .interactively
+        )
+        .navigationTitle(
+            "Transactions"
+        )
         .toolbar {
-            if let currentMonth {
-                ToolbarItem(placement: .title) {
+            if let toolbarMonth {
+                ToolbarItem(
+                    placement: .title
+                ) {
                     Text(
-                        currentMonth.formatted(
+                        toolbarMonth.formatted(
                             .dateTime
                                 .month(.wide)
                                 .year()
@@ -346,11 +220,53 @@ struct TransactionListView: View {
                     )
                 }
             }
+
+            ToolbarItem(
+                placement: .primaryAction
+            ) {
+                Button(
+                    "Add",
+                    systemImage: "plus"
+                ) {
+                    showingAddTransaction = true
+                }
+            }
         }
         .searchable(
             text: $searchQuery,
             prompt: "Search transactions"
         )
+        .overlay(
+            alignment: .bottom
+        ) {
+            if showsAddTransactionFAB {
+                addTransactionFAB
+                    .padding(
+                        .bottom,
+                        18
+                    )
+                    .transition(
+                        .scale(
+                            scale: 0.8,
+                            anchor: .bottom
+                        )
+                        .combined(
+                            with: .opacity
+                        )
+                    )
+            }
+        }
+        .animation(
+            .easeInOut(
+                duration: 0.2
+            ),
+            value: showsAddTransactionFAB
+        )
+        .sheet(
+            isPresented: $showingAddTransaction
+        ) {
+            AddTransactionView()
+        }
         .sheet(
             item: $editingTransaction
         ) { transaction in
@@ -360,6 +276,218 @@ struct TransactionListView: View {
         }
     }
 
+    // MARK: - Add
+
+    private var addTransactionFAB: some View {
+        Button {
+            showingAddTransaction = true
+        } label: {
+            Image(
+                systemName: "plus"
+            )
+            .font(
+                .title2.weight(
+                    .semibold
+                )
+            )
+            .frame(
+                width: 58,
+                height: 58
+            )
+        }
+        .buttonStyle(
+            .glassProminent
+        )
+        .accessibilityLabel(
+            "Add Transaction"
+        )
+    }
+
+    // MARK: - Filter
+
+    private var filterPicker: some View {
+        Picker(
+            "Transaction type",
+            selection: $selectedFilter
+        ) {
+            ForEach(
+                TransactionListFilter.allCases,
+                id: \.self
+            ) { filter in
+                Text(filter.label)
+                    .tag(filter)
+            }
+        }
+        .pickerStyle(
+            .segmented
+        )
+        .padding(
+            .horizontal,
+            16
+        )
+        .padding(
+            .top,
+            8
+        )
+        .padding(
+            .bottom,
+            10
+        )
+    }
+
+    private func matchesFilter(
+        _ transaction: Transaction
+    ) -> Bool {
+        switch selectedFilter {
+        case .all:
+            return true
+
+        case .expense:
+            return transaction.type == .expense
+
+        case .income:
+            return transaction.type == .income
+        }
+    }
+
+    // MARK: - Search
+
+    private func searchableText(
+        for transaction: Transaction
+    ) -> String {
+        let categoryName =
+            transaction.categoryId
+            .flatMap {
+                categoryNamesById[$0]
+            }
+            ?? String(
+                localized: "Uncategorized"
+            )
+
+        let subcategoryName =
+            transaction.subcategoryId
+            .flatMap {
+                subcategoryNamesById[$0]
+            }
+            ?? ""
+
+        let tags =
+            transaction.tags.joined(
+                separator: " "
+            )
+
+        return [
+            transaction.note,
+            categoryName,
+            subcategoryName,
+            tags,
+            transaction.type == .expense
+                ? "expense"
+                : "income",
+        ]
+        .joined(
+            separator: " "
+        )
+        .lowercased()
+    }
+
+    // MARK: - Headers
+
+    private func monthHeader(
+        _ month: TransactionMonthGroup
+    ) -> some View {
+        Text(
+            month.date.formatted(
+                .dateTime
+                    .month(.wide)
+                    .year()
+            )
+        )
+        .font(
+            .title2.bold()
+        )
+        .foregroundStyle(
+            .primary
+        )
+        .padding(
+            .horizontal,
+            32
+        )
+        .padding(
+            .top,
+            18
+        )
+        .padding(
+            .bottom,
+            18
+        )
+    }
+
+    private func dayHeader(
+        _ day: TransactionDayGroup,
+        isFirst: Bool
+    ) -> some View {
+        Text(
+            day.date.formatted(
+                .dateTime
+                    .weekday(.wide)
+                    .day()
+                    .month(.abbreviated)
+            )
+        )
+        .font(
+            .subheadline.weight(
+                .semibold
+            )
+        )
+        .foregroundStyle(
+            .secondary
+        )
+        .padding(
+            .horizontal,
+            32
+        )
+        .padding(
+            .top,
+            isFirst ? 0 : 14
+        )
+        .padding(
+            .bottom,
+            10
+        )
+    }
+
+    // MARK: - Rows
+
+    private func transactionRow(
+        _ transaction: Transaction
+    ) -> some View {
+        TransactionRow(
+            transaction: transaction,
+            categoryName:
+                transaction.categoryId
+                .flatMap {
+                    categoryNamesById[$0]
+                },
+            subcategoryName:
+                transaction.subcategoryId
+                .flatMap {
+                    subcategoryNamesById[$0]
+                },
+            onEdit: {
+                editingTransaction =
+                    transaction
+            },
+            onDelete: {
+                delete(
+                    transaction
+                )
+            }
+        )
+    }
+
+    // MARK: - Delete
+
     private func delete(
         _ transaction: Transaction
     ) {
@@ -367,7 +495,10 @@ struct TransactionListView: View {
             try transactionService.delete(
                 transaction
             )
-            registerUndo(for: transaction)
+
+            registerUndo(
+                for: transaction
+            )
         } catch {
             print(
                 "FAILED TO DELETE TRANSACTION:",
@@ -383,10 +514,6 @@ struct TransactionListView: View {
             return
         }
 
-        /*
-         * Only the latest accidental deletion
-         * remains undoable.
-         */
         undoManager.removeAllActions(
             withTarget: transactionService
         )
@@ -408,7 +535,8 @@ struct TransactionListView: View {
 
         undoManager.setActionName(
             String(
-                localized: "Delete Transaction"
+                localized:
+                    "Delete Transaction"
             )
         )
     }
