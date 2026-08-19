@@ -96,6 +96,6 @@ struct HomeView: View {
         .refreshable {
             await syncCoordinator.synchronize()
         }
-        .navigationTitle("Lootrack")
+        .navigationTitle("Lootrack v\(BuildInfo.version)")
     }
 }
