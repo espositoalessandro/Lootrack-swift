@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		312FDFBB30358F1700B6007D /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 312FDFBA30358F1300B6007D /* .gitignore */; };
 		31F567183033776D00E07656 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 31F567173033776D00E07656 /* GoogleSignIn */; };
 		31F5671A3033776D00E07656 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 31F567193033776D00E07656 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
@@ -78,10 +77,10 @@
 		31626FAD302E146800F885C8 = {
 			isa = PBXGroup;
 			children = (
+				312FDFBA30358F1300B6007D /* .gitignore */,
 				312FDFB530358ED800B6007D /* Versioning */,
 				31626FB8302E146800F885C8 /* Lootrack */,
 				31626FB7302E146800F885C8 /* Products */,
-				312FDFBA30358F1300B6007D /* .gitignore */,
 			);
 			sourceTree = "<group>";
 		};
@@ -162,7 +161,6 @@
 		31626FB4302E146800F885C8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
-				312FDFBB30358F1700B6007D /* .gitignore in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */
