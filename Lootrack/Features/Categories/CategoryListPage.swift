@@ -9,13 +9,19 @@ private enum CategoryListFilter: CaseIterable {
     var label: String {
         switch self {
         case .all:
-            return String(localized: "All")
+            return String(
+                localized: "All"
+            )
 
         case .expense:
-            return String(localized: "Expenses")
+            return String(
+                localized: "Expenses"
+            )
 
         case .income:
-            return String(localized: "Income")
+            return String(
+                localized: "Income"
+            )
         }
     }
 }
@@ -47,98 +53,51 @@ struct CategoryListView: View {
 
     private var filteredCategories: [Category] {
         categories.filter { category in
-            switch selectedFilter {
-            case .all:
-                true
-
-            case .expense:
-                category.type == .expense
-
-            case .income:
-                category.type == .income
-            }
+            matchesFilter(
+                category
+            )
         }
     }
 
     var body: some View {
-        List {
-            Picker(
-                "Category type",
-                selection: $selectedFilter
+        ScrollView {
+            LazyVStack(
+                alignment: .leading,
+                spacing: 0
             ) {
-                ForEach(
-                    CategoryListFilter.allCases,
-                    id: \.self
-                ) { filter in
-                    Text(filter.label)
-                        .tag(filter)
-                }
-            }
-            .pickerStyle(.segmented)
-            .listRowInsets(
-                EdgeInsets(
-                    top: 0,
-                    leading: 0,
-                    bottom: 0,
-                    trailing: 0
-                )
-            )
-            .listRowBackground(
-                Color(uiColor: .systemGroupedBackground)
-            )
-            .listRowSeparator(.hidden)
-            
-            Section {
-                ForEach(filteredCategories) { category in
-                    let categorySubcategories =
-                        subcategories.filter { subcategory in
-                            subcategory.categoryId == category.id
-                        }
+                filterPicker
 
-                    if categorySubcategories.isEmpty {
-                        categoryRow(category)
-                            .swipeActions(
-                                edge: .trailing,
-                                allowsFullSwipe: false
-                            ) {
-                                deleteButton(category)
-                            }
-                            .swipeActions(
-                                edge: .leading,
-                                allowsFullSwipe: true
-                            ) {
-                                editButton(category)
-                            }
-                    } else {
-                        DisclosureGroup {
-                            ForEach(categorySubcategories) { subcategory in
-                                Text(subcategory.name)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 8)
-                            }
-                        } label: {
-                            categoryRow(category)
-                        }
-                        .swipeActions(
-                            edge: .trailing,
-                            allowsFullSwipe: false
-                        ) {
-                            deleteButton(category)
-                        }
-                        .swipeActions(
-                            edge: .leading,
-                            allowsFullSwipe: true
-                        ) {
-                            editButton(category)
-                        }
-                    }
+                ForEach(
+                    filteredCategories
+                ) { category in
+                    categoryRow(
+                        category
+                    )
+                    .padding(
+                        .bottom,
+                        8
+                    )
                 }
             }
+            .padding(
+                .bottom,
+                16
+            )
         }
         .refreshable {
-            await syncCoordinator.synchronize()
+            await syncCoordinator
+                .synchronize()
         }
-        .navigationTitle("Categories")
+        .swipeActionsContainer()
+        .background(
+            Color(
+                uiColor:
+                    .systemGroupedBackground
+            )
+        )
+        .navigationTitle(
+            "Categories"
+        )
         .toolbar {
             ToolbarItem(
                 placement: .primaryAction
@@ -152,16 +111,71 @@ struct CategoryListView: View {
             }
         }
         .sheet(
-            isPresented: $showingAddCategory
+            isPresented:
+                $showingAddCategory
         ) {
             AddCategoryView()
         }
         .sheet(
-            item: $editingCategory
+            item:
+                $editingCategory
         ) { category in
             EditCategoryView(
                 category: category
             )
+        }
+    }
+
+    // MARK: - Filter
+
+    private var filterPicker: some View {
+        Picker(
+            "Category type",
+            selection:
+                $selectedFilter
+        ) {
+            ForEach(
+                CategoryListFilter
+                    .allCases,
+                id: \.self
+            ) { filter in
+                Text(filter.label)
+                    .tag(filter)
+            }
+        }
+        .pickerStyle(
+            .segmented
+        )
+        .padding(
+            .horizontal,
+            16
+        )
+        .padding(
+            .top,
+            8
+        )
+        .padding(
+            .bottom,
+            18
+        )
+    }
+
+    private func matchesFilter(
+        _ category: Category
+    ) -> Bool {
+        switch selectedFilter {
+        case .all:
+            return true
+
+        case .expense:
+            return
+                category.type
+                == .expense
+
+        case .income:
+            return
+                category.type
+                == .income
         }
     }
 
@@ -170,53 +184,41 @@ struct CategoryListView: View {
     private func categoryRow(
         _ category: Category
     ) -> some View {
-        HStack {
-            Text(category.name)
+        let categorySubcategories =
+            subcategories.filter {
+                $0.categoryId
+                    == category.id
+            }
 
-            Spacer()
-
-            Text(
-                category.type == .expense
-                    ? "Expense"
-                    : "Income"
-            )
-            .foregroundStyle(.secondary)
-        }
-        .contentShape(Rectangle())
+        return CategoryRow(
+            category: category,
+            subcategories:
+                categorySubcategories,
+            onEdit: {
+                editingCategory =
+                    category
+            },
+            onDelete: {
+                delete(
+                    category
+                )
+            }
+        )
     }
 
-    // MARK: - Actions
-
-    private func editButton(
-        _ category: Category
-    ) -> some View {
-        Button(
-            "Edit",
-            systemImage: "pencil"
-        ) {
-            editingCategory = category
-        }
-        .tint(.blue)
-    }
-
-    private func deleteButton(
-        _ category: Category
-    ) -> some View {
-        Button(
-            "Delete",
-            systemImage: "trash"
-        ) {
-            delete(category)
-        }
-        .tint(.red)
-    }
+    // MARK: - Delete
 
     private func delete(
         _ category: Category
     ) {
         do {
-            try categoryService.delete(category)
-            registerUndo(for: category)
+            try categoryService.delete(
+                category
+            )
+
+            registerUndo(
+                for: category
+            )
         } catch {
             print(
                 "FAILED TO DELETE CATEGORY:",
@@ -237,14 +239,18 @@ struct CategoryListView: View {
          * undo for this service.
          */
         undoManager.removeAllActions(
-            withTarget: categoryService
+            withTarget:
+                categoryService
         )
 
         undoManager.registerUndo(
-            withTarget: categoryService
+            withTarget:
+                categoryService
         ) { service in
             do {
-                try service.restore(category)
+                try service.restore(
+                    category
+                )
             } catch {
                 print(
                     "FAILED TO UNDO CATEGORY DELETE:",
@@ -254,7 +260,10 @@ struct CategoryListView: View {
         }
 
         undoManager.setActionName(
-            String(localized: "Delete Category")
+            String(
+                localized:
+                    "Delete Category"
+            )
         )
     }
 }
