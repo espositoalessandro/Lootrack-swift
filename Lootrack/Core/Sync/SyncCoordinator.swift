@@ -7,6 +7,8 @@ final class SyncCoordinator {
     private let syncEngine: SyncEngine
     private let conflictResolutionService: ConflictResolutionService
 
+    private var syncTask: Task<Void, Never>?
+
     var isSyncing = false
     var syncResult: String?
     var conflicts: [SyncConflictCandidate] = []
@@ -16,14 +18,37 @@ final class SyncCoordinator {
         conflictResolutionService: ConflictResolutionService
     ) {
         self.syncEngine = syncEngine
-        self.conflictResolutionService = conflictResolutionService
+        self.conflictResolutionService =
+            conflictResolutionService
     }
 
     func synchronize() async {
-        guard !isSyncing else {
+        /*
+         * If a synchronization is already running,
+         * simply wait for that same run.
+         */
+        if let syncTask {
+            await syncTask.value
             return
         }
 
+        /*
+         * Synchronization owns its own task.
+         *
+         * This prevents the network operation from
+         * being cancelled just because the UI task
+         * that triggered it disappears or is cancelled.
+         */
+        let task = Task { @MainActor in
+            await performSynchronization()
+        }
+
+        syncTask = task
+
+        await task.value
+    }
+
+    private func performSynchronization() async {
         isSyncing = true
 
         /*
@@ -35,12 +60,14 @@ final class SyncCoordinator {
 
         defer {
             isSyncing = false
+            syncTask = nil
         }
 
         do {
             try await syncEngine.synchronize()
 
-            syncResult = "Synchronization completed"
+            syncResult =
+                "Synchronization completed"
 
         } catch let error as SyncRunConflictError {
             conflicts = error.conflicts

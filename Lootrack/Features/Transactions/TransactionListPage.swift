@@ -30,6 +30,9 @@ struct TransactionListView: View {
     @Environment(\.undoManager)
     private var undoManager
 
+    @Environment(SyncCoordinator.self)
+    private var syncCoordinator
+
     @Query(TransactionQueries.activeByMostRecent)
     private var transactions: [Transaction]
 
@@ -183,6 +186,9 @@ struct TransactionListView: View {
                 .bottom,
                 16
             )
+        }
+        .refreshable {
+            await syncCoordinator.synchronize()
         }
         .scrollPosition(
             id: $scrolledTarget,
