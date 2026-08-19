@@ -13,6 +13,9 @@ struct TransactionListView: View {
     private var editingTransaction: Transaction?
 
     @State
+    private var showingAddTransaction = false
+
+    @State
     private var selectedFilter: TransactionListFilter = .all
 
     @State
@@ -90,14 +93,6 @@ struct TransactionListView: View {
         )
     }
 
-    /*
-     * The navigation bar month is derived entirely
-     * from the top-most scroll target.
-     *
-     * At the very top, and while the first month's
-     * own header is visible, we keep the normal
-     * "Transactions" navigation title.
-     */
     private var toolbarMonth: Date? {
         guard let scrolledTarget else {
             return nil
@@ -120,6 +115,14 @@ struct TransactionListView: View {
         case .transaction(_, let month):
             return month
         }
+    }
+
+    private var showsAddTransactionFAB: Bool {
+        guard let scrolledTarget else {
+            return true
+        }
+
+        return scrolledTarget == .top
     }
 
     var body: some View {
@@ -211,11 +214,53 @@ struct TransactionListView: View {
                     )
                 }
             }
+
+            ToolbarItem(
+                placement: .primaryAction
+            ) {
+                Button(
+                    "Add",
+                    systemImage: "plus"
+                ) {
+                    showingAddTransaction = true
+                }
+            }
         }
         .searchable(
             text: $searchQuery,
             prompt: "Search transactions"
         )
+        .overlay(
+            alignment: .bottom
+        ) {
+            if showsAddTransactionFAB {
+                addTransactionFAB
+                    .padding(
+                        .bottom,
+                        18
+                    )
+                    .transition(
+                        .scale(
+                            scale: 0.8,
+                            anchor: .bottom
+                        )
+                        .combined(
+                            with: .opacity
+                        )
+                    )
+            }
+        }
+        .animation(
+            .easeInOut(
+                duration: 0.2
+            ),
+            value: showsAddTransactionFAB
+        )
+        .sheet(
+            isPresented: $showingAddTransaction
+        ) {
+            AddTransactionView()
+        }
         .sheet(
             item: $editingTransaction
         ) { transaction in
@@ -223,6 +268,33 @@ struct TransactionListView: View {
                 transaction: transaction
             )
         }
+    }
+
+    // MARK: - Add
+
+    private var addTransactionFAB: some View {
+        Button {
+            showingAddTransaction = true
+        } label: {
+            Image(
+                systemName: "plus"
+            )
+            .font(
+                .title2.weight(
+                    .semibold
+                )
+            )
+            .frame(
+                width: 58,
+                height: 58
+            )
+        }
+        .buttonStyle(
+            .glassProminent
+        )
+        .accessibilityLabel(
+            "Add Transaction"
+        )
     }
 
     // MARK: - Filter
@@ -240,7 +312,9 @@ struct TransactionListView: View {
                     .tag(filter)
             }
         }
-        .pickerStyle(.segmented)
+        .pickerStyle(
+            .segmented
+        )
         .padding(
             .horizontal,
             16
@@ -305,7 +379,9 @@ struct TransactionListView: View {
                 ? "expense"
                 : "income",
         ]
-        .joined(separator: " ")
+        .joined(
+            separator: " "
+        )
         .lowercased()
     }
 
@@ -324,7 +400,9 @@ struct TransactionListView: View {
         .font(
             .title2.bold()
         )
-        .foregroundStyle(.primary)
+        .foregroundStyle(
+            .primary
+        )
         .padding(
             .horizontal,
             32
@@ -356,7 +434,9 @@ struct TransactionListView: View {
                 .semibold
             )
         )
-        .foregroundStyle(.secondary)
+        .foregroundStyle(
+            .secondary
+        )
         .padding(
             .horizontal,
             32
@@ -428,10 +508,6 @@ struct TransactionListView: View {
             return
         }
 
-        /*
-         * Only the latest accidental deletion
-         * remains undoable.
-         */
         undoManager.removeAllActions(
             withTarget: transactionService
         )
