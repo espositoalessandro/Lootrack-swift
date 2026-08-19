@@ -18,6 +18,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		312FDFBE3035919200B6007D /* Exceptions for "Versioning" folder in "Lootrack" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"generate-build-info.sh",
+			);
+			target = 31626FB5302E146800F885C8 /* Lootrack */;
+		};
 		31F567223033813A00E07656 /* Exceptions for "Lootrack" folder in "Lootrack" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -27,9 +34,23 @@
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		312FDFBF3035919200B6007D /* Exceptions for "Versioning" folder in "Compile Sources" phase from "Lootrack" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 31626FB2302E146800F885C8 /* Sources */;
+			membershipExceptions = (
+				"generate-build-info.sh",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		312FDFB530358ED800B6007D /* Versioning */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				312FDFBE3035919200B6007D /* Exceptions for "Versioning" folder in "Lootrack" target */,
+				312FDFBF3035919200B6007D /* Exceptions for "Versioning" folder in "Compile Sources" phase from "Lootrack" target */,
+			);
 			path = Versioning;
 			sourceTree = "<group>";
 		};
@@ -57,10 +78,10 @@
 		31626FAD302E146800F885C8 = {
 			isa = PBXGroup;
 			children = (
-				312FDFBA30358F1300B6007D /* .gitignore */,
 				312FDFB530358ED800B6007D /* Versioning */,
 				31626FB8302E146800F885C8 /* Lootrack */,
 				31626FB7302E146800F885C8 /* Products */,
+				312FDFBA30358F1300B6007D /* .gitignore */,
 			);
 			sourceTree = "<group>";
 		};
