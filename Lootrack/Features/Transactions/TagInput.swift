@@ -1,10 +1,3 @@
-//
-//  TransactionTagInput.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 19/08/2026.
-//
-
 import SwiftUI
 
 private struct TagFlowLayout: Layout {
@@ -116,17 +109,28 @@ private struct TagFlowLayout: Layout {
     }
 }
 
-struct TransactionTagInput: View {
+struct TagInput: View {
     @Binding var tags: [String]
 
     let availableTags: [Tag]
-
+    let onNeedsVisibility: () -> Void
+    
     @State
     private var input = ""
 
     @FocusState
     private var isFocused: Bool
 
+    init(
+        tags: Binding<[String]>,
+        availableTags: [Tag],
+        onNeedsVisibility: @escaping () -> Void = {}
+    ) {
+        self._tags = tags
+        self.availableTags = availableTags
+        self.onNeedsVisibility = onNeedsVisibility
+    }
+    
     private var trimmedInput: String {
         input.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -226,6 +230,23 @@ struct TransactionTagInput: View {
                     .hidden
                 )
             }
+        }
+        .onChange(of: isFocused) {
+            guard isFocused else {
+                return
+            }
+            
+            onNeedsVisibility()
+        }
+        .onChange(of: suggestions.count) {
+            guard
+                isFocused,
+                !suggestions.isEmpty
+                    else {
+                return
+            }
+            
+            onNeedsVisibility()
         }
     }
 
