@@ -7,11 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		312FDFBB30358F1700B6007D /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 312FDFBA30358F1300B6007D /* .gitignore */; };
 		31F567183033776D00E07656 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 31F567173033776D00E07656 /* GoogleSignIn */; };
 		31F5671A3033776D00E07656 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 31F567193033776D00E07656 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		312FDFBA30358F1300B6007D /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		31626FB6302E146800F885C8 /* Lootrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lootrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -26,6 +28,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		312FDFB530358ED800B6007D /* Versioning */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Versioning;
+			sourceTree = "<group>";
+		};
 		31626FB8302E146800F885C8 /* Lootrack */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -50,6 +57,8 @@
 		31626FAD302E146800F885C8 = {
 			isa = PBXGroup;
 			children = (
+				312FDFBA30358F1300B6007D /* .gitignore */,
+				312FDFB530358ED800B6007D /* Versioning */,
 				31626FB8302E146800F885C8 /* Lootrack */,
 				31626FB7302E146800F885C8 /* Products */,
 			);
@@ -77,6 +86,7 @@
 			buildRules = (
 			);
 			fileSystemSynchronizedGroups = (
+				312FDFB530358ED800B6007D /* Versioning */,
 				31626FB8302E146800F885C8 /* Lootrack */,
 			);
 			name = Lootrack;
@@ -130,6 +140,7 @@
 		31626FB4302E146800F885C8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				312FDFBB30358F1700B6007D /* .gitignore in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */
@@ -279,7 +290,8 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -312,7 +324,8 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
