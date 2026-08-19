@@ -114,7 +114,7 @@ struct TagInput: View {
 
     let availableTags: [Tag]
     let onNeedsVisibility: () -> Void
-    
+
     @State
     private var input = ""
 
@@ -130,7 +130,7 @@ struct TagInput: View {
         self.availableTags = availableTags
         self.onNeedsVisibility = onNeedsVisibility
     }
-    
+
     private var trimmedInput: String {
         input.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -167,7 +167,7 @@ struct TagInput: View {
                 ) { tag in
                     selectedTag(tag)
                 }
-                
+
                 TextField(
                     "Add tag",
                     text: $input
@@ -235,17 +235,27 @@ struct TagInput: View {
             guard isFocused else {
                 return
             }
-            
-            onNeedsVisibility()
+
+            Task { @MainActor in
+                try? await Task.sleep(
+                    for: .milliseconds(300)
+                )
+
+                guard isFocused else {
+                    return
+                }
+
+                onNeedsVisibility()
+            }
         }
         .onChange(of: suggestions.count) {
             guard
                 isFocused,
                 !suggestions.isEmpty
-                    else {
+            else {
                 return
             }
-            
+
             onNeedsVisibility()
         }
     }
