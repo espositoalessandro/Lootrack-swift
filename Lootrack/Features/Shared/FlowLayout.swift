@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TagFlowLayout: Layout {
+struct FlowLayout: Layout {
     let horizontalSpacing: CGFloat
     let verticalSpacing: CGFloat
 
@@ -23,6 +23,7 @@ struct TagFlowLayout: Layout {
         var currentX: CGFloat = 0
         var currentY: CGFloat = 0
         var rowHeight: CGFloat = 0
+        var contentWidth: CGFloat = 0
 
         for subview in subviews {
             let size =
@@ -33,7 +34,13 @@ struct TagFlowLayout: Layout {
             if currentX > 0,
                 currentX + size.width > maxWidth
             {
+                contentWidth = max(
+                    contentWidth,
+                    currentX - horizontalSpacing
+                )
+
                 currentX = 0
+
                 currentY +=
                     rowHeight
                     + verticalSpacing
@@ -51,10 +58,18 @@ struct TagFlowLayout: Layout {
             )
         }
 
+        contentWidth = max(
+            contentWidth,
+            max(
+                0,
+                currentX - horizontalSpacing
+            )
+        )
+
         return CGSize(
             width:
                 proposal.width
-                ?? currentX,
+                ?? contentWidth,
             height:
                 currentY
                 + rowHeight
@@ -115,26 +130,5 @@ struct TagFlowLayout: Layout {
                 size.height
             )
         }
-    }
-}
-
-struct TagChip: View {
-    let tag: String
-
-    var body: some View {
-        Text(tag)
-            .font(.subheadline)
-            .padding(
-                .horizontal,
-                10
-            )
-            .padding(
-                .vertical,
-                5
-            )
-            .background(
-                .quaternary,
-                in: Capsule()
-            )
     }
 }

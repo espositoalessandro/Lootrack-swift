@@ -195,7 +195,7 @@ struct TransactionRow: View {
                 Text("None")
                     .foregroundStyle(.secondary)
             } else {
-                TagFlowLayout(
+                FlowLayout(
                     horizontalSpacing: 6,
                     verticalSpacing: 6
                 ) {
@@ -203,9 +203,7 @@ struct TransactionRow: View {
                         transaction.tags,
                         id: \.self
                     ) { tag in
-                        TagChip(
-                            tag: tag
-                        )
+                        Chip(tag)
                     }
                 }
                 .frame(

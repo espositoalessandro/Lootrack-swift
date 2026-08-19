@@ -51,12 +51,18 @@ struct TagInput: View {
             alignment: .leading,
             spacing: 10
         ) {
-            TagFlowLayout {
+            FlowLayout {
                 ForEach(
                     tags,
                     id: \.self
                 ) { tag in
-                    selectedTag(tag)
+                    Chip(
+                        tag,
+                        trailingSystemImage:
+                            "xmark.circle.fill"
+                    ) {
+                        removeTag(tag)
+                    }
                 }
 
                 TextField(
@@ -93,7 +99,11 @@ struct TagInput: View {
                             suggestions,
                             id: \.name
                         ) { tag in
-                            Button {
+                            Chip(
+                                tag.name,
+                                leadingSystemImage:
+                                    "tag"
+                            ) {
                                 addTag(
                                     tag.name
                                 )
@@ -101,19 +111,7 @@ struct TagInput: View {
                                 input = ""
 
                                 restoreFocus()
-                            } label: {
-                                Label(
-                                    tag.name,
-                                    systemImage:
-                                        "tag"
-                                )
                             }
-                            .buttonStyle(
-                                .bordered
-                            )
-                            .controlSize(
-                                .small
-                            )
                         }
                     }
                 }
@@ -149,32 +147,6 @@ struct TagInput: View {
 
             onNeedsVisibility()
         }
-    }
-
-    private func selectedTag(
-        _ tag: String
-    ) -> some View {
-        Button {
-            tags.removeAll {
-                $0 == tag
-            }
-
-            restoreFocus()
-        } label: {
-            HStack(spacing: 5) {
-                Text(tag)
-
-                Image(
-                    systemName:
-                        "xmark.circle.fill"
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
     }
 
     // MARK: - Input
@@ -242,6 +214,16 @@ struct TagInput: View {
         }
 
         tags.append(tag)
+    }
+
+    private func removeTag(
+        _ tag: String
+    ) {
+        tags.removeAll {
+            $0 == tag
+        }
+
+        restoreFocus()
     }
 
     // MARK: - Focus
