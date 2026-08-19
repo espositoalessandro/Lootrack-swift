@@ -74,7 +74,8 @@ struct EditTransactionView: View {
                 categoryId:
                     draft.categoryId,
                 subcategoryId:
-                    draft.subcategoryId
+                    draft.subcategoryId,
+                tags: draft.tags
             )
 
             dismiss()

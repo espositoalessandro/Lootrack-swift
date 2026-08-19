@@ -13,6 +13,7 @@ final class GoogleSheetsClient {
         "occurredOn",
         "categoryId",
         "subcategoryId",
+        "tags",
         "createdAt",
         "updatedAt",
         "deletedAt",
@@ -61,7 +62,7 @@ final class GoogleSheetsClient {
         components.queryItems = [
             URLQueryItem(
                 name: "ranges",
-                value: "Transactions!A1:L"
+                value: "Transactions!A1:M"
             ),
             URLQueryItem(
                 name: "ranges",
@@ -392,7 +393,7 @@ final class GoogleSheetsClient {
                 data: [
                     WriteValueRange(
                         range:
-                            "Transactions!A1:L\(transactionValues.count)",
+                            "Transactions!A1:M\(transactionValues.count)",
                         majorDimension:
                             "ROWS",
                         values:
@@ -597,6 +598,10 @@ final class GoogleSheetsClient {
                         .uuidString
                         .lowercased()
                         ?? ""
+                ),
+                .string(
+                    transaction.tags
+                        .joined(separator: " ")
                 ),
                 .string(
                     Self
@@ -921,10 +926,22 @@ final class GoogleSheetsClient {
                             "subcategoryId"
                     )
 
+                let tags =
+                    Tag.normalizedTokens(
+                        from:
+                            try readStringOrEmpty(
+                                row,
+                                index: 7,
+                                context:
+                                    context,
+                                field: "tags"
+                            )
+                    )
+
                 let createdAt =
                     try readDate(
                         row,
-                        index: 7,
+                        index: 8,
                         context:
                             context,
                         field:
@@ -934,7 +951,7 @@ final class GoogleSheetsClient {
                 let updatedAt =
                     try readDate(
                         row,
-                        index: 8,
+                        index: 9,
                         context:
                             context,
                         field:
@@ -944,7 +961,7 @@ final class GoogleSheetsClient {
                 let deletedAt =
                     try readOptionalDate(
                         row,
-                        index: 9,
+                        index: 10,
                         context:
                             context,
                         field:
@@ -954,7 +971,7 @@ final class GoogleSheetsClient {
                 let revision =
                     try readInteger(
                         row,
-                        index: 10,
+                        index: 11,
                         context:
                             context,
                         field:
@@ -965,7 +982,7 @@ final class GoogleSheetsClient {
                 let mutationId =
                     try readUUID(
                         row,
-                        index: 11,
+                        index: 12,
                         context:
                             context,
                         field:
@@ -990,7 +1007,8 @@ final class GoogleSheetsClient {
                         categoryId:
                             categoryId,
                         subcategoryId:
-                            subcategoryId
+                            subcategoryId,
+                        tags: tags
                     )
 
                 return RemoteSyncRecord(
@@ -1339,7 +1357,7 @@ final class GoogleSheetsClient {
         guard
             metadata[
                 "schemaVersion"
-            ] == "3"
+            ] == "4"
         else {
             throw
                 GoogleSheetsClientError

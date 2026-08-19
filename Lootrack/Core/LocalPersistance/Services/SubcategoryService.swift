@@ -273,7 +273,8 @@ final class SubcategoryService {
                 note: old.note,
                 occurredOn: old.occurredOn,
                 categoryId: old.categoryId,
-                subcategoryId: nil
+                subcategoryId: nil,
+                tags: old.tags
             )
 
             try mutationService.createMutation(

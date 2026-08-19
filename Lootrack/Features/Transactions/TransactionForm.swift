@@ -25,6 +25,9 @@ struct TransactionForm: View {
     @Query(SubcategoryQueries.activeByName)
     private var subcategories: [Subcategory]
 
+    @Query(TagQueries.byName)
+    private var tags: [Tag]
+
     @FocusState
     private var focusedField: TransactionFormField?
 
@@ -261,6 +264,13 @@ struct TransactionForm: View {
                         $draft.occurredOn,
                     displayedComponents:
                         .date
+                )
+            }
+
+            Section("Tags") {
+                TransactionTagInput(
+                    tags: $draft.tags,
+                    availableTags: tags
                 )
             }
         }

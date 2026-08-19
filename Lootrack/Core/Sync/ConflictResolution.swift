@@ -65,13 +65,16 @@ nonisolated enum ConflictResolutionError: Error {
 final class ConflictResolutionService {
     private let modelContext: ModelContext
     private let mutationService: MutationService
+    private let tagService: TagService
 
     init(
         modelContext: ModelContext,
-        mutationService: MutationService
+        mutationService: MutationService,
+        tagService: TagService
     ) {
         self.modelContext = modelContext
         self.mutationService = mutationService
+        self.tagService = tagService
     }
 
     func resolve(
@@ -79,19 +82,10 @@ final class ConflictResolutionService {
         using resolution: ConflictResolution
     ) throws {
         try modelContext.transaction {
-            /*
-             * Read the entity NOW rather than using conflict.local.
-             * The user may have changed it since the sync attempt
-             * produced the conflict.
-             */
             let currentLocal = try currentLocalSnapshot(
                 for: conflict.key
             )
 
-            /*
-             * Whatever resolution we choose, the old mutation
-             * chain can no longer be used.
-             */
             try removePendingMutations(
                 for: conflict.key
             )
@@ -106,6 +100,10 @@ final class ConflictResolutionService {
                     currentLocal: currentLocal
                 )
             }
+        }
+
+        if conflict.key.type == .transaction {
+            tagService.rebuild()
         }
     }
 
@@ -147,9 +145,6 @@ final class ConflictResolutionService {
                 )
         }
 
-        /*
-         * Rebase local state on top of the current remote version.
-         */
         if let remote = conflict.remote {
             try setSyncState(
                 for: conflict.key,

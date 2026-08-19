@@ -41,10 +41,16 @@ nonisolated enum LocalSyncStoreError:
 @MainActor
 final class LocalSyncStore {
     private let modelContext: ModelContext
+    private let tagService: TagService
 
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        tagService: TagService
+    ) {
         self.modelContext =
             modelContext
+        self.tagService =
+            tagService
     }
 
     func getSnapshot() throws -> LocalSyncSnapshot {
@@ -132,14 +138,6 @@ final class LocalSyncStore {
                     .mutationIdsToAcknowledge
             )
 
-        /*
-         * Determine which mutations will still
-         * exist after acknowledgement.
-         *
-         * This includes mutations created while
-         * the network synchronization was in
-         * progress.
-         */
         let remainingMutations =
             mutations.filter {
                 mutation in
@@ -159,10 +157,6 @@ final class LocalSyncStore {
                 }
             )
 
-        /*
-         * Validate the whole remote response
-         * before changing persistent state.
-         */
         let remoteRecordsToApply =
             try buildApplyPlan(
                 remoteRecords:
@@ -251,10 +245,6 @@ final class LocalSyncStore {
             )
 
         try modelContext.transaction {
-            /*
-             * Remove acknowledged mutations
-             * that still exist.
-             */
             for mutation in mutations
             where
                 mutationIdsToAcknowledge
@@ -265,9 +255,6 @@ final class LocalSyncStore {
                 )
             }
 
-            /*
-             * Apply authoritative remote state.
-             */
             for record
                 in remoteRecordsToApply
             {
@@ -307,6 +294,14 @@ final class LocalSyncStore {
                 )
             }
         }
+
+        if remoteRecordsToApply.contains(
+            where: {
+                $0.entityType == .transaction
+            }
+        ) {
+            tagService.rebuild()
+        }
     }
 
     private func buildApplyPlan(
@@ -337,12 +332,6 @@ final class LocalSyncStore {
 
             try validate(record)
 
-            /*
-             * A newer local mutation exists for
-             * this entity. Applying this remote
-             * record would overwrite newer local
-             * state.
-             */
             guard
                 !pendingEntityKeys
                     .contains(key)
