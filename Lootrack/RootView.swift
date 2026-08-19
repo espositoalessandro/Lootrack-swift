@@ -2,9 +2,10 @@ import SwiftData
 import SwiftUI
 
 private enum AppTab: Hashable {
-    case home
+    case dashboard
     case transactions
     case categories
+    case settings
 }
 
 struct RootView: View {
@@ -15,7 +16,7 @@ struct RootView: View {
     private var mutations: [Mutation]
 
     @State
-    private var selectedTab: AppTab = .home
+    private var selectedTab: AppTab = .transactions
 
     @State
     private var isSyncPresented = false
@@ -37,9 +38,9 @@ struct RootView: View {
             selection: $selectedTab
         ) {
             Tab(
-                "Home",
-                systemImage: "house",
-                value: AppTab.home
+                "Dashboard",
+                systemImage: "rectangle.3.group",
+                value: AppTab.dashboard
             ) {
                 NavigationStack {
                     HomeView()
@@ -73,6 +74,13 @@ struct RootView: View {
                             appToolbar
                         }
                 }
+            }
+            Tab(
+                "Settings",
+                systemImage: "gear",
+                value: AppTab.settings
+            ) {
+              EmptyView()
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)

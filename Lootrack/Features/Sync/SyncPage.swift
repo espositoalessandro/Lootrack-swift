@@ -111,10 +111,12 @@ extension SyncConflictCandidate {
     }
 }
 
+
+
 struct SyncView: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-
+   
     @Query(
         MutationQueries
             .pendingByOldest
@@ -143,7 +145,23 @@ struct SyncView: View {
         }
     }
 
+    
+    
     var body: some View {
+        if let syncResult = syncCoordinator.syncResult {
+            Section {
+                Text(syncResult)
+                    .font(.footnote)
+                    .foregroundStyle(
+                        syncResult.hasPrefix("ERROR:")
+                        ? .red
+                        : .secondary
+                    )
+                    .textSelection(.enabled)
+            } header: {
+                Text("Synchronization")
+            }
+        }
         List {
             if !syncCoordinator
                 .conflicts

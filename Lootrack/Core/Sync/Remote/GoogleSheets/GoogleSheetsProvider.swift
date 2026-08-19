@@ -9,14 +9,14 @@ nonisolated struct GoogleSheetsConfiguration {
     static let development = GoogleSheetsConfiguration(
         clientId:
             "301925252646-k9ev1fi2eqcb0abkoc8glqjkupajrb5e.apps.googleusercontent.com",
-        spreadsheetId: "14JFbnyDEHtHEzQ-fj4Eqj4cAGFlVh4vmv_uZjJKKaUU"
+        spreadsheetId: "1c1fO_W-pfRMNu8vBjpBdKr-q3wAnjYrWB9srocgnYUk"
     )
 }
 
 @MainActor
 final class GoogleAuthorizationService {
     private static let driveFileScope =
-        "https://www.googleapis.com/auth/drive.file"
+        "https://www.googleapis.com/auth/spreadsheets"
 
     private let configuration: GoogleSheetsConfiguration
 
