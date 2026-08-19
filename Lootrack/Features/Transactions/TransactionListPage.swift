@@ -1,6 +1,13 @@
 import SwiftData
 import SwiftUI
 
+private enum TransactionScrollTarget: Hashable {
+    case top
+    case monthHeader(Date)
+    case day(Date, month: Date)
+    case transaction(UUID, month: Date)
+}
+
 struct TransactionListView: View {
     @State
     private var editingTransaction: Transaction?
@@ -12,7 +19,7 @@ struct TransactionListView: View {
     private var searchQuery = ""
 
     @State
-    private var currentMonth: Date?
+    private var scrolledTarget: TransactionScrollTarget?
 
     @Environment(TransactionService.self)
     private var transactionService
@@ -83,6 +90,38 @@ struct TransactionListView: View {
         )
     }
 
+    /*
+     * The navigation bar month is derived entirely
+     * from the top-most scroll target.
+     *
+     * At the very top, and while the first month's
+     * own header is visible, we keep the normal
+     * "Transactions" navigation title.
+     */
+    private var toolbarMonth: Date? {
+        guard let scrolledTarget else {
+            return nil
+        }
+
+        switch scrolledTarget {
+        case .top:
+            return nil
+
+        case .monthHeader(let month):
+            if month == transactionGroups.first?.date {
+                return nil
+            }
+
+            return month
+
+        case .day(_, let month):
+            return month
+
+        case .transaction(_, let month):
+            return month
+        }
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(
@@ -90,9 +129,18 @@ struct TransactionListView: View {
                 spacing: 0
             ) {
                 filterPicker
+                    .id(
+                        TransactionScrollTarget.top
+                    )
 
                 ForEach(transactionGroups) { month in
                     monthHeader(month)
+                        .id(
+                            TransactionScrollTarget
+                                .monthHeader(
+                                    month.date
+                                )
+                        )
 
                     ForEach(month.days) { day in
                         dayHeader(
@@ -100,6 +148,12 @@ struct TransactionListView: View {
                             isFirst:
                                 day.id
                                 == month.days.first?.id
+                        )
+                        .id(
+                            TransactionScrollTarget.day(
+                                day.date,
+                                month: month.date
+                            )
                         )
 
                         ForEach(day.transactions) { transaction in
@@ -110,15 +164,27 @@ struct TransactionListView: View {
                                 .bottom,
                                 8
                             )
+                            .id(
+                                TransactionScrollTarget
+                                    .transaction(
+                                        transaction.id,
+                                        month: month.date
+                                    )
+                            )
                         }
                     }
                 }
             }
+            .scrollTargetLayout()
             .padding(
                 .bottom,
                 16
             )
         }
+        .scrollPosition(
+            id: $scrolledTarget,
+            anchor: .top
+        )
         .swipeActionsContainer()
         .background(
             Color(
@@ -132,12 +198,12 @@ struct TransactionListView: View {
             "Transactions"
         )
         .toolbar {
-            if let currentMonth {
+            if let toolbarMonth {
                 ToolbarItem(
                     placement: .title
                 ) {
                     Text(
-                        currentMonth.formatted(
+                        toolbarMonth.formatted(
                             .dateTime
                                 .month(.wide)
                                 .year()
@@ -271,23 +337,6 @@ struct TransactionListView: View {
             .bottom,
             18
         )
-        .onGeometryChange(
-            for: Bool.self
-        ) { proxy in
-            proxy.frame(
-                in: .scrollView
-            ).maxY <= 0
-        } action: { isPastTop in
-            if isPastTop {
-                currentMonth =
-                    month.date
-            } else if currentMonth == month.date {
-                currentMonth =
-                    newerMonth(
-                        than: month.date
-                    )
-            }
-        }
     }
 
     private func dayHeader(
@@ -320,27 +369,6 @@ struct TransactionListView: View {
             .bottom,
             10
         )
-    }
-
-    private func newerMonth(
-        than month: Date
-    ) -> Date? {
-        guard
-            let index =
-                transactionGroups.firstIndex(
-                    where: {
-                        $0.date == month
-                    }
-                ),
-            index > 0
-        else {
-            return nil
-        }
-
-        return
-            transactionGroups[
-                index - 1
-            ].date
     }
 
     // MARK: - Rows

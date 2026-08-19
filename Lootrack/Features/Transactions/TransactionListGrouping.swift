@@ -1,11 +1,3 @@
-//
-//  TransactionListFilter.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 19/08/2026.
-//
-
-
 import Foundation
 
 enum TransactionListFilter: CaseIterable {
