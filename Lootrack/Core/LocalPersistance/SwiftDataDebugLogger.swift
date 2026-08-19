@@ -50,12 +50,10 @@ final class SwiftDataDebugLogger: NSObject {
             context.insertedModelsArray,
             prefix: "➕ INSERT"
         )
-
         log(
             context.changedModelsArray,
             prefix: "✏️ UPDATE"
         )
-
         log(
             context.deletedModelsArray,
             prefix: "🗑️ DELETE"
