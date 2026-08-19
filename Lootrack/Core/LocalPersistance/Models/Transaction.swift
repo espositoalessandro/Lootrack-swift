@@ -20,6 +20,7 @@ final class Transaction: Entity {
     var note: String
     var occurredOn: Date
     var categoryId: UUID?
+    var subcategoryId: UUID?
 
     init(
         id: UUID = UUID(),
@@ -30,7 +31,8 @@ final class Transaction: Entity {
         amountInCents: Int,
         note: String,
         occurredOn: Date,
-        categoryId: UUID? = nil
+        categoryId: UUID? = nil,
+        subcategoryId: UUID? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -41,6 +43,7 @@ final class Transaction: Entity {
         self.note = note
         self.occurredOn = occurredOn
         self.categoryId = categoryId
+        self.subcategoryId = subcategoryId
     }
 }
 
@@ -55,20 +58,22 @@ extension Transaction {
             amountInCents: snapshot.amountInCents,
             note: snapshot.note,
             occurredOn: snapshot.occurredOn,
-            categoryId: snapshot.categoryId
+            categoryId: snapshot.categoryId,
+            subcategoryId: snapshot.subcategoryId
         )
     }
-    
+
     func apply(_ snapshot: TransactionDTO) {
         createdAt = snapshot.createdAt
         updatedAt = snapshot.updatedAt
         deletedAt = snapshot.deletedAt
-        
+
         type = snapshot.type
         amountInCents = snapshot.amountInCents
         note = snapshot.note
         occurredOn = snapshot.occurredOn
         categoryId = snapshot.categoryId
+        subcategoryId = snapshot.subcategoryId
     }
 }
 
@@ -84,6 +89,7 @@ nonisolated struct TransactionDTO: Codable, Equatable {
     let note: String
     let occurredOn: Date
     let categoryId: UUID?
+    let subcategoryId: UUID?
 }
 
 extension TransactionDTO {
@@ -99,5 +105,135 @@ extension TransactionDTO {
         self.note = transaction.note
         self.occurredOn = transaction.occurredOn
         self.categoryId = transaction.categoryId
+        self.subcategoryId = transaction.subcategoryId
+    }
+}
+
+// MARK: - Backward-compatible decoding
+
+nonisolated extension TransactionDTO {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case type
+        case amountInCents
+        case note
+        case occurredOn
+        case categoryId
+        case subcategoryId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(
+            keyedBy: CodingKeys.self
+        )
+
+        id = try container.decode(
+            UUID.self,
+            forKey: .id
+        )
+
+        createdAt = try container.decode(
+            Date.self,
+            forKey: .createdAt
+        )
+
+        updatedAt = try container.decode(
+            Date.self,
+            forKey: .updatedAt
+        )
+
+        deletedAt = try container.decodeIfPresent(
+            Date.self,
+            forKey: .deletedAt
+        )
+
+        type = try container.decode(
+            TransactionType.self,
+            forKey: .type
+        )
+
+        amountInCents = try container.decode(
+            Int.self,
+            forKey: .amountInCents
+        )
+
+        note = try container.decode(
+            String.self,
+            forKey: .note
+        )
+
+        occurredOn = try container.decode(
+            Date.self,
+            forKey: .occurredOn
+        )
+
+        categoryId = try container.decodeIfPresent(
+            UUID.self,
+            forKey: .categoryId
+        )
+
+        subcategoryId = try container.decodeIfPresent(
+            UUID.self,
+            forKey: .subcategoryId
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(
+            keyedBy: CodingKeys.self
+        )
+
+        try container.encode(
+            id,
+            forKey: .id
+        )
+
+        try container.encode(
+            createdAt,
+            forKey: .createdAt
+        )
+
+        try container.encode(
+            updatedAt,
+            forKey: .updatedAt
+        )
+
+        try container.encodeIfPresent(
+            deletedAt,
+            forKey: .deletedAt
+        )
+
+        try container.encode(
+            type,
+            forKey: .type
+        )
+
+        try container.encode(
+            amountInCents,
+            forKey: .amountInCents
+        )
+
+        try container.encode(
+            note,
+            forKey: .note
+        )
+
+        try container.encode(
+            occurredOn,
+            forKey: .occurredOn
+        )
+
+        try container.encodeIfPresent(
+            categoryId,
+            forKey: .categoryId
+        )
+
+        try container.encodeIfPresent(
+            subcategoryId,
+            forKey: .subcategoryId
+        )
     }
 }

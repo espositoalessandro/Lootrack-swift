@@ -185,9 +185,9 @@ struct TransactionListView: View {
             .pickerStyle(.segmented)
             .listRowInsets(
                 EdgeInsets(
-                    top: 8,
+                    top: 0,
                     leading: 0,
-                    bottom: 8,
+                    bottom: 0,
                     trailing: 0
                 )
             )

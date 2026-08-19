@@ -2,6 +2,11 @@ import Foundation
 import Observation
 import SwiftData
 
+enum TransactionServiceError: Error {
+    case subcategoryRequiresCategory
+    case invalidSubcategory
+}
+
 @MainActor
 @Observable
 final class TransactionService {
@@ -22,8 +27,14 @@ final class TransactionService {
         amountInCents: Int,
         note: String,
         occurredOn: Date,
-        categoryId: UUID?
+        categoryId: UUID?,
+        subcategoryId: UUID?
     ) throws -> Transaction {
+        try validateSubcategory(
+            categoryId: categoryId,
+            subcategoryId: subcategoryId
+        )
+
         let now = Date.now
 
         let transaction = Transaction(
@@ -33,7 +44,8 @@ final class TransactionService {
             amountInCents: amountInCents,
             note: note,
             occurredOn: occurredOn,
-            categoryId: categoryId
+            categoryId: categoryId,
+            subcategoryId: subcategoryId
         )
 
         let snapshot = TransactionDTO(
@@ -59,8 +71,14 @@ final class TransactionService {
         amountInCents: Int,
         note: String,
         occurredOn: Date,
-        categoryId: UUID?
+        categoryId: UUID?,
+        subcategoryId: UUID?
     ) throws {
+        try validateSubcategory(
+            categoryId: categoryId,
+            subcategoryId: subcategoryId
+        )
+
         guard
             transaction.type != type
                 || transaction.amountInCents
@@ -70,6 +88,8 @@ final class TransactionService {
                     != occurredOn
                 || transaction.categoryId
                     != categoryId
+                || transaction.subcategoryId
+                    != subcategoryId
         else {
             return
         }
@@ -87,7 +107,8 @@ final class TransactionService {
             amountInCents: amountInCents,
             note: note,
             occurredOn: occurredOn,
-            categoryId: categoryId
+            categoryId: categoryId,
+            subcategoryId: subcategoryId
         )
 
         try mutationService.createMutation(
@@ -102,6 +123,7 @@ final class TransactionService {
         transaction.note = note
         transaction.occurredOn = occurredOn
         transaction.categoryId = categoryId
+        transaction.subcategoryId = subcategoryId
         transaction.updatedAt = now
 
         try modelContext.save()
@@ -127,7 +149,8 @@ final class TransactionService {
             amountInCents: old.amountInCents,
             note: old.note,
             occurredOn: old.occurredOn,
-            categoryId: old.categoryId
+            categoryId: old.categoryId,
+            subcategoryId: old.subcategoryId
         )
 
         try mutationService.createMutation(
@@ -153,6 +176,12 @@ final class TransactionService {
 
         let old = TransactionDTO(transaction)
 
+        let restoredSubcategoryId =
+            try validSubcategoryId(
+                categoryId: old.categoryId,
+                subcategoryId: old.subcategoryId
+            )
+
         let restored = TransactionDTO(
             id: old.id,
             createdAt: old.createdAt,
@@ -162,7 +191,8 @@ final class TransactionService {
             amountInCents: old.amountInCents,
             note: old.note,
             occurredOn: old.occurredOn,
-            categoryId: old.categoryId
+            categoryId: old.categoryId,
+            subcategoryId: restoredSubcategoryId
         )
 
         try mutationService.createMutation(
@@ -172,8 +202,68 @@ final class TransactionService {
         )
 
         transaction.deletedAt = nil
+        transaction.subcategoryId = restoredSubcategoryId
         transaction.updatedAt = now
 
         try modelContext.save()
+    }
+
+    private func validateSubcategory(
+        categoryId: UUID?,
+        subcategoryId: UUID?
+    ) throws {
+        guard subcategoryId != nil else {
+            return
+        }
+
+        guard categoryId != nil else {
+            throw TransactionServiceError
+                .subcategoryRequiresCategory
+        }
+
+        guard
+            try validSubcategoryId(
+                categoryId: categoryId,
+                subcategoryId: subcategoryId
+            ) != nil
+        else {
+            throw TransactionServiceError
+                .invalidSubcategory
+        }
+    }
+
+    private func validSubcategoryId(
+        categoryId: UUID?,
+        subcategoryId: UUID?
+    ) throws -> UUID? {
+        guard
+            let categoryId,
+            let subcategoryId
+        else {
+            return nil
+        }
+
+        let id = subcategoryId
+
+        let subcategory = try modelContext.fetch(
+            FetchDescriptor<Subcategory>(
+                predicate:
+                    #Predicate<Subcategory> {
+                        subcategory in
+
+                        subcategory.id == id
+                    }
+            )
+        ).first
+
+        guard
+            let subcategory,
+            subcategory.deletedAt == nil,
+            subcategory.categoryId == categoryId
+        else {
+            return nil
+        }
+
+        return subcategoryId
     }
 }
