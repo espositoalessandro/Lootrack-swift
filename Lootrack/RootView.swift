@@ -28,7 +28,6 @@ struct RootView: View {
         if hasConflicts {
             return syncCoordinator.conflicts.count
         }
-
         return mutations.count
     }
 
