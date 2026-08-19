@@ -37,27 +37,54 @@ extension Mutation {
 extension SyncConflictCandidate {
     fileprivate var title: String {
         switch local {
-        case .transaction(let transaction):
-            let note = transaction.note.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        case .transaction(
+            let transaction
+        ):
+            let note =
+                transaction.note
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
 
             return note.isEmpty
-                ? String(localized: "Transaction")
+                ? String(
+                    localized:
+                        "Transaction"
+                )
                 : note
 
-        case .category(let category):
+        case .category(
+            let category
+        ):
             return category.name
+
+        case .subcategory(
+            let subcategory
+        ):
+            return subcategory.name
         }
     }
 
     fileprivate var entityName: String {
         switch key.type {
         case .transaction:
-            return String(localized: "Transaction")
+            return String(
+                localized:
+                    "Transaction"
+            )
 
         case .category:
-            return String(localized: "Category")
+            return String(
+                localized:
+                    "Category"
+            )
+
+        case .subcategory:
+            return String(
+                localized:
+                    "Subcategory"
+            )
         }
     }
 
@@ -88,29 +115,48 @@ struct SyncView: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
 
-    @Query(MutationQueries.pendingByOldest)
+    @Query(
+        MutationQueries
+            .pendingByOldest
+    )
     private var mutations: [Mutation]
 
     private var pendingEntities: [PendingEntityChanges] {
         Dictionary(
             grouping: mutations,
-            by: { $0.payload.key }
+            by: {
+                $0.payload.key
+            }
         )
         .values
-        .map { mutations in PendingEntityChanges(mutations: mutations)
+        .map { mutations in
+            PendingEntityChanges(
+                mutations:
+                    mutations
+            )
         }
         .sorted {
-            $0.latestMutation.createdAt > $1.latestMutation.createdAt
+            $0.latestMutation
+                .createdAt
+                > $1.latestMutation
+                .createdAt
         }
     }
 
     var body: some View {
         List {
-            if !syncCoordinator.conflicts.isEmpty {
+            if !syncCoordinator
+                .conflicts
+                .isEmpty
+            {
                 Section {
-                    ForEach(syncCoordinator.conflicts) { conflict in
+                    ForEach(
+                        syncCoordinator
+                            .conflicts
+                    ) { conflict in
                         VStack(
-                            alignment: .leading,
+                            alignment:
+                                .leading,
                             spacing: 12
                         ) {
                             HStack {
@@ -118,61 +164,102 @@ struct SyncView: View {
                                     systemName:
                                         "exclamationmark.triangle.fill"
                                 )
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(
+                                    .orange
+                                )
 
                                 VStack(
-                                    alignment: .leading,
+                                    alignment:
+                                        .leading,
                                     spacing: 2
                                 ) {
-                                    Text(conflict.title)
-                                        .fontWeight(.semibold)
+                                    Text(
+                                        conflict
+                                            .title
+                                    )
+                                    .fontWeight(
+                                        .semibold
+                                    )
 
-                                    Text(conflict.entityName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    Text(
+                                        conflict
+                                            .entityName
+                                    )
+                                    .font(
+                                        .caption
+                                    )
+                                    .foregroundStyle(
+                                        .secondary
+                                    )
                                 }
                             }
 
-                            Text(conflict.message)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                            Text(
+                                conflict
+                                    .message
+                            )
+                            .font(
+                                .subheadline
+                            )
+                            .foregroundStyle(
+                                .secondary
+                            )
 
                             HStack {
                                 Button {
-                                    syncCoordinator.resolveConflict(
-                                        conflict,
-                                        using: .keepRemote
-                                    )
+                                    syncCoordinator
+                                        .resolveConflict(
+                                            conflict,
+                                            using:
+                                                .keepRemote
+                                        )
                                 } label: {
                                     Text(
-                                        conflict.remote == nil
+                                        conflict
+                                            .remote
+                                            == nil
                                             ? "Discard local"
                                             : "Use remote"
                                     )
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(
+                                    .bordered
+                                )
 
                                 Spacer()
 
                                 Button {
-                                    syncCoordinator.resolveConflict(
-                                        conflict,
-                                        using: .keepLocal
-                                    )
+                                    syncCoordinator
+                                        .resolveConflict(
+                                            conflict,
+                                            using:
+                                                .keepLocal
+                                        )
                                 } label: {
-                                    Text("Keep mine")
+                                    Text(
+                                        "Keep mine"
+                                    )
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(
+                                    .borderedProminent
+                                )
                             }
                         }
-                        .padding(.vertical, 6)
+                        .padding(
+                            .vertical,
+                            6
+                        )
                     }
                 } header: {
                     Label(
-                        syncCoordinator.conflicts.count == 1
+                        syncCoordinator
+                            .conflicts
+                            .count
+                            == 1
                             ? "1 conflict needs attention"
                             : "\(syncCoordinator.conflicts.count) conflicts need attention",
-                        systemImage: "exclamationmark.triangle"
+                        systemImage:
+                            "exclamationmark.triangle"
                     )
                 } footer: {
                     Text(
@@ -181,37 +268,60 @@ struct SyncView: View {
                 }
             }
 
-            ForEach(pendingEntities) { pending in
+            ForEach(
+                pendingEntities
+            ) { pending in
                 Section {
                     ForEach(
-                        pending.mutations.reversed()
+                        pending
+                            .mutations
+                            .reversed()
                     ) { mutation in
                         DisclosureGroup {
                             VStack(
-                                alignment: .leading,
+                                alignment:
+                                    .leading,
                                 spacing: 12
                             ) {
                                 Text("Base")
-                                    .font(.headline)
+                                    .font(
+                                        .headline
+                                    )
 
                                 Text(
-                                    mutation.base.map {
-                                        String(describing: $0)
-                                    } ?? "nil"
+                                    mutation
+                                        .base
+                                        .map {
+                                            String(
+                                                describing:
+                                                    $0
+                                            )
+                                        }
+                                        ?? "nil"
                                 )
-                                .font(.caption.monospaced())
+                                .font(
+                                    .caption
+                                        .monospaced()
+                                )
 
                                 Divider()
 
                                 Text("Payload")
-                                    .font(.headline)
+                                    .font(
+                                        .headline
+                                    )
 
                                 Text(
                                     String(
-                                        describing: mutation.payload
+                                        describing:
+                                            mutation
+                                            .payload
                                     )
                                 )
-                                .font(.caption.monospaced())
+                                .font(
+                                    .caption
+                                        .monospaced()
+                                )
 
                                 Divider()
 
@@ -221,40 +331,71 @@ struct SyncView: View {
                                     expectedMutationId: \(String(describing: mutation.expectedMutationId))
                                     """
                                 )
-                                .font(.caption.monospaced())
+                                .font(
+                                    .caption
+                                        .monospaced()
+                                )
                             }
-                            .padding(.vertical, 8)
+                            .padding(
+                                .vertical,
+                                8
+                            )
 
                         } label: {
                             HStack {
                                 Text(
-                                    mutation.kind.displayName
+                                    mutation
+                                        .kind
+                                        .displayName
                                 )
 
                                 Spacer()
 
                                 Text(
-                                    mutation.createdAt.formatted(
-                                        date: .abbreviated,
-                                        time: .shortened
-                                    )
+                                    mutation
+                                        .createdAt
+                                        .formatted(
+                                            date:
+                                                .abbreviated,
+                                            time:
+                                                .shortened
+                                        )
                                 )
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(
+                                    .secondary
+                                )
                             }
                         }
                     }
 
                 } header: {
                     switch pending.entity {
-                    case .transaction(let transaction):
-                        Text(transaction.note)
+                    case .transaction(
+                        let transaction
+                    ):
+                        Text(
+                            transaction.note
+                        )
 
-                    case .category(let category):
-                        Text(category.name)
+                    case .category(
+                        let category
+                    ):
+                        Text(
+                            category.name
+                        )
+
+                    case .subcategory(
+                        let subcategory
+                    ):
+                        Text(
+                            subcategory.name
+                        )
                     }
                 }
             }
         }
-        .navigationTitle("Pending modifications")
+        .navigationTitle(
+            "Pending modifications"
+        )
     }
 }

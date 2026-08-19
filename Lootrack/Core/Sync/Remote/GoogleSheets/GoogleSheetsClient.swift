@@ -12,6 +12,7 @@ final class GoogleSheetsClient {
         "description",
         "occurredOn",
         "categoryId",
+        "subcategoryId",
         "createdAt",
         "updatedAt",
         "deletedAt",
@@ -24,6 +25,17 @@ final class GoogleSheetsClient {
         "type",
         "name",
         "note",
+        "createdAt",
+        "updatedAt",
+        "deletedAt",
+        "revision",
+        "lastMutationId",
+    ]
+
+    private static let subcategoryHeaders = [
+        "id",
+        "categoryId",
+        "name",
         "createdAt",
         "updatedAt",
         "deletedAt",
@@ -49,11 +61,15 @@ final class GoogleSheetsClient {
         components.queryItems = [
             URLQueryItem(
                 name: "ranges",
-                value: "Transactions!A1:K"
+                value: "Transactions!A1:L"
             ),
             URLQueryItem(
                 name: "ranges",
                 value: "Categories!A1:I"
+            ),
+            URLQueryItem(
+                name: "ranges",
+                value: "Subcategories!A1:H"
             ),
             URLQueryItem(
                 name: "ranges",
@@ -73,52 +89,114 @@ final class GoogleSheetsClient {
             throw GoogleSheetsClientError.invalidURL
         }
 
-        let response: BatchGetResponse = try await request(
-            url: url,
-            accessToken: accessToken
-        )
-
-        guard response.valueRanges.count == 3 else {
-            throw GoogleSheetsClientError.invalidData(
-                "Google Sheets returned an unexpected number of ranges"
+        let response: BatchGetResponse =
+            try await request(
+                url: url,
+                accessToken:
+                    accessToken
             )
+
+        guard
+            response.valueRanges.count
+                == 4
+        else {
+            throw
+                GoogleSheetsClientError
+                .invalidData(
+                    "Google Sheets returned an unexpected number of ranges"
+                )
         }
 
         let transactionValues =
-            response.valueRanges[0].values ?? []
+            response
+            .valueRanges[0]
+            .values
+            ?? []
 
         let categoryValues =
-            response.valueRanges[1].values ?? []
+            response
+            .valueRanges[1]
+            .values
+            ?? []
+
+        let subcategoryValues =
+            response
+            .valueRanges[2]
+            .values
+            ?? []
 
         let metaValues =
-            response.valueRanges[2].values ?? []
+            response
+            .valueRanges[3]
+            .values
+            ?? []
 
-        try validateMeta(metaValues)
-
-        try validateHeaders(
-            actual: transactionValues.first,
-            expected: Self.transactionHeaders,
-            sheetName: "Transactions"
+        try validateMeta(
+            metaValues
         )
 
         try validateHeaders(
-            actual: categoryValues.first,
-            expected: Self.categoryHeaders,
-            sheetName: "Categories"
+            actual:
+                transactionValues
+                .first,
+            expected:
+                Self.transactionHeaders,
+            sheetName:
+                "Transactions"
         )
 
-        let transactionRecords = try parseTransactions(
-            Array(transactionValues.dropFirst())
+        try validateHeaders(
+            actual:
+                categoryValues
+                .first,
+            expected:
+                Self.categoryHeaders,
+            sheetName:
+                "Categories"
         )
 
-        let categoryRecords = try parseCategories(
-            Array(categoryValues.dropFirst())
+        try validateHeaders(
+            actual:
+                subcategoryValues
+                .first,
+            expected:
+                Self.subcategoryHeaders,
+            sheetName:
+                "Subcategories"
         )
+
+        let transactionRecords =
+            try parseTransactions(
+                Array(
+                    transactionValues
+                        .dropFirst()
+                )
+            )
+
+        let categoryRecords =
+            try parseCategories(
+                Array(
+                    categoryValues
+                        .dropFirst()
+                )
+            )
+
+        let subcategoryRecords =
+            try parseSubcategories(
+                Array(
+                    subcategoryValues
+                        .dropFirst()
+                )
+            )
 
         let records =
-            transactionRecords + categoryRecords
+            transactionRecords
+            + categoryRecords
+            + subcategoryRecords
 
-        try validateUniqueRecords(records)
+        try validateUniqueRecords(
+            records
+        )
 
         return RemoteSyncSnapshot(
             records: records
@@ -128,11 +206,16 @@ final class GoogleSheetsClient {
     // MARK: - Push
 
     func push(
-        _ pushRequest: SyncPushRequest,
+        _ pushRequest:
+            SyncPushRequest,
         accessToken: String,
         spreadsheetId: String
     ) async throws -> SyncPushResult {
-        guard !pushRequest.mutations.isEmpty else {
+        guard
+            !pushRequest
+                .mutations
+                .isEmpty
+        else {
             return SyncPushResult(
                 records: []
             )
@@ -140,55 +223,63 @@ final class GoogleSheetsClient {
 
         /*
          * Re-read immediately before writing.
-         *
-         * The snapshot previously used by SyncReconciler
+         * The snapshot used by SyncReconciler
          * may already be stale.
          */
-        let snapshot = try await readSnapshot(
-            accessToken: accessToken,
-            spreadsheetId: spreadsheetId
-        )
+        let snapshot =
+            try await readSnapshot(
+                accessToken:
+                    accessToken,
+                spreadsheetId:
+                    spreadsheetId
+            )
 
-        var recordsByKey = Dictionary(
-            uniqueKeysWithValues:
-                snapshot.records.map { record in
-                    (
-                        record.id,
-                        record
-                    )
-                }
-        )
+        var recordsByKey =
+            Dictionary(
+                uniqueKeysWithValues:
+                    snapshot.records.map {
+                        record in
+
+                        (
+                            record.id,
+                            record
+                        )
+                    }
+            )
+
+        var affectedRecordsByKey:
+            [SyncEntityKey:
+                RemoteSyncRecord] = [:]
 
         /*
-         * Only the final remote version of each affected
-         * entity needs to be returned.
+         * Mutations are processed in order.
+         * A later mutation may depend on the
+         * remote version produced by the
+         * previous one.
          */
-        var affectedRecordsByKey: [SyncEntityKey: RemoteSyncRecord] = [:]
+        for mutation
+            in pushRequest.mutations
+        {
+            let key =
+                mutation.payload.key
 
-        /*
-         * Mutations must be processed in order.
-         *
-         * A later mutation may expect the remote version
-         * produced by the previous mutation.
-         */
-        for mutation in pushRequest.mutations {
-            let key = mutation.payload.key
             let currentRecord =
                 recordsByKey[key]
 
             /*
-             * Idempotency.
-             *
-             * A previous request may already have reached
-             * Google Sheets even if Lootrack never received
-             * the response.
+             * Idempotency: a previous request
+             * may have reached Google Sheets
+             * even if Lootrack never received
+             * its response.
              */
-            if currentRecord?.mutationId
+            if currentRecord?
+                .mutationId
                 == mutation.id
             {
                 if let currentRecord {
-                    affectedRecordsByKey[key] =
-                        currentRecord
+                    affectedRecordsByKey[
+                        key
+                    ] = currentRecord
                 }
 
                 continue
@@ -197,12 +288,15 @@ final class GoogleSheetsClient {
             guard
                 matchesExpectedRemote(
                     currentRecord,
-                    mutation: mutation
+                    mutation:
+                        mutation
                 )
             else {
                 throw
                     GoogleSheetsClientError
-                    .writeConflict(key)
+                    .writeConflict(
+                        key
+                    )
             }
 
             let nextRecord =
@@ -213,40 +307,69 @@ final class GoogleSheetsClient {
             recordsByKey[key] =
                 nextRecord
 
-            affectedRecordsByKey[key] =
-                nextRecord
+            affectedRecordsByKey[
+                key
+            ] = nextRecord
         }
 
         let transactionRecords =
-            recordsByKey.values
+            recordsByKey
+            .values
             .filter {
                 $0.entityType
                     == .transaction
             }
             .sorted {
                 $0.entityId.uuidString
-                    < $1.entityId.uuidString
+                    < $1.entityId
+                    .uuidString
             }
 
         let categoryRecords =
-            recordsByKey.values
+            recordsByKey
+            .values
             .filter {
                 $0.entityType
                     == .category
             }
             .sorted {
                 $0.entityId.uuidString
-                    < $1.entityId.uuidString
+                    < $1.entityId
+                    .uuidString
+            }
+
+        let subcategoryRecords =
+            recordsByKey
+            .values
+            .filter {
+                $0.entityType
+                    == .subcategory
+            }
+            .sorted {
+                $0.entityId.uuidString
+                    < $1.entityId
+                    .uuidString
             }
 
         let transactionValues =
             try buildTransactionSheetValues(
-                Array(transactionRecords)
+                Array(
+                    transactionRecords
+                )
             )
 
         let categoryValues =
             try buildCategorySheetValues(
-                Array(categoryRecords)
+                Array(
+                    categoryRecords
+                )
+            )
+
+        let subcategoryValues =
+            try buildSubcategorySheetValues(
+                Array(
+                    subcategoryRecords
+                )
             )
 
         guard
@@ -255,63 +378,90 @@ final class GoogleSheetsClient {
                     "\(Self.baseURL)/\(spreadsheetId)/values:batchUpdate"
             )
         else {
-            throw GoogleSheetsClientError.invalidURL
+            throw
+                GoogleSheetsClientError
+                .invalidURL
         }
 
-        let body = BatchUpdateRequest(
-            valueInputOption: "RAW",
-            includeValuesInResponse: false,
-            data: [
-                WriteValueRange(
-                    range:
-                        "Transactions!A1:K\(transactionValues.count)",
-                    majorDimension: "ROWS",
-                    values: transactionValues
-                ),
-                WriteValueRange(
-                    range:
-                        "Categories!A1:I\(categoryValues.count)",
-                    majorDimension: "ROWS",
-                    values: categoryValues
-                ),
-            ]
-        )
+        let body =
+            BatchUpdateRequest(
+                valueInputOption:
+                    "RAW",
+                includeValuesInResponse:
+                    false,
+                data: [
+                    WriteValueRange(
+                        range:
+                            "Transactions!A1:L\(transactionValues.count)",
+                        majorDimension:
+                            "ROWS",
+                        values:
+                            transactionValues
+                    ),
+                    WriteValueRange(
+                        range:
+                            "Categories!A1:I\(categoryValues.count)",
+                        majorDimension:
+                            "ROWS",
+                        values:
+                            categoryValues
+                    ),
+                    WriteValueRange(
+                        range:
+                            "Subcategories!A1:H\(subcategoryValues.count)",
+                        majorDimension:
+                            "ROWS",
+                        values:
+                            subcategoryValues
+                    ),
+                ]
+            )
 
         let encodedBody =
-            try JSONEncoder().encode(
-                body
-            )
+            try JSONEncoder()
+            .encode(body)
 
         let _: BatchUpdateResponse =
             try await request(
                 url: url,
-                accessToken: accessToken,
+                accessToken:
+                    accessToken,
                 method: "POST",
-                body: encodedBody
+                body:
+                    encodedBody
             )
 
         return SyncPushResult(
-            records: Array(
-                affectedRecordsByKey.values
-            )
+            records:
+                Array(
+                    affectedRecordsByKey
+                        .values
+                )
         )
     }
 
     // MARK: - Mutation handling
 
     private func matchesExpectedRemote(
-        _ current: RemoteSyncRecord?,
+        _ current:
+            RemoteSyncRecord?,
         mutation: MutationDTO
     ) -> Bool {
         guard let current else {
-            return mutation.expectedRevision == nil
-                && mutation.expectedMutationId == nil
+            return mutation
+                .expectedRevision
+                == nil
+                && mutation
+                    .expectedMutationId
+                    == nil
         }
 
         return current.revision
-            == mutation.expectedRevision
+            == mutation
+            .expectedRevision
             && current.mutationId
-                == mutation.expectedMutationId
+                == mutation
+                .expectedMutationId
     }
 
     private func recordFromMutation(
@@ -320,18 +470,30 @@ final class GoogleSheetsClient {
         let deletedAt: Date?
 
         switch mutation.payload {
-        case .transaction(let transaction):
+        case .transaction(
+            let transaction
+        ):
             deletedAt =
                 transaction.deletedAt
 
-        case .category(let category):
+        case .category(
+            let category
+        ):
             deletedAt =
                 category.deletedAt
+
+        case .subcategory(
+            let subcategory
+        ):
+            deletedAt =
+                subcategory.deletedAt
         }
 
         switch mutation.operation {
         case .upsert:
-            guard deletedAt == nil else {
+            guard
+                deletedAt == nil
+            else {
                 throw
                     GoogleSheetsClientError
                     .invalidData(
@@ -343,7 +505,9 @@ final class GoogleSheetsClient {
             }
 
         case .delete:
-            guard deletedAt != nil else {
+            guard
+                deletedAt != nil
+            else {
                 throw
                     GoogleSheetsClientError
                     .invalidData(
@@ -356,23 +520,30 @@ final class GoogleSheetsClient {
         }
 
         return RemoteSyncRecord(
-            operation: mutation.operation,
-            revision: (mutation.expectedRevision ?? 0)
-                + 1,
-            mutationId: mutation.id,
-            payload: mutation.payload
+            operation:
+                mutation.operation,
+            revision: (mutation
+                .expectedRevision
+                ?? 0) + 1,
+            mutationId:
+                mutation.id,
+            payload:
+                mutation.payload
         )
     }
 
     // MARK: - Sheet building
 
     private func buildTransactionSheetValues(
-        _ records: [RemoteSyncRecord]
+        _ records:
+            [RemoteSyncRecord]
     ) throws -> [[Cell]] {
         var values: [[Cell]] = [
-            Self.transactionHeaders.map {
-                .string($0)
-            }
+            Self
+                .transactionHeaders
+                .map {
+                    .string($0)
+                }
         ]
 
         for record in records {
@@ -395,11 +566,13 @@ final class GoogleSheetsClient {
                         .lowercased()
                 ),
                 .string(
-                    transaction.type.rawValue
+                    transaction.type
+                        .rawValue
                 ),
                 .number(
                     Double(
-                        transaction.amountInCents
+                        transaction
+                            .amountInCents
                     )
                 ),
                 .string(
@@ -407,42 +580,62 @@ final class GoogleSheetsClient {
                 ),
                 .string(
                     formatDateOnly(
-                        transaction.occurredOn
+                        transaction
+                            .occurredOn
                     )
                 ),
                 .string(
-                    transaction.categoryId?
+                    transaction
+                        .categoryId?
                         .uuidString
                         .lowercased()
                         ?? ""
                 ),
                 .string(
-                    Self.iso8601Fractional
+                    transaction
+                        .subcategoryId?
+                        .uuidString
+                        .lowercased()
+                        ?? ""
+                ),
+                .string(
+                    Self
+                        .iso8601Fractional
                         .string(
                             from:
-                                transaction.createdAt
+                                transaction
+                                .createdAt
                         )
                 ),
                 .string(
-                    Self.iso8601Fractional
+                    Self
+                        .iso8601Fractional
                         .string(
                             from:
-                                transaction.updatedAt
+                                transaction
+                                .updatedAt
                         )
                 ),
                 .string(
-                    transaction.deletedAt.map {
-                        Self.iso8601Fractional
-                            .string(
-                                from: $0
-                            )
-                    } ?? ""
+                    transaction
+                        .deletedAt
+                        .map {
+                            Self
+                                .iso8601Fractional
+                                .string(
+                                    from: $0
+                                )
+                        }
+                        ?? ""
                 ),
                 .number(
-                    Double(record.revision)
+                    Double(
+                        record.revision
+                    )
                 ),
                 .string(
-                    record.mutationId
+                    record
+                        .mutationId
                         .uuidString
                         .lowercased()
                 ),
@@ -453,12 +646,15 @@ final class GoogleSheetsClient {
     }
 
     private func buildCategorySheetValues(
-        _ records: [RemoteSyncRecord]
+        _ records:
+            [RemoteSyncRecord]
     ) throws -> [[Cell]] {
         var values: [[Cell]] = [
-            Self.categoryHeaders.map {
-                .string($0)
-            }
+            Self
+                .categoryHeaders
+                .map {
+                    .string($0)
+                }
         ]
 
         for record in records {
@@ -481,7 +677,8 @@ final class GoogleSheetsClient {
                         .lowercased()
                 ),
                 .string(
-                    category.type.rawValue
+                    category.type
+                        .rawValue
                 ),
                 .string(
                     category.name
@@ -490,28 +687,130 @@ final class GoogleSheetsClient {
                     category.note
                 ),
                 .string(
-                    Self.iso8601Fractional
+                    Self
+                        .iso8601Fractional
                         .string(
-                            from: category.createdAt
+                            from:
+                                category
+                                .createdAt
                         )
                 ),
                 .string(
-                    Self.iso8601Fractional
+                    Self
+                        .iso8601Fractional
                         .string(
-                            from: category.updatedAt
+                            from:
+                                category
+                                .updatedAt
                         )
                 ),
                 .string(
-                    category.deletedAt.map {
-                        Self.iso8601Fractional
-                            .string(from: $0)
-                    } ?? ""
+                    category
+                        .deletedAt
+                        .map {
+                            Self
+                                .iso8601Fractional
+                                .string(
+                                    from: $0
+                                )
+                        }
+                        ?? ""
                 ),
                 .number(
-                    Double(record.revision)
+                    Double(
+                        record.revision
+                    )
                 ),
                 .string(
-                    record.mutationId
+                    record
+                        .mutationId
+                        .uuidString
+                        .lowercased()
+                ),
+            ])
+        }
+
+        return values
+    }
+
+    private func buildSubcategorySheetValues(
+        _ records:
+            [RemoteSyncRecord]
+    ) throws -> [[Cell]] {
+        var values: [[Cell]] = [
+            Self
+                .subcategoryHeaders
+                .map {
+                    .string($0)
+                }
+        ]
+
+        for record in records {
+            guard
+                case .subcategory(
+                    let subcategory
+                ) = record.payload
+            else {
+                throw
+                    GoogleSheetsClientError
+                    .invalidData(
+                        "Expected subcategory payload"
+                    )
+            }
+
+            values.append([
+                .string(
+                    subcategory.id
+                        .uuidString
+                        .lowercased()
+                ),
+                .string(
+                    subcategory
+                        .categoryId
+                        .uuidString
+                        .lowercased()
+                ),
+                .string(
+                    subcategory.name
+                ),
+                .string(
+                    Self
+                        .iso8601Fractional
+                        .string(
+                            from:
+                                subcategory
+                                .createdAt
+                        )
+                ),
+                .string(
+                    Self
+                        .iso8601Fractional
+                        .string(
+                            from:
+                                subcategory
+                                .updatedAt
+                        )
+                ),
+                .string(
+                    subcategory
+                        .deletedAt
+                        .map {
+                            Self
+                                .iso8601Fractional
+                                .string(
+                                    from: $0
+                                )
+                        }
+                        ?? ""
+                ),
+                .number(
+                    Double(
+                        record.revision
+                    )
+                ),
+                .string(
+                    record
+                        .mutationId
                         .uuidString
                         .lowercased()
                 ),
@@ -526,267 +825,463 @@ final class GoogleSheetsClient {
     private func parseTransactions(
         _ rows: [[Cell]]
     ) throws -> [RemoteSyncRecord] {
-        try rows.enumerated().compactMap {
-            index,
-            row in
+        try rows
+            .enumerated()
+            .compactMap {
+                index,
+                row in
 
-            if isBlank(row) {
-                return nil
-            }
+                if isBlank(row) {
+                    return nil
+                }
 
-            let context =
-                "Transactions row \(index + 2)"
+                let context =
+                    "Transactions row \(index + 2)"
 
-            let id = try readUUID(
-                row,
-                index: 0,
-                context: context,
-                field: "id"
-            )
-
-            let typeString =
-                try readRequiredString(
-                    row,
-                    index: 1,
-                    context: context,
-                    field: "type"
-                )
-
-            guard
-                let type =
-                    TransactionType(
-                        rawValue: typeString
+                let id =
+                    try readUUID(
+                        row,
+                        index: 0,
+                        context:
+                            context,
+                        field: "id"
                     )
-            else {
-                throw
-                    GoogleSheetsClientError
-                    .invalidData(
-                        "\(context): invalid transaction type"
+
+                let typeString =
+                    try readRequiredString(
+                        row,
+                        index: 1,
+                        context:
+                            context,
+                        field: "type"
                     )
+
+                guard
+                    let type =
+                        TransactionType(
+                            rawValue:
+                                typeString
+                        )
+                else {
+                    throw
+                        GoogleSheetsClientError
+                        .invalidData(
+                            "\(context): invalid transaction type"
+                        )
+                }
+
+                let amountInCents =
+                    try readInteger(
+                        row,
+                        index: 2,
+                        context:
+                            context,
+                        field:
+                            "amountInCents",
+                        minimum: 0
+                    )
+
+                let note =
+                    try readStringOrEmpty(
+                        row,
+                        index: 3,
+                        context:
+                            context,
+                        field:
+                            "description"
+                    )
+
+                let occurredOn =
+                    try readDate(
+                        row,
+                        index: 4,
+                        context:
+                            context,
+                        field:
+                            "occurredOn"
+                    )
+
+                let categoryId =
+                    try readOptionalUUID(
+                        row,
+                        index: 5,
+                        context:
+                            context,
+                        field:
+                            "categoryId"
+                    )
+
+                let subcategoryId =
+                    try readOptionalUUID(
+                        row,
+                        index: 6,
+                        context:
+                            context,
+                        field:
+                            "subcategoryId"
+                    )
+
+                let createdAt =
+                    try readDate(
+                        row,
+                        index: 7,
+                        context:
+                            context,
+                        field:
+                            "createdAt"
+                    )
+
+                let updatedAt =
+                    try readDate(
+                        row,
+                        index: 8,
+                        context:
+                            context,
+                        field:
+                            "updatedAt"
+                    )
+
+                let deletedAt =
+                    try readOptionalDate(
+                        row,
+                        index: 9,
+                        context:
+                            context,
+                        field:
+                            "deletedAt"
+                    )
+
+                let revision =
+                    try readInteger(
+                        row,
+                        index: 10,
+                        context:
+                            context,
+                        field:
+                            "revision",
+                        minimum: 1
+                    )
+
+                let mutationId =
+                    try readUUID(
+                        row,
+                        index: 11,
+                        context:
+                            context,
+                        field:
+                            "lastMutationId"
+                    )
+
+                let snapshot =
+                    TransactionDTO(
+                        id: id,
+                        createdAt:
+                            createdAt,
+                        updatedAt:
+                            updatedAt,
+                        deletedAt:
+                            deletedAt,
+                        type: type,
+                        amountInCents:
+                            amountInCents,
+                        note: note,
+                        occurredOn:
+                            occurredOn,
+                        categoryId:
+                            categoryId,
+                        subcategoryId:
+                            subcategoryId
+                    )
+
+                return RemoteSyncRecord(
+                    operation:
+                        deletedAt == nil
+                        ? .upsert
+                        : .delete,
+                    revision:
+                        revision,
+                    mutationId:
+                        mutationId,
+                    payload:
+                        .transaction(
+                            snapshot
+                        )
+                )
             }
-
-            let amountInCents =
-                try readInteger(
-                    row,
-                    index: 2,
-                    context: context,
-                    field: "amountInCents",
-                    minimum: 0
-                )
-
-            let note =
-                try readStringOrEmpty(
-                    row,
-                    index: 3,
-                    context: context,
-                    field: "description"
-                )
-
-            let occurredOn =
-                try readDate(
-                    row,
-                    index: 4,
-                    context: context,
-                    field: "occurredOn"
-                )
-
-            let categoryId =
-                try readOptionalUUID(
-                    row,
-                    index: 5,
-                    context: context,
-                    field: "categoryId"
-                )
-
-            let createdAt =
-                try readDate(
-                    row,
-                    index: 6,
-                    context: context,
-                    field: "createdAt"
-                )
-
-            let updatedAt =
-                try readDate(
-                    row,
-                    index: 7,
-                    context: context,
-                    field: "updatedAt"
-                )
-
-            let deletedAt =
-                try readOptionalDate(
-                    row,
-                    index: 8,
-                    context: context,
-                    field: "deletedAt"
-                )
-
-            let revision =
-                try readInteger(
-                    row,
-                    index: 9,
-                    context: context,
-                    field: "revision",
-                    minimum: 1
-                )
-
-            let mutationId =
-                try readUUID(
-                    row,
-                    index: 10,
-                    context: context,
-                    field: "lastMutationId"
-                )
-
-            let snapshot =
-                TransactionDTO(
-                    id: id,
-                    createdAt: createdAt,
-                    updatedAt: updatedAt,
-                    deletedAt: deletedAt,
-                    type: type,
-                    amountInCents:
-                        amountInCents,
-                    note: note,
-                    occurredOn: occurredOn,
-                    categoryId: categoryId
-                )
-
-            return RemoteSyncRecord(
-                operation:
-                    deletedAt == nil
-                    ? .upsert
-                    : .delete,
-                revision: revision,
-                mutationId: mutationId,
-                payload:
-                    .transaction(snapshot)
-            )
-        }
     }
 
     private func parseCategories(
         _ rows: [[Cell]]
     ) throws -> [RemoteSyncRecord] {
-        try rows.enumerated().compactMap {
-            index,
-            row in
+        try rows
+            .enumerated()
+            .compactMap {
+                index,
+                row in
 
-            if isBlank(row) {
-                return nil
-            }
+                if isBlank(row) {
+                    return nil
+                }
 
-            let context =
-                "Categories row \(index + 2)"
+                let context =
+                    "Categories row \(index + 2)"
 
-            let id = try readUUID(
-                row,
-                index: 0,
-                context: context,
-                field: "id"
-            )
-
-            let typeString =
-                try readRequiredString(
-                    row,
-                    index: 1,
-                    context: context,
-                    field: "type"
-                )
-
-            guard
-                let type =
-                    TransactionType(
-                        rawValue: typeString
+                let id =
+                    try readUUID(
+                        row,
+                        index: 0,
+                        context:
+                            context,
+                        field: "id"
                     )
-            else {
-                throw
-                    GoogleSheetsClientError
-                    .invalidData(
-                        "\(context): invalid category type"
+
+                let typeString =
+                    try readRequiredString(
+                        row,
+                        index: 1,
+                        context:
+                            context,
+                        field: "type"
                     )
+
+                guard
+                    let type =
+                        TransactionType(
+                            rawValue:
+                                typeString
+                        )
+                else {
+                    throw
+                        GoogleSheetsClientError
+                        .invalidData(
+                            "\(context): invalid category type"
+                        )
+                }
+
+                let name =
+                    try readRequiredString(
+                        row,
+                        index: 2,
+                        context:
+                            context,
+                        field: "name"
+                    )
+
+                let note =
+                    try readStringOrEmpty(
+                        row,
+                        index: 3,
+                        context:
+                            context,
+                        field: "note"
+                    )
+
+                let createdAt =
+                    try readDate(
+                        row,
+                        index: 4,
+                        context:
+                            context,
+                        field:
+                            "createdAt"
+                    )
+
+                let updatedAt =
+                    try readDate(
+                        row,
+                        index: 5,
+                        context:
+                            context,
+                        field:
+                            "updatedAt"
+                    )
+
+                let deletedAt =
+                    try readOptionalDate(
+                        row,
+                        index: 6,
+                        context:
+                            context,
+                        field:
+                            "deletedAt"
+                    )
+
+                let revision =
+                    try readInteger(
+                        row,
+                        index: 7,
+                        context:
+                            context,
+                        field:
+                            "revision",
+                        minimum: 1
+                    )
+
+                let mutationId =
+                    try readUUID(
+                        row,
+                        index: 8,
+                        context:
+                            context,
+                        field:
+                            "lastMutationId"
+                    )
+
+                let snapshot =
+                    CategoryDTO(
+                        id: id,
+                        createdAt:
+                            createdAt,
+                        updatedAt:
+                            updatedAt,
+                        deletedAt:
+                            deletedAt,
+                        type: type,
+                        name: name,
+                        note: note
+                    )
+
+                return RemoteSyncRecord(
+                    operation:
+                        deletedAt == nil
+                        ? .upsert
+                        : .delete,
+                    revision:
+                        revision,
+                    mutationId:
+                        mutationId,
+                    payload:
+                        .category(
+                            snapshot
+                        )
+                )
             }
+    }
 
-            let name =
-                try readRequiredString(
-                    row,
-                    index: 2,
-                    context: context,
-                    field: "name"
+    private func parseSubcategories(
+        _ rows: [[Cell]]
+    ) throws -> [RemoteSyncRecord] {
+        try rows
+            .enumerated()
+            .compactMap {
+                index,
+                row in
+
+                if isBlank(row) {
+                    return nil
+                }
+
+                let context =
+                    "Subcategories row \(index + 2)"
+
+                let id =
+                    try readUUID(
+                        row,
+                        index: 0,
+                        context:
+                            context,
+                        field: "id"
+                    )
+
+                let categoryId =
+                    try readUUID(
+                        row,
+                        index: 1,
+                        context:
+                            context,
+                        field:
+                            "categoryId"
+                    )
+
+                let name =
+                    try readRequiredString(
+                        row,
+                        index: 2,
+                        context:
+                            context,
+                        field: "name"
+                    )
+
+                let createdAt =
+                    try readDate(
+                        row,
+                        index: 3,
+                        context:
+                            context,
+                        field:
+                            "createdAt"
+                    )
+
+                let updatedAt =
+                    try readDate(
+                        row,
+                        index: 4,
+                        context:
+                            context,
+                        field:
+                            "updatedAt"
+                    )
+
+                let deletedAt =
+                    try readOptionalDate(
+                        row,
+                        index: 5,
+                        context:
+                            context,
+                        field:
+                            "deletedAt"
+                    )
+
+                let revision =
+                    try readInteger(
+                        row,
+                        index: 6,
+                        context:
+                            context,
+                        field:
+                            "revision",
+                        minimum: 1
+                    )
+
+                let mutationId =
+                    try readUUID(
+                        row,
+                        index: 7,
+                        context:
+                            context,
+                        field:
+                            "lastMutationId"
+                    )
+
+                let snapshot =
+                    SubcategoryDTO(
+                        id: id,
+                        createdAt:
+                            createdAt,
+                        updatedAt:
+                            updatedAt,
+                        deletedAt:
+                            deletedAt,
+                        categoryId:
+                            categoryId,
+                        name: name
+                    )
+
+                return RemoteSyncRecord(
+                    operation:
+                        deletedAt == nil
+                        ? .upsert
+                        : .delete,
+                    revision:
+                        revision,
+                    mutationId:
+                        mutationId,
+                    payload:
+                        .subcategory(
+                            snapshot
+                        )
                 )
-
-            let note =
-                try readStringOrEmpty(
-                    row,
-                    index: 3,
-                    context: context,
-                    field: "note"
-                )
-
-            let createdAt =
-                try readDate(
-                    row,
-                    index: 4,
-                    context: context,
-                    field: "createdAt"
-                )
-
-            let updatedAt =
-                try readDate(
-                    row,
-                    index: 5,
-                    context: context,
-                    field: "updatedAt"
-                )
-
-            let deletedAt =
-                try readOptionalDate(
-                    row,
-                    index: 6,
-                    context: context,
-                    field: "deletedAt"
-                )
-
-            let revision =
-                try readInteger(
-                    row,
-                    index: 7,
-                    context: context,
-                    field: "revision",
-                    minimum: 1
-                )
-
-            let mutationId =
-                try readUUID(
-                    row,
-                    index: 8,
-                    context: context,
-                    field: "lastMutationId"
-                )
-
-            let snapshot =
-                CategoryDTO(
-                    id: id,
-                    createdAt: createdAt,
-                    updatedAt: updatedAt,
-                    deletedAt: deletedAt,
-                    type: type,
-                    name: name,
-                    note: note
-                )
-
-            return RemoteSyncRecord(
-                operation:
-                    deletedAt == nil
-                    ? .upsert
-                    : .delete,
-                revision: revision,
-                mutationId: mutationId,
-                payload:
-                    .category(snapshot)
-            )
-        }
+            }
     }
 
     // MARK: - Spreadsheet validation
@@ -795,26 +1290,34 @@ final class GoogleSheetsClient {
         _ rows: [[Cell]]
     ) throws {
         try validateHeaders(
-            actual: rows.first,
+            actual:
+                rows.first,
             expected: [
                 "key",
                 "value",
             ],
-            sheetName: "_Meta"
+            sheetName:
+                "_Meta"
         )
 
         var metadata: [String: String] = [:]
 
-        for row in rows.dropFirst() {
-            guard row.count >= 2 else {
+        for row
+            in rows.dropFirst()
+        {
+            guard
+                row.count >= 2
+            else {
                 continue
             }
 
             guard
-                case .string(let key) =
-                    row[0],
-                case .string(let value) =
-                    row[1]
+                case .string(
+                    let key
+                ) = row[0],
+                case .string(
+                    let value
+                ) = row[1]
             else {
                 continue
             }
@@ -834,8 +1337,9 @@ final class GoogleSheetsClient {
         }
 
         guard
-            metadata["schemaVersion"]
-                == "2"
+            metadata[
+                "schemaVersion"
+            ] == "3"
         else {
             throw
                 GoogleSheetsClientError
@@ -862,7 +1366,9 @@ final class GoogleSheetsClient {
         }
 
         let actualHeaders =
-            try actual.map { cell in
+            try actual.map {
+                cell in
+
                 guard
                     case .string(
                         let value
@@ -890,7 +1396,8 @@ final class GoogleSheetsClient {
     }
 
     private func validateUniqueRecords(
-        _ records: [RemoteSyncRecord]
+        _ records:
+            [RemoteSyncRecord]
     ) throws {
         var keys =
             Set<SyncEntityKey>()
@@ -927,12 +1434,15 @@ final class GoogleSheetsClient {
         }
 
         guard
-            case .string(let value) =
-                row[index],
-            !value.trimmingCharacters(
-                in:
-                    .whitespacesAndNewlines
-            ).isEmpty
+            case .string(
+                let value
+            ) = row[index],
+            !value
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+                .isEmpty
         else {
             throw
                 GoogleSheetsClientError
@@ -1001,8 +1511,9 @@ final class GoogleSheetsClient {
     ) throws -> Int {
         guard
             index < row.count,
-            case .number(let value) =
-                row[index],
+            case .number(
+                let value
+            ) = row[index],
             let integer =
                 Int(exactly: value),
             integer >= minimum
@@ -1133,25 +1644,25 @@ final class GoogleSheetsClient {
         field: String
     ) throws -> Date {
         if let date =
-            Self.iso8601Fractional.date(
-                from: value
-            )
+            Self
+            .iso8601Fractional
+            .date(from: value)
         {
             return date
         }
 
         if let date =
-            Self.iso8601.date(
-                from: value
-            )
+            Self
+            .iso8601
+            .date(from: value)
         {
             return date
         }
 
         if let date =
-            Self.dateOnly.date(
-                from: value
-            )
+            Self
+            .dateOnly
+            .date(from: value)
         {
             return date
         }
@@ -1167,7 +1678,9 @@ final class GoogleSheetsClient {
         _ row: [Cell]
     ) -> Bool {
         row.isEmpty
-            || row.allSatisfy { cell in
+            || row.allSatisfy {
+                cell in
+
                 if case .string(
                     let value
                 ) = cell {
@@ -1184,7 +1697,8 @@ final class GoogleSheetsClient {
         _ date: Date
     ) -> String {
         let components =
-            Calendar.current.dateComponents(
+            Calendar.current
+            .dateComponents(
                 [
                     .year,
                     .month,
@@ -1194,13 +1708,18 @@ final class GoogleSheetsClient {
             )
 
         guard
-            let year = components.year,
-            let month = components.month,
-            let day = components.day
+            let year =
+                components.year,
+            let month =
+                components.month,
+            let day =
+                components.day
         else {
-            return Self.dateOnly.string(
-                from: date
-            )
+            return Self
+                .dateOnly
+                .string(
+                    from: date
+                )
         }
 
         return String(
@@ -1214,7 +1733,9 @@ final class GoogleSheetsClient {
 
     // MARK: - HTTP
 
-    private func request<T: Decodable>(
+    private func request<
+        T: Decodable
+    >(
         url: URL,
         accessToken: String,
         method: String = "GET",
@@ -1223,8 +1744,11 @@ final class GoogleSheetsClient {
         var request =
             URLRequest(url: url)
 
-        request.httpMethod = method
-        request.httpBody = body
+        request.httpMethod =
+            method
+
+        request.httpBody =
+            body
 
         request.setValue(
             "Bearer \(accessToken)",
@@ -1246,8 +1770,13 @@ final class GoogleSheetsClient {
             )
         }
 
-        let (data, response) =
-            try await URLSession.shared.data(
+        let (
+            data,
+            response
+        ) =
+            try await URLSession
+            .shared
+            .data(
                 for: request
             )
 
@@ -1256,18 +1785,23 @@ final class GoogleSheetsClient {
                 response
                 as? HTTPURLResponse
         else {
-            throw GoogleSheetsClientError
+            throw
+                GoogleSheetsClientError
                 .invalidResponse
         }
 
         guard
-            (200..<300).contains(
-                response.statusCode
-            )
+            (200..<300)
+                .contains(
+                    response
+                        .statusCode
+                )
         else {
             let errorResponse =
-                try? JSONDecoder().decode(
-                    APIErrorResponse.self,
+                try? JSONDecoder()
+                .decode(
+                    APIErrorResponse
+                        .self,
                     from: data
                 )
 
@@ -1275,7 +1809,8 @@ final class GoogleSheetsClient {
                 GoogleSheetsClientError
                 .apiError(
                     status:
-                        response.statusCode,
+                        response
+                        .statusCode,
                     message:
                         errorResponse?
                         .error?
@@ -1283,10 +1818,11 @@ final class GoogleSheetsClient {
                 )
         }
 
-        return try JSONDecoder().decode(
-            T.self,
-            from: data
-        )
+        return try JSONDecoder()
+            .decode(
+                T.self,
+                from: data
+            )
     }
 
     // MARK: - API models
@@ -1304,10 +1840,12 @@ final class GoogleSheetsClient {
         }
 
         init(
-            from decoder: Decoder
+            from decoder:
+                Decoder
         ) throws {
             let container =
-                try decoder.container(
+                try decoder
+                .container(
                     keyedBy:
                         CodingKeys.self
                 )
@@ -1333,7 +1871,9 @@ final class GoogleSheetsClient {
         Encodable
     {
         let valueInputOption: String
+
         let includeValuesInResponse: Bool
+
         let data: [WriteValueRange]
     }
 
@@ -1373,36 +1913,43 @@ final class GoogleSheetsClient {
         case bool(Bool)
 
         init(
-            from decoder: Decoder
+            from decoder:
+                Decoder
         ) throws {
             let container =
                 try decoder
                 .singleValueContainer()
 
             if let value =
-                try? container.decode(
+                try? container
+                .decode(
                     String.self
                 )
             {
-                self = .string(value)
+                self =
+                    .string(value)
                 return
             }
 
             if let value =
-                try? container.decode(
+                try? container
+                .decode(
                     Bool.self
                 )
             {
-                self = .bool(value)
+                self =
+                    .bool(value)
                 return
             }
 
             if let value =
-                try? container.decode(
+                try? container
+                .decode(
                     Double.self
                 )
             {
-                self = .number(value)
+                self =
+                    .number(value)
                 return
             }
 
@@ -1410,13 +1957,14 @@ final class GoogleSheetsClient {
                 DecodingError
                 .typeMismatch(
                     Cell.self,
-                    DecodingError.Context(
-                        codingPath:
-                            decoder
-                            .codingPath,
-                        debugDescription:
-                            "Unsupported Google Sheets cell"
-                    )
+                    DecodingError
+                        .Context(
+                            codingPath:
+                                decoder
+                                .codingPath,
+                            debugDescription:
+                                "Unsupported Google Sheets cell"
+                        )
                 )
         }
 
@@ -1429,19 +1977,16 @@ final class GoogleSheetsClient {
 
             switch self {
             case .string(let value):
-                try container.encode(
-                    value
-                )
+                try container
+                    .encode(value)
 
             case .number(let value):
-                try container.encode(
-                    value
-                )
+                try container
+                    .encode(value)
 
             case .bool(let value):
-                try container.encode(
-                    value
-                )
+                try container
+                    .encode(value)
             }
         }
     }

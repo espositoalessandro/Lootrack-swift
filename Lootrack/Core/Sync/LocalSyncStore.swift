@@ -1,7 +1,10 @@
 import Foundation
 import SwiftData
 
-nonisolated struct SyncMetadata: Codable, Equatable {
+nonisolated struct SyncMetadata:
+    Codable,
+    Equatable
+{
     let revision: Int
     let lastMutationId: UUID?
 }
@@ -9,6 +12,7 @@ nonisolated struct SyncMetadata: Codable, Equatable {
 nonisolated struct LocalSyncSnapshot {
     let transactions: [TransactionDTO]
     let categories: [CategoryDTO]
+    let subcategories: [SubcategoryDTO]
     let metadata: [SyncEntityKey: SyncMetadata]
     let mutations: [MutationDTO]
 }
@@ -18,10 +22,20 @@ nonisolated struct LocalSyncChanges {
     let mutationIdsToAcknowledge: [UUID]
 }
 
-nonisolated enum LocalSyncStoreError: Error {
-    case duplicateRemoteRecord(SyncEntityKey)
-    case invalidRemoteUpsert(SyncEntityKey)
-    case invalidRemoteDelete(SyncEntityKey)
+nonisolated enum LocalSyncStoreError:
+    Error
+{
+    case duplicateRemoteRecord(
+        SyncEntityKey
+    )
+
+    case invalidRemoteUpsert(
+        SyncEntityKey
+    )
+
+    case invalidRemoteDelete(
+        SyncEntityKey
+    )
 }
 
 @MainActor
@@ -29,177 +43,316 @@ final class LocalSyncStore {
     private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+        self.modelContext =
+            modelContext
     }
 
     func getSnapshot() throws -> LocalSyncSnapshot {
-        let transactions = try modelContext.fetch(
-            FetchDescriptor<Transaction>()
-        )
+        let transactions =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    Transaction
+                >()
+            )
 
-        let categories = try modelContext.fetch(
-            FetchDescriptor<Category>()
-        )
+        let categories =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    Category
+                >()
+            )
 
-        let states = try modelContext.fetch(
-            FetchDescriptor<EntitySyncState>()
-        )
+        let subcategories =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    Subcategory
+                >()
+            )
 
-        let mutations = try modelContext.fetch(
-            MutationQueries.pendingByOldest
-        )
+        let states =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    EntitySyncState
+                >()
+            )
+
+        let mutations =
+            try modelContext.fetch(
+                MutationQueries
+                    .pendingByOldest
+            )
 
         let metadata = Dictionary(
-            uniqueKeysWithValues: states.map { state in
-                (
-                    state.key,
-                    SyncMetadata(
-                        revision: state.revision,
-                        lastMutationId: state.lastMutationId
+            uniqueKeysWithValues:
+                states.map { state in
+                    (
+                        state.key,
+                        SyncMetadata(
+                            revision:
+                                state.revision,
+                            lastMutationId:
+                                state
+                                .lastMutationId
+                        )
                     )
-                )
-            }
+                }
         )
 
         return LocalSyncSnapshot(
-            transactions: transactions.map(TransactionDTO.init),
-            categories: categories.map(CategoryDTO.init),
+            transactions:
+                transactions.map(
+                    TransactionDTO.init
+                ),
+            categories:
+                categories.map(
+                    CategoryDTO.init
+                ),
+            subcategories:
+                subcategories.map(
+                    SubcategoryDTO.init
+                ),
             metadata: metadata,
-            mutations: mutations.map(MutationDTO.init)
+            mutations:
+                mutations.map(
+                    MutationDTO.init
+                )
         )
     }
 
-    func applyChanges(
-        _ changes: LocalSyncChanges
-    ) throws {
-        let mutations = try modelContext.fetch(
-            MutationQueries.pendingByOldest
-        )
+    func applyChanges(_ changes: LocalSyncChanges) throws {
+        let mutations =
+            try modelContext.fetch(
+                MutationQueries
+                    .pendingByOldest
+            )
 
-        let mutationIdsToAcknowledge = Set(
-            changes.mutationIdsToAcknowledge
-        )
+        let mutationIdsToAcknowledge =
+            Set(
+                changes
+                    .mutationIdsToAcknowledge
+            )
 
         /*
-         * Determine which mutations will still exist after
-         * acknowledgement.
+         * Determine which mutations will still
+         * exist after acknowledgement.
          *
-         * This includes mutations created while the network
-         * synchronization was in progress.
+         * This includes mutations created while
+         * the network synchronization was in
+         * progress.
          */
-        let remainingMutations = mutations.filter { mutation in
-            !mutationIdsToAcknowledge.contains(mutation.id)
-        }
+        let remainingMutations =
+            mutations.filter {
+                mutation in
 
-        let pendingEntityKeys = Set(
-            remainingMutations.map { mutation in
-                mutation.payload.key
+                !mutationIdsToAcknowledge
+                    .contains(
+                        mutation.id
+                    )
             }
-        )
+
+        let pendingEntityKeys =
+            Set(
+                remainingMutations.map {
+                    mutation in
+
+                    mutation.payload.key
+                }
+            )
 
         /*
-         * Validate the whole remote response before changing
-         * persistent state.
+         * Validate the whole remote response
+         * before changing persistent state.
          */
-        let remoteRecordsToApply = try buildApplyPlan(
-            remoteRecords: changes.remoteRecords,
-            pendingEntityKeys: pendingEntityKeys
-        )
+        let remoteRecordsToApply =
+            try buildApplyPlan(
+                remoteRecords:
+                    changes
+                    .remoteRecords,
+                pendingEntityKeys:
+                    pendingEntityKeys
+            )
 
-        let transactions = try modelContext.fetch(
-            FetchDescriptor<Transaction>()
-        )
+        let transactions =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    Transaction
+                >()
+            )
 
-        let categories = try modelContext.fetch(
-            FetchDescriptor<Category>()
-        )
+        let categories =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    Category
+                >()
+            )
 
-        let states = try modelContext.fetch(
-            FetchDescriptor<EntitySyncState>()
-        )
+        let subcategories =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    Subcategory
+                >()
+            )
 
-        var transactionsById = Dictionary(
-            uniqueKeysWithValues: transactions.map { transaction in
-                (transaction.id, transaction)
-            }
-        )
+        let states =
+            try modelContext.fetch(
+                FetchDescriptor<
+                    EntitySyncState
+                >()
+            )
 
-        var categoriesById = Dictionary(
-            uniqueKeysWithValues: categories.map { category in
-                (category.id, category)
-            }
-        )
+        var transactionsById =
+            Dictionary(
+                uniqueKeysWithValues:
+                    transactions.map {
+                        transaction in
 
-        var statesByKey = Dictionary(
-            uniqueKeysWithValues: states.map { state in
-                (state.key, state)
-            }
-        )
+                        (
+                            transaction.id,
+                            transaction
+                        )
+                    }
+            )
+
+        var categoriesById =
+            Dictionary(
+                uniqueKeysWithValues:
+                    categories.map {
+                        category in
+
+                        (
+                            category.id,
+                            category
+                        )
+                    }
+            )
+
+        var subcategoriesById =
+            Dictionary(
+                uniqueKeysWithValues:
+                    subcategories.map {
+                        subcategory in
+
+                        (
+                            subcategory.id,
+                            subcategory
+                        )
+                    }
+            )
+
+        var statesByKey =
+            Dictionary(
+                uniqueKeysWithValues:
+                    states.map { state in
+                        (
+                            state.key,
+                            state
+                        )
+                    }
+            )
 
         try modelContext.transaction {
             /*
-             * Remove acknowledged mutations that still exist.
+             * Remove acknowledged mutations
+             * that still exist.
              */
             for mutation in mutations
-            where mutationIdsToAcknowledge.contains(mutation.id) {
-                modelContext.delete(mutation)
+            where
+                mutationIdsToAcknowledge
+                .contains(mutation.id)
+            {
+                modelContext.delete(
+                    mutation
+                )
             }
 
             /*
              * Apply authoritative remote state.
              */
-            for record in remoteRecordsToApply {
+            for record
+                in remoteRecordsToApply
+            {
                 switch record.payload {
-                case .transaction(let snapshot):
+                case .transaction(
+                    let snapshot
+                ):
                     apply(
                         snapshot,
-                        transactionsById: &transactionsById
+                        transactionsById:
+                            &transactionsById
                     )
 
-                case .category(let snapshot):
+                case .category(
+                    let snapshot
+                ):
                     apply(
                         snapshot,
-                        categoriesById: &categoriesById
+                        categoriesById:
+                            &categoriesById
+                    )
+
+                case .subcategory(
+                    let snapshot
+                ):
+                    apply(
+                        snapshot,
+                        subcategoriesById:
+                            &subcategoriesById
                     )
                 }
 
                 applyMetadata(
                     record,
-                    statesByKey: &statesByKey
+                    statesByKey:
+                        &statesByKey
                 )
             }
         }
     }
 
     private func buildApplyPlan(
-        remoteRecords: [RemoteSyncRecord],
-        pendingEntityKeys: Set<SyncEntityKey>
+        remoteRecords:
+            [RemoteSyncRecord],
+        pendingEntityKeys:
+            Set<SyncEntityKey>
     ) throws -> [RemoteSyncRecord] {
-        var foundRemoteRecords = Set<SyncEntityKey>()
+        var foundRemoteRecords =
+            Set<SyncEntityKey>()
+
         var recordsToApply: [RemoteSyncRecord] = []
 
         for record in remoteRecords {
             let key = record.id
 
-            guard foundRemoteRecords.insert(key).inserted else {
+            guard
+                foundRemoteRecords
+                    .insert(key)
+                    .inserted
+            else {
                 throw
                     LocalSyncStoreError
-                    .duplicateRemoteRecord(key)
+                    .duplicateRemoteRecord(
+                        key
+                    )
             }
 
             try validate(record)
 
             /*
-             * A newer local mutation exists for this entity.
-             *
-             * Applying this remote record would overwrite newer
-             * local state with an older synchronization result.
+             * A newer local mutation exists for
+             * this entity. Applying this remote
+             * record would overwrite newer local
+             * state.
              */
-            guard !pendingEntityKeys.contains(key) else {
+            guard
+                !pendingEntityKeys
+                    .contains(key)
+            else {
                 continue
             }
 
-            recordsToApply.append(record)
+            recordsToApply.append(
+                record
+            )
         }
 
         return recordsToApply
@@ -211,11 +364,23 @@ final class LocalSyncStore {
         let deletedAt: Date?
 
         switch record.payload {
-        case .transaction(let transaction):
-            deletedAt = transaction.deletedAt
+        case .transaction(
+            let transaction
+        ):
+            deletedAt =
+                transaction.deletedAt
 
-        case .category(let category):
-            deletedAt = category.deletedAt
+        case .category(
+            let category
+        ):
+            deletedAt =
+                category.deletedAt
+
+        case .subcategory(
+            let subcategory
+        ):
+            deletedAt =
+                subcategory.deletedAt
         }
 
         switch record.operation {
@@ -223,66 +388,128 @@ final class LocalSyncStore {
             guard deletedAt == nil else {
                 throw
                     LocalSyncStoreError
-                    .invalidRemoteUpsert(record.id)
+                    .invalidRemoteUpsert(
+                        record.id
+                    )
             }
 
         case .delete:
             guard deletedAt != nil else {
                 throw
                     LocalSyncStoreError
-                    .invalidRemoteDelete(record.id)
+                    .invalidRemoteDelete(
+                        record.id
+                    )
             }
         }
     }
-    
+
     private func apply(
         _ snapshot: TransactionDTO,
-        transactionsById: inout [UUID: Transaction]
+        transactionsById:
+            inout [UUID: Transaction]
     ) {
-        if let transaction = transactionsById[snapshot.id] {
+        if let transaction =
+            transactionsById[
+                snapshot.id
+            ]
+        {
             transaction.apply(snapshot)
             return
         }
-        
-        let transaction = Transaction(snapshot)
-        
-        modelContext.insert(transaction)
-        transactionsById[snapshot.id] = transaction
+
+        let transaction =
+            Transaction(snapshot)
+
+        modelContext.insert(
+            transaction
+        )
+
+        transactionsById[
+            snapshot.id
+        ] = transaction
     }
 
     private func apply(
         _ snapshot: CategoryDTO,
-        categoriesById: inout [UUID: Category]
+        categoriesById:
+            inout [UUID: Category]
     ) {
-        if let category = categoriesById[snapshot.id] {
+        if let category =
+            categoriesById[
+                snapshot.id
+            ]
+        {
             category.apply(snapshot)
             return
         }
-        
-        let category = Category(snapshot)
-        
-        modelContext.insert(category)
-        categoriesById[snapshot.id] = category
+
+        let category =
+            Category(snapshot)
+
+        modelContext.insert(
+            category
+        )
+
+        categoriesById[
+            snapshot.id
+        ] = category
     }
-    
+
+    private func apply(
+        _ snapshot: SubcategoryDTO,
+        subcategoriesById:
+            inout [UUID: Subcategory]
+    ) {
+        if let subcategory =
+            subcategoriesById[
+                snapshot.id
+            ]
+        {
+            subcategory.apply(snapshot)
+            return
+        }
+
+        let subcategory =
+            Subcategory(snapshot)
+
+        modelContext.insert(
+            subcategory
+        )
+
+        subcategoriesById[
+            snapshot.id
+        ] = subcategory
+    }
+
     private func applyMetadata(
         _ record: RemoteSyncRecord,
-        statesByKey: inout [SyncEntityKey: EntitySyncState]
+        statesByKey:
+            inout [SyncEntityKey:
+            EntitySyncState]
     ) {
         let key = record.id
 
-        if let state = statesByKey[key] {
-            state.revision = record.revision
-            state.lastMutationId = record.mutationId
+        if let state =
+            statesByKey[key]
+        {
+            state.revision =
+                record.revision
+
+            state.lastMutationId =
+                record.mutationId
 
             return
         }
 
-        let state = EntitySyncState(
-            key: key,
-            lastMutationId: record.mutationId,
-            revision: record.revision
-        )
+        let state =
+            EntitySyncState(
+                key: key,
+                lastMutationId:
+                    record.mutationId,
+                revision:
+                    record.revision
+            )
 
         modelContext.insert(state)
         statesByKey[key] = state

@@ -6,27 +6,42 @@ struct TransactionDraft {
     var type: TransactionType = .expense
     var occurredOn: Date = .now
     var categoryId: UUID?
-    var amountInCents: Int? {
-        let normalized = amount.replacingOccurrences(of: ",", with: ".")
+    var subcategoryId: UUID?
 
-        guard let decimal = Decimal(string: normalized) else {
+    var amountInCents: Int? {
+        let normalized = amount.replacingOccurrences(
+            of: ",",
+            with: "."
+        )
+
+        guard
+            let decimal = Decimal(
+                string: normalized
+            )
+        else {
             return nil
         }
 
-        return NSDecimalNumber(decimal: decimal * 100).intValue
+        return NSDecimalNumber(
+            decimal: decimal * 100
+        ).intValue
     }
-    
+
     init() {}
-    
+
     init(transaction: Transaction) {
         note = transaction.note
 
-        amount = NSDecimalNumber(
-            value: transaction.amountInCents
-        )
-        .dividing(by: 100)
-        .stringValue
+        amount =
+            NSDecimalNumber(
+                value: transaction.amountInCents
+            )
+            .dividing(by: 100)
+            .stringValue
+
         categoryId = transaction.categoryId
+        subcategoryId =
+            transaction.subcategoryId
         type = transaction.type
         occurredOn = transaction.occurredOn
     }

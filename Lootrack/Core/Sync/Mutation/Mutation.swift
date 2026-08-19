@@ -4,6 +4,7 @@ import SwiftData
 nonisolated enum SyncEntityType: String, Codable, Hashable {
     case transaction
     case category
+    case subcategory
 }
 
 nonisolated enum SyncOperation: String, Codable, Equatable {
@@ -16,17 +17,25 @@ nonisolated struct SyncEntityKey: Hashable, Codable {
     let id: UUID
 }
 
-nonisolated enum EntitySnapshot: Codable, Equatable, Identifiable {
+nonisolated enum EntitySnapshot:
+    Codable,
+    Equatable,
+    Identifiable
+{
     case transaction(TransactionDTO)
     case category(CategoryDTO)
+    case subcategory(SubcategoryDTO)
 
     var id: UUID {
         switch self {
         case .transaction(let transaction):
-            transaction.id
+            return transaction.id
 
         case .category(let category):
-            category.id
+            return category.id
+
+        case .subcategory(let subcategory):
+            return subcategory.id
         }
     }
 
@@ -37,6 +46,9 @@ nonisolated enum EntitySnapshot: Codable, Equatable, Identifiable {
 
         case .category:
             return .category
+
+        case .subcategory:
+            return .subcategory
         }
     }
 
@@ -52,10 +64,14 @@ nonisolated enum EntitySnapshot: Codable, Equatable, Identifiable {
 final class Mutation: ImmutableEntity {
     @Attribute(.unique)
     var id: UUID
+
     var operation: SyncOperation
+
     var expectedRevision: Int?
     var expectedMutationId: UUID?
+
     var createdAt: Date
+
     var base: EntitySnapshot?
     var payload: EntitySnapshot
 
@@ -70,8 +86,10 @@ final class Mutation: ImmutableEntity {
     ) {
         self.id = id
         self.operation = operation
-        self.expectedRevision = expectedRevision
-        self.expectedMutationId = expectedMutationId
+        self.expectedRevision =
+            expectedRevision
+        self.expectedMutationId =
+            expectedMutationId
         self.createdAt = createdAt
         self.base = base
         self.payload = payload
@@ -82,9 +100,11 @@ final class Mutation: ImmutableEntity {
 final class EntitySyncState {
     @Attribute(.unique)
     var entityId: UUID
+
     var entityType: SyncEntityType
     var lastMutationId: UUID?
     var revision: Int
+
     var key: SyncEntityKey {
         SyncEntityKey(
             type: entityType,
@@ -99,13 +119,16 @@ final class EntitySyncState {
     ) {
         self.entityId = key.id
         self.entityType = key.type
-        self.lastMutationId = lastMutationId
+        self.lastMutationId =
+            lastMutationId
         self.revision = revision
     }
 }
 
-
-nonisolated struct MutationDTO: Codable, Identifiable {
+nonisolated struct MutationDTO:
+    Codable,
+    Identifiable
+{
     let id: UUID
 
     let operation: SyncOperation
@@ -131,32 +154,40 @@ extension MutationDTO {
     @MainActor
     init(_ mutation: Mutation) {
         self.id = mutation.id
-        self.operation = mutation.operation
-        self.expectedRevision = mutation.expectedRevision
-        self.expectedMutationId = mutation.expectedMutationId
-        self.createdAt = mutation.createdAt
+        self.operation =
+            mutation.operation
+        self.expectedRevision =
+            mutation.expectedRevision
+        self.expectedMutationId =
+            mutation.expectedMutationId
+        self.createdAt =
+            mutation.createdAt
         self.base = mutation.base
         self.payload = mutation.payload
     }
 }
 
-struct PendingEntityChanges: Identifiable {
+struct PendingEntityChanges:
+    Identifiable
+{
     let mutations: [Mutation]
-    
+
     init(mutations: [Mutation]) {
-        precondition(!mutations.isEmpty)
-        
+        precondition(
+            !mutations.isEmpty
+        )
+
         self.mutations = mutations
     }
-    
+
     var id: SyncEntityKey {
         latestMutation.payload.key
     }
-    
+
     var entity: EntitySnapshot {
         latestMutation.payload
     }
-    
+
     var latestMutation: Mutation {
         mutations.last!
     }

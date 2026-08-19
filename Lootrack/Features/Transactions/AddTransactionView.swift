@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct AddTransactionView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)
+    private var dismiss
 
     @Environment(TransactionService.self)
     private var transactionService
 
-    @State private var draft = TransactionDraft()
+    @State
+    private var draft =
+        TransactionDraft()
 
     var body: some View {
         NavigationStack {
@@ -15,15 +18,23 @@ struct AddTransactionView: View {
                 autoSelectCategoryWithAI: true,
                 quickAmountEntry: true
             )
-            .navigationTitle("New Transaction")
+            .navigationTitle(
+                "New Transaction"
+            )
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(
+                    placement:
+                        .cancellationAction
+                ) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(
+                    placement:
+                        .confirmationAction
+                ) {
                     Button("Save") {
                         save()
                     }
@@ -33,22 +44,33 @@ struct AddTransactionView: View {
     }
 
     private func save() {
-        guard let amountInCents = draft.amountInCents else {
+        guard
+            let amountInCents =
+                draft.amountInCents
+        else {
             return
         }
 
         do {
             try transactionService.create(
                 type: draft.type,
-                amountInCents: amountInCents,
+                amountInCents:
+                    amountInCents,
                 note: draft.note,
-                occurredOn: draft.occurredOn,
-                categoryId: draft.categoryId
+                occurredOn:
+                    draft.occurredOn,
+                categoryId:
+                    draft.categoryId,
+                subcategoryId:
+                    draft.subcategoryId
             )
 
             dismiss()
         } catch {
-            print("FAILED TO CREATE TRANSACTION:", error)
+            print(
+                "FAILED TO CREATE TRANSACTION:",
+                error
+            )
         }
     }
 }
