@@ -12,13 +12,16 @@ enum TransactionServiceError: Error {
 final class TransactionService {
     private let modelContext: ModelContext
     private let mutationService: MutationService
+    private let tagService: TagService
 
     init(
         modelContext: ModelContext,
-        mutationService: MutationService
+        mutationService: MutationService,
+        tagService: TagService
     ) {
         self.modelContext = modelContext
         self.mutationService = mutationService
+        self.tagService = tagService
     }
 
     @discardableResult
@@ -28,12 +31,16 @@ final class TransactionService {
         note: String,
         occurredOn: Date,
         categoryId: UUID?,
-        subcategoryId: UUID?
+        subcategoryId: UUID?,
+        tags: [String]
     ) throws -> Transaction {
         try validateSubcategory(
             categoryId: categoryId,
             subcategoryId: subcategoryId
         )
+
+        let normalizedTags =
+            Tag.normalizedTags(tags)
 
         let now = Date.now
 
@@ -45,7 +52,8 @@ final class TransactionService {
             note: note,
             occurredOn: occurredOn,
             categoryId: categoryId,
-            subcategoryId: subcategoryId
+            subcategoryId: subcategoryId,
+            tags: normalizedTags
         )
 
         let snapshot = TransactionDTO(
@@ -62,6 +70,8 @@ final class TransactionService {
 
         try modelContext.save()
 
+        tagService.rebuild()
+
         return transaction
     }
 
@@ -72,12 +82,16 @@ final class TransactionService {
         note: String,
         occurredOn: Date,
         categoryId: UUID?,
-        subcategoryId: UUID?
+        subcategoryId: UUID?,
+        tags: [String]
     ) throws {
         try validateSubcategory(
             categoryId: categoryId,
             subcategoryId: subcategoryId
         )
+
+        let normalizedTags =
+            Tag.normalizedTags(tags)
 
         guard
             transaction.type != type
@@ -90,6 +104,8 @@ final class TransactionService {
                     != categoryId
                 || transaction.subcategoryId
                     != subcategoryId
+                || transaction.tags
+                    != normalizedTags
         else {
             return
         }
@@ -108,7 +124,8 @@ final class TransactionService {
             note: note,
             occurredOn: occurredOn,
             categoryId: categoryId,
-            subcategoryId: subcategoryId
+            subcategoryId: subcategoryId,
+            tags: normalizedTags
         )
 
         try mutationService.createMutation(
@@ -124,9 +141,12 @@ final class TransactionService {
         transaction.occurredOn = occurredOn
         transaction.categoryId = categoryId
         transaction.subcategoryId = subcategoryId
+        transaction.tags = normalizedTags
         transaction.updatedAt = now
 
         try modelContext.save()
+
+        tagService.rebuild()
     }
 
     func delete(
@@ -150,7 +170,8 @@ final class TransactionService {
             note: old.note,
             occurredOn: old.occurredOn,
             categoryId: old.categoryId,
-            subcategoryId: old.subcategoryId
+            subcategoryId: old.subcategoryId,
+            tags: old.tags
         )
 
         try mutationService.createMutation(
@@ -163,6 +184,8 @@ final class TransactionService {
         transaction.updatedAt = now
 
         try modelContext.save()
+
+        tagService.rebuild()
     }
 
     func restore(
@@ -182,6 +205,9 @@ final class TransactionService {
                 subcategoryId: old.subcategoryId
             )
 
+        let restoredTags =
+            Tag.normalizedTags(old.tags)
+
         let restored = TransactionDTO(
             id: old.id,
             createdAt: old.createdAt,
@@ -192,7 +218,8 @@ final class TransactionService {
             note: old.note,
             occurredOn: old.occurredOn,
             categoryId: old.categoryId,
-            subcategoryId: restoredSubcategoryId
+            subcategoryId: restoredSubcategoryId,
+            tags: restoredTags
         )
 
         try mutationService.createMutation(
@@ -203,9 +230,12 @@ final class TransactionService {
 
         transaction.deletedAt = nil
         transaction.subcategoryId = restoredSubcategoryId
+        transaction.tags = restoredTags
         transaction.updatedAt = now
 
         try modelContext.save()
+
+        tagService.rebuild()
     }
 
     private func validateSubcategory(

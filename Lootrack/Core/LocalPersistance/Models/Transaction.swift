@@ -21,6 +21,7 @@ final class Transaction: Entity {
     var occurredOn: Date
     var categoryId: UUID?
     var subcategoryId: UUID?
+    var tags: [String] = []
 
     init(
         id: UUID = UUID(),
@@ -32,7 +33,8 @@ final class Transaction: Entity {
         note: String,
         occurredOn: Date,
         categoryId: UUID? = nil,
-        subcategoryId: UUID? = nil
+        subcategoryId: UUID? = nil,
+        tags: [String] = []
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -44,6 +46,7 @@ final class Transaction: Entity {
         self.occurredOn = occurredOn
         self.categoryId = categoryId
         self.subcategoryId = subcategoryId
+        self.tags = Tag.normalizedTags(tags)
     }
 }
 
@@ -59,7 +62,8 @@ extension Transaction {
             note: snapshot.note,
             occurredOn: snapshot.occurredOn,
             categoryId: snapshot.categoryId,
-            subcategoryId: snapshot.subcategoryId
+            subcategoryId: snapshot.subcategoryId,
+            tags: snapshot.tags
         )
     }
 
@@ -74,6 +78,7 @@ extension Transaction {
         occurredOn = snapshot.occurredOn
         categoryId = snapshot.categoryId
         subcategoryId = snapshot.subcategoryId
+        tags = Tag.normalizedTags(snapshot.tags)
     }
 }
 
@@ -90,6 +95,7 @@ nonisolated struct TransactionDTO: Codable, Equatable {
     let occurredOn: Date
     let categoryId: UUID?
     let subcategoryId: UUID?
+    let tags: [String]
 }
 
 extension TransactionDTO {
@@ -106,6 +112,7 @@ extension TransactionDTO {
         self.occurredOn = transaction.occurredOn
         self.categoryId = transaction.categoryId
         self.subcategoryId = transaction.subcategoryId
+        self.tags = Tag.normalizedTags(transaction.tags)
     }
 }
 
@@ -123,6 +130,7 @@ nonisolated extension TransactionDTO {
         case occurredOn
         case categoryId
         case subcategoryId
+        case tags
     }
 
     init(from decoder: Decoder) throws {
@@ -179,6 +187,13 @@ nonisolated extension TransactionDTO {
             UUID.self,
             forKey: .subcategoryId
         )
+
+        tags = Tag.normalizedTags(
+            try container.decodeIfPresent(
+                [String].self,
+                forKey: .tags
+            ) ?? []
+        )
     }
 
     func encode(to encoder: Encoder) throws {
@@ -234,6 +249,11 @@ nonisolated extension TransactionDTO {
         try container.encodeIfPresent(
             subcategoryId,
             forKey: .subcategoryId
+        )
+
+        try container.encode(
+            Tag.normalizedTags(tags),
+            forKey: .tags
         )
     }
 }

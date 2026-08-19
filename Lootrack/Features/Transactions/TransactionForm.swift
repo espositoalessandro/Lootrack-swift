@@ -13,6 +13,10 @@ enum TransactionFormField: Hashable {
     case description
 }
 
+private enum TransactionFormScrollTarget: Hashable {
+    case tags
+}
+
 struct TransactionForm: View {
     @Binding var draft: TransactionDraft
 
@@ -24,6 +28,9 @@ struct TransactionForm: View {
 
     @Query(SubcategoryQueries.activeByName)
     private var subcategories: [Subcategory]
+
+    @Query(TagQueries.byName)
+    private var tags: [Tag]
 
     @FocusState
     private var focusedField: TransactionFormField?
@@ -101,167 +108,191 @@ struct TransactionForm: View {
     }
 
     var body: some View {
-        Form {
-            Section("Transaction") {
-                if quickAmountEntry {
-                    TransactionAmountInput(
-                        amount: $draft.amount,
-                        focus: $focusedField
-                    )
-                    .listRowSeparator(
-                        .hidden,
-                        edges: .bottom
-                    )
-                } else {
+        ScrollViewReader { proxy in
+            Form {
+                Section("Transaction") {
+                    if quickAmountEntry {
+                        TransactionAmountInput(
+                            amount: $draft.amount,
+                            focus: $focusedField
+                        )
+                        .listRowSeparator(
+                            .hidden,
+                            edges: .bottom
+                        )
+                    } else {
+                        TextField(
+                            "Amount",
+                            text: $draft.amount
+                        )
+                        .keyboardType(.decimalPad)
+                    }
+
                     TextField(
-                        "Amount",
-                        text: $draft.amount
+                        "Description",
+                        text: $draft.note
                     )
-                    .keyboardType(.decimalPad)
-                }
+                    .focused(
+                        $focusedField,
+                        equals: .description
+                    )
+                    .onChange(of: draft.note) {
+                        descriptionDidChange()
+                    }
 
-                TextField(
-                    "Description",
-                    text: $draft.note
-                )
-                .focused(
-                    $focusedField,
-                    equals: .description
-                )
-                .onChange(of: draft.note) {
-                    descriptionDidChange()
-                }
+                    Picker(
+                        "Type",
+                        selection: $draft.type
+                    ) {
+                        Text("Expense")
+                            .tag(
+                                TransactionType.expense
+                            )
 
-                Picker(
-                    "Type",
-                    selection: $draft.type
-                ) {
-                    Text("Expense")
-                        .tag(
-                            TransactionType.expense
-                        )
+                        Text("Income")
+                            .tag(
+                                TransactionType.income
+                            )
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: draft.type) {
+                        transactionTypeDidChange()
+                    }
 
-                    Text("Income")
-                        .tag(
-                            TransactionType.income
-                        )
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: draft.type) {
-                    transactionTypeDidChange()
-                }
+                    Picker(
+                        selection:
+                            categorySelection
+                    ) {
+                        Text("Uncategorized")
+                            .tag(UUID?.none)
 
-                Picker(
-                    selection:
-                        categorySelection
-                ) {
-                    Text("Uncategorized")
-                        .tag(UUID?.none)
+                        ForEach(
+                            matchingCategories
+                        ) { category in
+                            HStack(spacing: 5) {
+                                Text(category.name)
 
-                    ForEach(
-                        matchingCategories
-                    ) { category in
-                        HStack(spacing: 5) {
-                            Text(category.name)
+                                if categorySelectionOrigin
+                                    == .ai,
+                                    draft.categoryId
+                                        == category.id
+                                {
+                                    Image(
+                                        systemName:
+                                            "sparkles"
+                                    )
+                                }
+                            }
+                            .tag(
+                                Optional(
+                                    category.id
+                                )
+                            )
+                        }
+                    } label: {
+                        HStack(
+                            alignment:
+                                .firstTextBaseline,
+                            spacing: 6
+                        ) {
+                            Text("Category")
 
-                            if categorySelectionOrigin
-                                == .ai,
-                                draft.categoryId
-                                    == category.id
-                            {
+                            if isSelectingCategoryWithAI {
                                 Image(
                                     systemName:
-                                        "sparkles"
+                                        "apple.intelligence"
+                                )
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            .pink,
+                                            .purple,
+                                            .blue,
+                                            .cyan,
+                                        ],
+                                        startPoint:
+                                            .topLeading,
+                                        endPoint:
+                                            .bottomTrailing
+                                    )
+                                )
+                                .symbolEffect(
+                                    .breathe,
+                                    options:
+                                        .repeat(
+                                            .continuous
+                                        ),
+                                    isActive:
+                                        isSelectingCategoryWithAI
+                                )
+
+                                Text(
+                                    "Selecting..."
+                                )
+                                .font(.caption2)
+                                .foregroundStyle(
+                                    .secondary
+                                )
+                                .lineLimit(1)
+                            }
+                        }
+                    }
+
+                    Picker(
+                        "Subcategory",
+                        selection:
+                            $draft.subcategoryId
+                    ) {
+                        Text("None")
+                            .tag(UUID?.none)
+
+                        ForEach(
+                            matchingSubcategories
+                        ) { subcategory in
+                            Text(
+                                subcategory.name
+                            )
+                            .tag(
+                                Optional(
+                                    subcategory.id
+                                )
+                            )
+                        }
+                    }
+                    .disabled(
+                        draft.categoryId == nil
+                    )
+
+                    DatePicker(
+                        "Occurred on",
+                        selection:
+                            $draft.occurredOn,
+                        displayedComponents:
+                            .date
+                    )
+                }
+
+                Section("Tags") {
+                    TagInput(
+                        tags: $draft.tags,
+                        availableTags: tags,
+                        onNeedsVisibility: {
+                            withAnimation(
+                                .easeInOut(
+                                    duration: 0.2
+                                )
+                            ) {
+                                proxy.scrollTo(
+                                    TransactionFormScrollTarget.tags,
+                                    anchor: .bottom
                                 )
                             }
                         }
-                        .tag(
-                            Optional(
-                                category.id
-                            )
-                        )
-                    }
-                } label: {
-                    HStack(
-                        alignment:
-                            .firstTextBaseline,
-                        spacing: 6
-                    ) {
-                        Text("Category")
-
-                        if isSelectingCategoryWithAI {
-                            Image(
-                                systemName:
-                                    "apple.intelligence"
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        .pink,
-                                        .purple,
-                                        .blue,
-                                        .cyan,
-                                    ],
-                                    startPoint:
-                                        .topLeading,
-                                    endPoint:
-                                        .bottomTrailing
-                                )
-                            )
-                            .symbolEffect(
-                                .breathe,
-                                options:
-                                    .repeat(
-                                        .continuous
-                                    ),
-                                isActive:
-                                    isSelectingCategoryWithAI
-                            )
-
-                            Text(
-                                "Selecting..."
-                            )
-                            .font(.caption2)
-                            .foregroundStyle(
-                                .secondary
-                            )
-                            .lineLimit(1)
-                        }
-                    }
+                    )
+                    .id(
+                        TransactionFormScrollTarget.tags
+                    )
                 }
-
-                Picker(
-                    "Subcategory",
-                    selection:
-                        $draft.subcategoryId
-                ) {
-                    Text("None")
-                        .tag(UUID?.none)
-
-                    ForEach(
-                        matchingSubcategories
-                    ) { subcategory in
-                        Text(
-                            subcategory.name
-                        )
-                        .tag(
-                            Optional(
-                                subcategory.id
-                            )
-                        )
-                    }
-                }
-                .disabled(
-                    draft.categoryId == nil
-                )
-
-                DatePicker(
-                    "Occurred on",
-                    selection:
-                        $draft.occurredOn,
-                    displayedComponents:
-                        .date
-                )
             }
         }
         .task {

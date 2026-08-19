@@ -7,6 +7,7 @@ struct TransactionDraft {
     var occurredOn: Date = .now
     var categoryId: UUID?
     var subcategoryId: UUID?
+    var tags: [String] = []
 
     var amountInCents: Int? {
         let normalized = amount.replacingOccurrences(
@@ -42,6 +43,7 @@ struct TransactionDraft {
         categoryId = transaction.categoryId
         subcategoryId =
             transaction.subcategoryId
+        tags = transaction.tags
         type = transaction.type
         occurredOn = transaction.occurredOn
     }

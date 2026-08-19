@@ -8,6 +8,8 @@ struct LootrackApp: App {
 
     private let mutationService: MutationService
 
+    private let tagService: TagService
+
     private let transactionService: TransactionService
 
     private let categoryService: CategoryService
@@ -24,6 +26,7 @@ struct LootrackApp: App {
                         Transaction.self,
                     Category.self,
                     Subcategory.self,
+                    Tag.self,
                     Mutation.self,
                     EntitySyncState.self
                 )
@@ -45,13 +48,22 @@ struct LootrackApp: App {
                         .mainContext
                 )
 
+            let tagService =
+                TagService(
+                    modelContext:
+                        modelContainer
+                        .mainContext
+                )
+
             let transactionService =
                 TransactionService(
                     modelContext:
                         modelContainer
                         .mainContext,
                     mutationService:
-                        mutationService
+                        mutationService,
+                    tagService:
+                        tagService
                 )
 
             let categoryService =
@@ -78,7 +90,9 @@ struct LootrackApp: App {
                         modelContainer
                         .mainContext,
                     mutationService:
-                        mutationService
+                        mutationService,
+                    tagService:
+                        tagService
                 )
 
             self.modelContainer =
@@ -86,6 +100,9 @@ struct LootrackApp: App {
 
             self.mutationService =
                 mutationService
+
+            self.tagService =
+                tagService
 
             self.transactionService =
                 transactionService
@@ -123,7 +140,9 @@ struct LootrackApp: App {
                 LocalSyncStore(
                     modelContext:
                         modelContainer
-                        .mainContext
+                        .mainContext,
+                    tagService:
+                        tagService
                 )
 
             let syncEngine =
@@ -141,6 +160,12 @@ struct LootrackApp: App {
                     conflictResolutionService:
                         conflictResolutionService
                 )
+
+            /*
+             * The Tag table is a derived local cache.
+             * Rebuilding once at launch makes it self-healing.
+             */
+            tagService.rebuild()
 
         } catch {
             fatalError(
@@ -172,6 +197,9 @@ struct LootrackApp: App {
         )
         .environment(
             subcategoryService
+        )
+        .environment(
+            tagService
         )
     }
 }

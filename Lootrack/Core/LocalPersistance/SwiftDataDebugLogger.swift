@@ -145,6 +145,7 @@
                         occurredOn: \(transaction.occurredOn),
                         categoryId: \(String(describing: transaction.categoryId)),
                         subcategoryId: \(String(describing: transaction.subcategoryId)),
+                        tags: \(transaction.tags),
                         deletedAt: \(String(describing: transaction.deletedAt))
                     )
                     """
@@ -168,6 +169,14 @@
                         categoryId: \(subcategory.categoryId),
                         name: "\(subcategory.name)",
                         deletedAt: \(String(describing: subcategory.deletedAt))
+                    )
+                    """
+
+            case let tag
+                as Tag:
+                return """
+                    Tag(
+                        name: "\(tag.name)"
                     )
                     """
 
