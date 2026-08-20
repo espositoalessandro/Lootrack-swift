@@ -35,15 +35,11 @@ struct RegionSettingsView: View {
                 ForEach(filteredRegions) {
                     region in
                     Button {
-                        settings.regionCode =
-                            region.code
-
+                        settings.regionCode = region.code
                         dismiss()
                     } label: {
                         SelectionRow(title: region.name,
-                                     selected:
-                                     settings.regionCode
-                                         == region.code)
+                                     selected: settings.regionCode == region.code)
                     }
                 }
             }
@@ -64,8 +60,7 @@ struct RegionSettingsView: View {
                 let code =
                     region.identifier
 
-                guard let name =
-                    locale.localizedString(forRegionCode: code)
+                guard let name = locale.localizedString(forRegionCode: code)
                 else {
                     return nil
                 }
@@ -78,9 +73,7 @@ struct RegionSettingsView: View {
             }
     }
 
-    private var filteredRegions:
-        [RegionOption]
-    {
+    private var filteredRegions: [RegionOption] {
         guard !searchText.isEmpty else {
             return regions
         }

@@ -26,8 +26,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     func displayName(locale: Locale) -> String {
         switch self {
         case .system:
-            String(localized: "System",
-                   locale: locale)
+            String(localized: "System", locale: locale)
 
         case .english:
             "English"
@@ -92,9 +91,7 @@ final class AppSettings {
     }
 
     var resolvedLocale: Locale {
-        if language == .system,
-           regionCode == nil
-        {
+        if language == .system, regionCode == nil {
             return .autoupdatingCurrent
         }
 

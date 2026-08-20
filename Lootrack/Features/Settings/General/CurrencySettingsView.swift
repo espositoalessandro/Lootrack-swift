@@ -17,10 +17,8 @@ struct CurrencySettingsView: View {
                     settings.currencyCode = nil
                     dismiss()
                 } label: {
-                    SelectionRow(
-                        title: systemTitle,
-                        selected: settings.currencyCode == nil
-                    )
+                    SelectionRow(title: systemTitle,
+                                 selected: settings.currencyCode == nil)
                 }
             }
 
@@ -31,10 +29,9 @@ struct CurrencySettingsView: View {
                         dismiss()
                     } label: {
                         HStack {
-                            VStack(
-                                alignment: .leading,
-                                spacing: 2
-                            ) {
+                            VStack(alignment: .leading,
+                                   spacing: 2)
+                            {
                                 Text(currency.name)
                                     .foregroundStyle(.primary)
 
@@ -57,10 +54,8 @@ struct CurrencySettingsView: View {
         }
         .navigationTitle("Currency")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(
-            text: $searchText,
-            prompt: "Search currencies"
-        )
+        .searchable(text: $searchText,
+                    prompt: "Search currencies")
     }
 
     private var systemTitle: String {
@@ -75,10 +70,8 @@ struct CurrencySettingsView: View {
             .map(\.identifier)
             .uniqued()
             .map { code in
-                CurrencyOption(
-                    code: code,
-                    name: locale.localizedString(forCurrencyCode: code) ?? code
-                )
+                CurrencyOption(code: code,
+                               name: locale.localizedString(forCurrencyCode: code) ?? code)
             }
             .sorted {
                 $0.name.localizedStandardCompare($1.name) == .orderedAscending
@@ -108,9 +101,10 @@ private struct CurrencyOption:
     }
 }
 
-extension Sequence
-where Element: Hashable {
-    fileprivate func uniqued() -> [Element] {
+private extension Sequence
+    where Element: Hashable
+{
+    func uniqued() -> [Element] {
         var seen = Set<Element>()
 
         return filter {

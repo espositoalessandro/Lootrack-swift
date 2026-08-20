@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct SettingsView: View {
@@ -8,23 +7,19 @@ struct SettingsView: View {
                 NavigationLink {
                     GeneralSettingsView()
                 } label: {
-                    Label("General",
-                          systemImage: "gearshape")
+                    Label("General", systemImage: "gearshape")
                 }
 
                 NavigationLink {
                     SyncSettingsView()
                 } label: {
-                    Label("Sync",
-                          systemImage:
-                          "arrow.triangle.2.circlepath")
+                    Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                 }
 
                 NavigationLink {
                     LocalIntelligenceSettingsView()
                 } label: {
-                    Label("Local Intelligence",
-                          systemImage: "sparkles")
+                    Label("Local Intelligence", systemImage: "sparkles")
                 }
             }
         }
@@ -35,20 +30,7 @@ struct SettingsView: View {
 
 // MARK: - Temporary placeholders
 
-private struct SyncSettingsView: View {
-    var body: some View {
-        ContentUnavailableView("No settings yet",
-                               systemImage:
-                               "arrow.triangle.2.circlepath",
-                               description: Text("Synchronization settings will appear here."))
-            .navigationTitle("Sync")
-            .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct LocalIntelligenceSettingsView:
-    View
-{
+private struct LocalIntelligenceSettingsView: View {
     var body: some View {
         ContentUnavailableView("No settings yet",
                                systemImage: "sparkles",

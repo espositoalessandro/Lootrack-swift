@@ -49,9 +49,7 @@ struct GeneralSettingsView: View {
             return String(localized: "System")
         }
 
-        return settings.resolvedLocale.localizedString(
-            forRegionCode: regionCode
-        ) ?? regionCode
+        return settings.resolvedLocale.localizedString(forRegionCode: regionCode) ?? regionCode
     }
 
     private var currencyValue: String {
