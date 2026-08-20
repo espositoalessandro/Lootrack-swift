@@ -97,8 +97,7 @@ final class TransactionService {
             try validateSubcategory(categoryId: categoryId,
                                     subcategoryId: subcategoryId)
 
-            let normalizedTags =
-                Tag.normalizedTags(tags)
+            let normalizedTags = Tag.normalizedTags(tags)
 
             let now = Date.now
 
@@ -115,9 +114,7 @@ final class TransactionService {
             let snapshot = TransactionDTO(transaction)
 
             try modelContext.transaction {
-                try mutationService.createMutation(from: nil,
-                                                   to: .transaction(snapshot),
-                                                   .upsert)
+                try mutationService.createMutation(from: nil, to: .transaction(snapshot), .upsert)
 
                 modelContext.insert(transaction)
             }
@@ -132,8 +129,7 @@ final class TransactionService {
         } catch {
             modelContext.rollback()
 
-            let errorDescription =
-                String(describing: error)
+            let errorDescription = String(describing: error)
 
             AppLogger.persistence.error("Failed to create transaction: \(errorDescription, privacy: .public)")
 
@@ -154,8 +150,7 @@ final class TransactionService {
             try validateSubcategory(categoryId: categoryId,
                                     subcategoryId: subcategoryId)
 
-            let normalizedTags =
-                Tag.normalizedTags(tags)
+            let normalizedTags = Tag.normalizedTags(tags)
 
             guard transaction.type != type
                 || transaction.amountInCents != amountInCents
@@ -169,9 +164,7 @@ final class TransactionService {
             }
 
             let now = Date.now
-
             let old = TransactionDTO(transaction)
-
             let new = TransactionDTO(id: old.id,
                                      createdAt: old.createdAt,
                                      updatedAt: now,
@@ -185,9 +178,7 @@ final class TransactionService {
                                      tags: normalizedTags)
 
             try modelContext.transaction {
-                try mutationService.createMutation(from: .transaction(old),
-                                                   to: .transaction(new),
-                                                   .upsert)
+                try mutationService.createMutation(from: .transaction(old), to: .transaction(new), .upsert)
 
                 transaction.type = type
                 transaction.amountInCents = amountInCents
@@ -207,8 +198,7 @@ final class TransactionService {
         } catch {
             modelContext.rollback()
 
-            let errorDescription =
-                String(describing: error)
+            let errorDescription = String(describing: error)
 
             AppLogger.persistence.error("Failed to update transaction: \(errorDescription, privacy: .public)")
 
@@ -255,8 +245,7 @@ final class TransactionService {
         } catch {
             modelContext.rollback()
 
-            let errorDescription =
-                String(describing: error)
+            let errorDescription = String(describing: error)
 
             AppLogger.persistence.error("Failed to delete transaction: \(errorDescription, privacy: .public)")
 
@@ -271,16 +260,9 @@ final class TransactionService {
 
         do {
             let now = Date.now
-
             let old = TransactionDTO(transaction)
-
-            let restoredSubcategoryId =
-                try validSubcategoryId(categoryId: old.categoryId,
-                                       subcategoryId: old.subcategoryId)
-
-            let restoredTags =
-                Tag.normalizedTags(old.tags)
-
+            let restoredSubcategoryId = try validSubcategoryId(categoryId: old.categoryId, subcategoryId: old.subcategoryId)
+            let restoredTags = Tag.normalizedTags(old.tags)
             let restored = TransactionDTO(id: old.id,
                                           createdAt: old.createdAt,
                                           updatedAt: now,
