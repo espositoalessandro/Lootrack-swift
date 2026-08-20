@@ -6,6 +6,7 @@ import Observation
 final class SyncCoordinator {
     private let syncEngine: SyncEngine
     private let conflictResolutionService: ConflictResolutionService
+    private let networkMonitor: NetworkMonitor
 
     private var syncTask: Task<Void, Never>?
 
@@ -14,14 +15,18 @@ final class SyncCoordinator {
     var conflicts: [SyncConflictCandidate] = []
 
     init(syncEngine: SyncEngine,
-         conflictResolutionService: ConflictResolutionService)
+         conflictResolutionService: ConflictResolutionService,
+         networkMonitor: NetworkMonitor)
     {
         self.syncEngine = syncEngine
-        self.conflictResolutionService =
-            conflictResolutionService
+        self.conflictResolutionService = conflictResolutionService
+        self.networkMonitor = networkMonitor
     }
 
     func synchronize() async {
+        guard networkMonitor.status == .online else {
+            return
+        }
         /*
          * If a synchronization is already running,
          * simply wait for that same run.

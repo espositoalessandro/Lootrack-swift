@@ -16,6 +16,7 @@ struct LootrackApp: App {
     private let googleSheetSettings: GoogleSheetSettings
     private let googleSheetSelectionService: GoogleSheetSelectionService
     private let googleAuthorizationService: GoogleAuthorizationService
+    private let networkMonitor: NetworkMonitor
 
     init() {
         appSettings = AppSettings()
@@ -84,8 +85,12 @@ struct LootrackApp: App {
             let syncEngine = SyncEngine(localStore: localSyncStore,
                                         provider: googleSheetsProvider)
 
+            let networkMonitor = NetworkMonitor()
+            self.networkMonitor = networkMonitor
+
             syncCoordinator = SyncCoordinator(syncEngine: syncEngine,
-                                              conflictResolutionService: conflictResolutionService)
+                                              conflictResolutionService: conflictResolutionService,
+                                              networkMonitor: networkMonitor)
 
             /*
              * The Tag table is a derived local cache.
@@ -101,6 +106,7 @@ struct LootrackApp: App {
         WindowGroup {
             SettingsAwareRootView()
                 .environment(syncCoordinator)
+                .environment(networkMonitor)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }

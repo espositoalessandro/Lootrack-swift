@@ -12,6 +12,9 @@ struct RootView: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
 
+    @Environment(NetworkMonitor.self)
+    private var networkMonitor
+
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
 
@@ -20,6 +23,9 @@ struct RootView: View {
 
     @State
     private var isSyncPresented = false
+
+    @State
+    private var showOnlineStatus = false
 
     private var hasConflicts: Bool {
         !syncCoordinator.conflicts.isEmpty
@@ -33,6 +39,20 @@ struct RootView: View {
         return mutations.count
     }
 
+    private var connectivityStatusLabel: some View {
+        let isOffline = networkMonitor.status == .offline
+        
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(isOffline ? Color.red : Color.green)
+                .frame(width: 7, height: 7)
+            
+            Text(isOffline ? "Offline" : "Online")
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(isOffline ? .red : .green)
+    }
+    
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Dashboard",
@@ -93,12 +113,40 @@ struct RootView: View {
                 .frame(width: 0,
                        height: 0)
         }
+        .onChange(of: networkMonitor.status) { oldStatus, newStatus in
+            if newStatus == .offline {
+                showOnlineStatus = false
+            } else if oldStatus == .offline && newStatus == .online {
+                showOnlineStatus = true
+            }
+        }
+        .task(id: showOnlineStatus) {
+            guard showOnlineStatus else {
+                return
+            }
+            
+            try? await Task.sleep(for: .seconds(2))
+            
+            guard !Task.isCancelled else {
+                return
+            }
+            
+            showOnlineStatus = false
+        }
     }
 
     @ToolbarContentBuilder
     private var appToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            syncStatusButton
+        if networkMonitor.status == .offline || showOnlineStatus {
+            ToolbarItem(placement: .principal) {
+                connectivityStatusLabel
+            }
+        }
+        
+        if syncBadgeCount > 0 {
+            ToolbarItem(placement: .topBarTrailing) {
+                syncStatusButton
+            }
         }
     }
 
