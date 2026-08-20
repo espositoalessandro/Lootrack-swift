@@ -67,38 +67,30 @@ final class ConflictResolutionService {
     private let mutationService: MutationService
     private let tagService: TagService
 
-    init(
-        modelContext: ModelContext,
-        mutationService: MutationService,
-        tagService: TagService
-    ) {
+    init(modelContext: ModelContext,
+         mutationService: MutationService,
+         tagService: TagService)
+    {
         self.modelContext = modelContext
         self.mutationService = mutationService
         self.tagService = tagService
     }
 
-    func resolve(
-        _ conflict: SyncConflictCandidate,
-        using resolution: ConflictResolution
-    ) throws {
+    func resolve(_ conflict: SyncConflictCandidate,
+                 using resolution: ConflictResolution) throws
+    {
         try modelContext.transaction {
-            let currentLocal = try currentLocalSnapshot(
-                for: conflict.key
-            )
+            let currentLocal = try currentLocalSnapshot(for: conflict.key)
 
-            try removePendingMutations(
-                for: conflict.key
-            )
+            try removePendingMutations(for: conflict.key)
 
             switch resolution {
             case .keepRemote:
                 try keepRemote(conflict)
 
             case .keepLocal:
-                try keepLocal(
-                    conflict,
-                    currentLocal: currentLocal
-                )
+                try keepLocal(conflict,
+                              currentLocal: currentLocal)
             }
         }
 
@@ -109,262 +101,185 @@ final class ConflictResolutionService {
 
     // MARK: - Resolution
 
-    private func keepRemote(
-        _ conflict: SyncConflictCandidate
-    ) throws {
+    private func keepRemote(_ conflict: SyncConflictCandidate) throws {
         guard let remote = conflict.remote else {
-            try deleteLocalEntity(
-                for: conflict.key
-            )
+            try deleteLocalEntity(for: conflict.key)
 
-            try deleteSyncState(
-                for: conflict.key
-            )
+            try deleteSyncState(for: conflict.key)
 
             return
         }
 
         try put(remote.payload)
 
-        try setSyncState(
-            for: conflict.key,
-            revision: remote.revision,
-            lastMutationId: remote.mutationId
-        )
+        try setSyncState(for: conflict.key,
+                         revision: remote.revision,
+                         lastMutationId: remote.mutationId)
     }
 
-    private func keepLocal(
-        _ conflict: SyncConflictCandidate,
-        currentLocal: EntitySnapshot?
-    ) throws {
+    private func keepLocal(_ conflict: SyncConflictCandidate,
+                           currentLocal: EntitySnapshot?) throws
+    {
         guard let currentLocal else {
             throw
                 ConflictResolutionError
-                .localEntityMissing(
-                    conflict.key
-                )
+                .localEntityMissing(conflict.key)
         }
 
         if let remote = conflict.remote {
-            try setSyncState(
-                for: conflict.key,
-                revision: remote.revision,
-                lastMutationId: remote.mutationId
-            )
+            try setSyncState(for: conflict.key,
+                             revision: remote.revision,
+                             lastMutationId: remote.mutationId)
         } else {
-            try deleteSyncState(
-                for: conflict.key
-            )
+            try deleteSyncState(for: conflict.key)
         }
 
-        try mutationService.createMutation(
-            from: conflict.remote?.payload,
-            to: currentLocal,
-            operation(for: currentLocal)
-        )
+        try mutationService.createMutation(from: conflict.remote?.payload,
+                                           to: currentLocal,
+                                           operation(for: currentLocal))
     }
 
     // MARK: - Mutations
 
-    private func removePendingMutations(
-        for key: SyncEntityKey
-    ) throws {
-        let mutations = try modelContext.fetch(
-            MutationQueries.pendingByOldest
-        )
+    private func removePendingMutations(for key: SyncEntityKey) throws {
+        let mutations = try modelContext.fetch(MutationQueries.pendingByOldest)
 
         for mutation in mutations
-        where mutation.payload.key == key {
+            where mutation.payload.key == key
+        {
             modelContext.delete(mutation)
         }
     }
 
     // MARK: - Current local entity
 
-    private func currentLocalSnapshot(
-        for key: SyncEntityKey
-    ) throws -> EntitySnapshot? {
+    private func currentLocalSnapshot(for key: SyncEntityKey) throws -> EntitySnapshot? {
         let id = key.id
 
         switch key.type {
         case .transaction:
-            let transaction = try modelContext.fetch(
-                FetchDescriptor<Transaction>(
-                    predicate:
-                        #Predicate<Transaction> { transaction in
-                            transaction.id == id
-                        }
-                )
-            ).first
+            let transaction = try modelContext.fetch(FetchDescriptor<Transaction>(predicate:
+                #Predicate<Transaction> { transaction in
+                    transaction.id == id
+                })).first
 
             return transaction.map {
-                .transaction(
-                    TransactionDTO($0)
-                )
+                .transaction(TransactionDTO($0))
             }
 
         case .category:
-            let category = try modelContext.fetch(
-                FetchDescriptor<Category>(
-                    predicate:
-                        #Predicate<Category> { category in
-                            category.id == id
-                        }
-                )
-            ).first
+            let category = try modelContext.fetch(FetchDescriptor<Category>(predicate:
+                #Predicate<Category> { category in
+                    category.id == id
+                })).first
 
             return category.map {
-                .category(
-                    CategoryDTO($0)
-                )
+                .category(CategoryDTO($0))
             }
 
         case .subcategory:
-            let subcategory = try modelContext.fetch(
-                FetchDescriptor<Subcategory>(
-                    predicate:
-                        #Predicate<Subcategory> { subcategory in
-                            subcategory.id == id
-                        }
-                )
-            ).first
+            let subcategory = try modelContext.fetch(FetchDescriptor<Subcategory>(predicate:
+                #Predicate<Subcategory> { subcategory in
+                    subcategory.id == id
+                })).first
 
             return subcategory.map {
-                .subcategory(
-                    SubcategoryDTO($0)
-                )
+                .subcategory(SubcategoryDTO($0))
             }
         }
     }
 
     // MARK: - Local entity writes
 
-    private func put(
-        _ snapshot: EntitySnapshot
-    ) throws {
+    private func put(_ snapshot: EntitySnapshot) throws {
         switch snapshot {
-        case .transaction(let dto):
+        case let .transaction(dto):
             try put(dto)
 
-        case .category(let dto):
+        case let .category(dto):
             try put(dto)
 
-        case .subcategory(let dto):
+        case let .subcategory(dto):
             try put(dto)
         }
     }
 
-    private func put(
-        _ snapshot: TransactionDTO
-    ) throws {
+    private func put(_ snapshot: TransactionDTO) throws {
         let id = snapshot.id
 
-        let existing = try modelContext.fetch(
-            FetchDescriptor<Transaction>(
-                predicate:
-                    #Predicate<Transaction> { transaction in
-                        transaction.id == id
-                    }
-            )
-        ).first
+        let existing = try modelContext.fetch(FetchDescriptor<Transaction>(predicate:
+            #Predicate<Transaction> { transaction in
+                transaction.id == id
+            })).first
 
         if let existing {
             existing.apply(snapshot)
             return
         }
 
-        modelContext.insert(
-            Transaction(snapshot)
-        )
+        modelContext.insert(Transaction(snapshot))
     }
 
-    private func put(
-        _ snapshot: CategoryDTO
-    ) throws {
+    private func put(_ snapshot: CategoryDTO) throws {
         let id = snapshot.id
 
-        let existing = try modelContext.fetch(
-            FetchDescriptor<Category>(
-                predicate:
-                    #Predicate<Category> { category in
-                        category.id == id
-                    }
-            )
-        ).first
+        let existing = try modelContext.fetch(FetchDescriptor<Category>(predicate:
+            #Predicate<Category> { category in
+                category.id == id
+            })).first
 
         if let existing {
             existing.apply(snapshot)
             return
         }
 
-        modelContext.insert(
-            Category(snapshot)
-        )
+        modelContext.insert(Category(snapshot))
     }
 
-    private func put(
-        _ snapshot: SubcategoryDTO
-    ) throws {
+    private func put(_ snapshot: SubcategoryDTO) throws {
         let id = snapshot.id
 
-        let existing = try modelContext.fetch(
-            FetchDescriptor<Subcategory>(
-                predicate:
-                    #Predicate<Subcategory> { subcategory in
-                        subcategory.id == id
-                    }
-            )
-        ).first
+        let existing = try modelContext.fetch(FetchDescriptor<Subcategory>(predicate:
+            #Predicate<Subcategory> { subcategory in
+                subcategory.id == id
+            })).first
 
         if let existing {
             existing.apply(snapshot)
             return
         }
 
-        modelContext.insert(
-            Subcategory(snapshot)
-        )
+        modelContext.insert(Subcategory(snapshot))
     }
 
-    private func deleteLocalEntity(
-        for key: SyncEntityKey
-    ) throws {
+    private func deleteLocalEntity(for key: SyncEntityKey) throws {
         let id = key.id
 
         switch key.type {
         case .transaction:
-            if let transaction = try modelContext.fetch(
-                FetchDescriptor<Transaction>(
-                    predicate:
-                        #Predicate<Transaction> { transaction in
-                            transaction.id == id
-                        }
-                )
-            ).first {
+            if let transaction = try modelContext.fetch(FetchDescriptor<Transaction>(predicate:
+                #Predicate<Transaction> { transaction in
+                    transaction.id == id
+                })).first
+            {
                 modelContext.delete(transaction)
             }
 
         case .category:
-            if let category = try modelContext.fetch(
-                FetchDescriptor<Category>(
-                    predicate:
-                        #Predicate<Category> { category in
-                            category.id == id
-                        }
-                )
-            ).first {
+            if let category = try modelContext.fetch(FetchDescriptor<Category>(predicate:
+                #Predicate<Category> { category in
+                    category.id == id
+                })).first
+            {
                 modelContext.delete(category)
             }
 
         case .subcategory:
-            if let subcategory = try modelContext.fetch(
-                FetchDescriptor<Subcategory>(
-                    predicate:
-                        #Predicate<Subcategory> { subcategory in
-                            subcategory.id == id
-                        }
-                )
-            ).first {
+            if let subcategory = try modelContext.fetch(FetchDescriptor<Subcategory>(predicate:
+                #Predicate<Subcategory> { subcategory in
+                    subcategory.id == id
+                })).first
+            {
                 modelContext.delete(subcategory)
             }
         }
@@ -372,61 +287,44 @@ final class ConflictResolutionService {
 
     // MARK: - Sync metadata
 
-    private func setSyncState(
-        for key: SyncEntityKey,
-        revision: Int,
-        lastMutationId: UUID
-    ) throws {
-        if let state = try modelContext.fetch(
-            MutationQueries.getEntitySyncState(
-                key
-            )
-        ).first {
+    private func setSyncState(for key: SyncEntityKey,
+                              revision: Int,
+                              lastMutationId: UUID) throws
+    {
+        if let state = try modelContext.fetch(MutationQueries.getEntitySyncState(key)).first {
             state.revision = revision
             state.lastMutationId = lastMutationId
 
             return
         }
 
-        modelContext.insert(
-            EntitySyncState(
-                key: key,
-                lastMutationId: lastMutationId,
-                revision: revision
-            )
-        )
+        modelContext.insert(EntitySyncState(key: key,
+                                            lastMutationId: lastMutationId,
+                                            revision: revision))
     }
 
-    private func deleteSyncState(
-        for key: SyncEntityKey
-    ) throws {
-        if let state = try modelContext.fetch(
-            MutationQueries.getEntitySyncState(
-                key
-            )
-        ).first {
+    private func deleteSyncState(for key: SyncEntityKey) throws {
+        if let state = try modelContext.fetch(MutationQueries.getEntitySyncState(key)).first {
             modelContext.delete(state)
         }
     }
 
     // MARK: - Helpers
 
-    private func operation(
-        for snapshot: EntitySnapshot
-    ) -> SyncOperation {
+    private func operation(for snapshot: EntitySnapshot) -> SyncOperation {
         switch snapshot {
-        case .transaction(let transaction):
-            return transaction.deletedAt == nil
+        case let .transaction(transaction):
+            transaction.deletedAt == nil
                 ? .upsert
                 : .delete
 
-        case .category(let category):
-            return category.deletedAt == nil
+        case let .category(category):
+            category.deletedAt == nil
                 ? .upsert
                 : .delete
 
-        case .subcategory(let subcategory):
-            return subcategory.deletedAt == nil
+        case let .subcategory(subcategory):
+            subcategory.deletedAt == nil
                 ? .upsert
                 : .delete
         }

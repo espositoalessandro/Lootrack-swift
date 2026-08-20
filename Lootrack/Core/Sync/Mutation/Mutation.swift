@@ -28,35 +28,33 @@ nonisolated enum EntitySnapshot:
 
     var id: UUID {
         switch self {
-        case .transaction(let transaction):
-            return transaction.id
+        case let .transaction(transaction):
+            transaction.id
 
-        case .category(let category):
-            return category.id
+        case let .category(category):
+            category.id
 
-        case .subcategory(let subcategory):
-            return subcategory.id
+        case let .subcategory(subcategory):
+            subcategory.id
         }
     }
 
     var type: SyncEntityType {
         switch self {
         case .transaction:
-            return .transaction
+            .transaction
 
         case .category:
-            return .category
+            .category
 
         case .subcategory:
-            return .subcategory
+            .subcategory
         }
     }
 
     var key: SyncEntityKey {
-        SyncEntityKey(
-            type: type,
-            id: id
-        )
+        SyncEntityKey(type: type,
+                      id: id)
     }
 }
 
@@ -75,15 +73,14 @@ final class Mutation: ImmutableEntity {
     var base: EntitySnapshot?
     var payload: EntitySnapshot
 
-    init(
-        id: UUID = UUID(),
-        from base: EntitySnapshot?,
-        to payload: EntitySnapshot,
-        operation: SyncOperation,
-        expectedRevision: Int? = nil,
-        expectedMutationId: UUID? = nil,
-        createdAt: Date = .now
-    ) {
+    init(id: UUID = UUID(),
+         from base: EntitySnapshot?,
+         to payload: EntitySnapshot,
+         operation: SyncOperation,
+         expectedRevision: Int? = nil,
+         expectedMutationId: UUID? = nil,
+         createdAt: Date = .now)
+    {
         self.id = id
         self.operation = operation
         self.expectedRevision =
@@ -106,19 +103,16 @@ final class EntitySyncState {
     var revision: Int
 
     var key: SyncEntityKey {
-        SyncEntityKey(
-            type: entityType,
-            id: entityId
-        )
+        SyncEntityKey(type: entityType,
+                      id: entityId)
     }
 
-    init(
-        key: SyncEntityKey,
-        lastMutationId: UUID? = nil,
-        revision: Int
-    ) {
-        self.entityId = key.id
-        self.entityType = key.type
+    init(key: SyncEntityKey,
+         lastMutationId: UUID? = nil,
+         revision: Int)
+    {
+        entityId = key.id
+        entityType = key.type
         self.lastMutationId =
             lastMutationId
         self.revision = revision
@@ -153,17 +147,17 @@ nonisolated struct MutationDTO:
 extension MutationDTO {
     @MainActor
     init(_ mutation: Mutation) {
-        self.id = mutation.id
-        self.operation =
+        id = mutation.id
+        operation =
             mutation.operation
-        self.expectedRevision =
+        expectedRevision =
             mutation.expectedRevision
-        self.expectedMutationId =
+        expectedMutationId =
             mutation.expectedMutationId
-        self.createdAt =
+        createdAt =
             mutation.createdAt
-        self.base = mutation.base
-        self.payload = mutation.payload
+        base = mutation.base
+        payload = mutation.payload
     }
 }
 
@@ -173,9 +167,7 @@ struct PendingEntityChanges:
     let mutations: [Mutation]
 
     init(mutations: [Mutation]) {
-        precondition(
-            !mutations.isEmpty
-        )
+        precondition(!mutations.isEmpty)
 
         self.mutations = mutations
     }

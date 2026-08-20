@@ -23,19 +23,18 @@ final class Transaction: Entity {
     var subcategoryId: UUID?
     var tags: [String] = []
 
-    init(
-        id: UUID = UUID(),
-        createdAt: Date = .now,
-        updatedAt: Date = .now,
-        deletedAt: Date? = nil,
-        type: TransactionType,
-        amountInCents: Int,
-        note: String,
-        occurredOn: Date,
-        categoryId: UUID? = nil,
-        subcategoryId: UUID? = nil,
-        tags: [String] = []
-    ) {
+    init(id: UUID = UUID(),
+         createdAt: Date = .now,
+         updatedAt: Date = .now,
+         deletedAt: Date? = nil,
+         type: TransactionType,
+         amountInCents: Int,
+         note: String,
+         occurredOn: Date,
+         categoryId: UUID? = nil,
+         subcategoryId: UUID? = nil,
+         tags: [String] = [])
+    {
         self.id = id
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -52,19 +51,17 @@ final class Transaction: Entity {
 
 extension Transaction {
     convenience init(_ snapshot: TransactionDTO) {
-        self.init(
-            id: snapshot.id,
-            createdAt: snapshot.createdAt,
-            updatedAt: snapshot.updatedAt,
-            deletedAt: snapshot.deletedAt,
-            type: snapshot.type,
-            amountInCents: snapshot.amountInCents,
-            note: snapshot.note,
-            occurredOn: snapshot.occurredOn,
-            categoryId: snapshot.categoryId,
-            subcategoryId: snapshot.subcategoryId,
-            tags: snapshot.tags
-        )
+        self.init(id: snapshot.id,
+                  createdAt: snapshot.createdAt,
+                  updatedAt: snapshot.updatedAt,
+                  deletedAt: snapshot.deletedAt,
+                  type: snapshot.type,
+                  amountInCents: snapshot.amountInCents,
+                  note: snapshot.note,
+                  occurredOn: snapshot.occurredOn,
+                  categoryId: snapshot.categoryId,
+                  subcategoryId: snapshot.subcategoryId,
+                  tags: snapshot.tags)
     }
 
     func apply(_ snapshot: TransactionDTO) {
@@ -101,18 +98,18 @@ nonisolated struct TransactionDTO: Codable, Equatable {
 extension TransactionDTO {
     @MainActor
     init(_ transaction: Transaction) {
-        self.id = transaction.id
-        self.createdAt = transaction.createdAt
-        self.updatedAt = transaction.updatedAt
-        self.deletedAt = transaction.deletedAt
+        id = transaction.id
+        createdAt = transaction.createdAt
+        updatedAt = transaction.updatedAt
+        deletedAt = transaction.deletedAt
 
-        self.type = transaction.type
-        self.amountInCents = transaction.amountInCents
-        self.note = transaction.note
-        self.occurredOn = transaction.occurredOn
-        self.categoryId = transaction.categoryId
-        self.subcategoryId = transaction.subcategoryId
-        self.tags = Tag.normalizedTags(transaction.tags)
+        type = transaction.type
+        amountInCents = transaction.amountInCents
+        note = transaction.note
+        occurredOn = transaction.occurredOn
+        categoryId = transaction.categoryId
+        subcategoryId = transaction.subcategoryId
+        tags = Tag.normalizedTags(transaction.tags)
     }
 }
 
@@ -134,126 +131,76 @@ nonisolated extension TransactionDTO {
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(
-            keyedBy: CodingKeys.self
-        )
+        let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        id = try container.decode(
-            UUID.self,
-            forKey: .id
-        )
+        id = try container.decode(UUID.self,
+                                  forKey: .id)
 
-        createdAt = try container.decode(
-            Date.self,
-            forKey: .createdAt
-        )
+        createdAt = try container.decode(Date.self,
+                                         forKey: .createdAt)
 
-        updatedAt = try container.decode(
-            Date.self,
-            forKey: .updatedAt
-        )
+        updatedAt = try container.decode(Date.self,
+                                         forKey: .updatedAt)
 
-        deletedAt = try container.decodeIfPresent(
-            Date.self,
-            forKey: .deletedAt
-        )
+        deletedAt = try container.decodeIfPresent(Date.self,
+                                                  forKey: .deletedAt)
 
-        type = try container.decode(
-            TransactionType.self,
-            forKey: .type
-        )
+        type = try container.decode(TransactionType.self,
+                                    forKey: .type)
 
-        amountInCents = try container.decode(
-            Int.self,
-            forKey: .amountInCents
-        )
+        amountInCents = try container.decode(Int.self,
+                                             forKey: .amountInCents)
 
-        note = try container.decode(
-            String.self,
-            forKey: .note
-        )
+        note = try container.decode(String.self,
+                                    forKey: .note)
 
-        occurredOn = try container.decode(
-            Date.self,
-            forKey: .occurredOn
-        )
+        occurredOn = try container.decode(Date.self,
+                                          forKey: .occurredOn)
 
-        categoryId = try container.decodeIfPresent(
-            UUID.self,
-            forKey: .categoryId
-        )
+        categoryId = try container.decodeIfPresent(UUID.self,
+                                                   forKey: .categoryId)
 
-        subcategoryId = try container.decodeIfPresent(
-            UUID.self,
-            forKey: .subcategoryId
-        )
+        subcategoryId = try container.decodeIfPresent(UUID.self,
+                                                      forKey: .subcategoryId)
 
-        tags = Tag.normalizedTags(
-            try container.decodeIfPresent(
-                [String].self,
-                forKey: .tags
-            ) ?? []
-        )
+        tags = try Tag.normalizedTags(container.decodeIfPresent([String].self,
+                                                                forKey: .tags) ?? [])
     }
 
     func encode(to encoder: Encoder) throws {
-        var container = encoder.container(
-            keyedBy: CodingKeys.self
-        )
+        var container = encoder.container(keyedBy: CodingKeys.self)
 
-        try container.encode(
-            id,
-            forKey: .id
-        )
+        try container.encode(id,
+                             forKey: .id)
 
-        try container.encode(
-            createdAt,
-            forKey: .createdAt
-        )
+        try container.encode(createdAt,
+                             forKey: .createdAt)
 
-        try container.encode(
-            updatedAt,
-            forKey: .updatedAt
-        )
+        try container.encode(updatedAt,
+                             forKey: .updatedAt)
 
-        try container.encodeIfPresent(
-            deletedAt,
-            forKey: .deletedAt
-        )
+        try container.encodeIfPresent(deletedAt,
+                                      forKey: .deletedAt)
 
-        try container.encode(
-            type,
-            forKey: .type
-        )
+        try container.encode(type,
+                             forKey: .type)
 
-        try container.encode(
-            amountInCents,
-            forKey: .amountInCents
-        )
+        try container.encode(amountInCents,
+                             forKey: .amountInCents)
 
-        try container.encode(
-            note,
-            forKey: .note
-        )
+        try container.encode(note,
+                             forKey: .note)
 
-        try container.encode(
-            occurredOn,
-            forKey: .occurredOn
-        )
+        try container.encode(occurredOn,
+                             forKey: .occurredOn)
 
-        try container.encodeIfPresent(
-            categoryId,
-            forKey: .categoryId
-        )
+        try container.encodeIfPresent(categoryId,
+                                      forKey: .categoryId)
 
-        try container.encodeIfPresent(
-            subcategoryId,
-            forKey: .subcategoryId
-        )
+        try container.encodeIfPresent(subcategoryId,
+                                      forKey: .subcategoryId)
 
-        try container.encode(
-            Tag.normalizedTags(tags),
-            forKey: .tags
-        )
+        try container.encode(Tag.normalizedTags(tags),
+                             forKey: .tags)
     }
 }

@@ -78,13 +78,12 @@ struct TransactionForm: View {
     private var isSelectingSubcategoryWithAI =
         false
 
-    init(
-        draft: Binding<TransactionDraft>,
-        autoSelectCategoryWithAI: Bool = false,
-        autoSelectSubcategoryWithAI: Bool = false,
-        quickAmountEntry: Bool = false
-    ) {
-        self._draft = draft
+    init(draft: Binding<TransactionDraft>,
+         autoSelectCategoryWithAI: Bool = false,
+         autoSelectSubcategoryWithAI: Bool = false,
+         quickAmountEntry: Bool = false)
+    {
+        _draft = draft
 
         self.autoSelectCategoryWithAI =
             autoSelectCategoryWithAI
@@ -105,32 +104,28 @@ struct TransactionForm: View {
     }
 
     private var matchingSubcategories: [Subcategory] {
-        guard
-            let categoryId =
-                draft.categoryId
+        guard let categoryId =
+            draft.categoryId
         else {
             return []
         }
 
         return subcategories.filter {
             subcategory in
-
             subcategory.categoryId
                 == categoryId
         }
     }
 
     private var selectedCategory: Category? {
-        guard
-            let categoryId =
-                draft.categoryId
+        guard let categoryId =
+            draft.categoryId
         else {
             return nil
         }
 
         return categories.first {
             category in
-
             category.id
                 == categoryId
         }
@@ -139,54 +134,46 @@ struct TransactionForm: View {
     // MARK: - Picker Bindings
 
     private var categorySelection: Binding<UUID?> {
-        Binding(
-            get: {
-                draft.categoryId
-            },
-            set: { categoryId in
-                /*
-                 * This setter is invoked by the
-                 * Picker, therefore this is an
-                 * explicitly human-owned choice.
-                 */
+        Binding(get: {
+                    draft.categoryId
+                },
+                set: { categoryId in
+                    /*
+                     * This setter is invoked by the
+                     * Picker, therefore this is an
+                     * explicitly human-owned choice.
+                     */
 
-                cancelCategoryAISelection()
-                cancelSubcategoryAISelection()
+                    cancelCategoryAISelection()
+                    cancelSubcategoryAISelection()
 
-                setCategory(
-                    categoryId,
-                    origin: .human
-                )
+                    setCategory(categoryId,
+                                origin: .human)
 
-                /*
-                 * A manually selected category can
-                 * still have its subcategory inferred.
-                 */
-                prewarmSubcategoryAI()
-                scheduleSubcategoryAISelection()
-            }
-        )
+                    /*
+                     * A manually selected category can
+                     * still have its subcategory inferred.
+                     */
+                    prewarmSubcategoryAI()
+                    scheduleSubcategoryAISelection()
+                })
     }
 
     private var subcategorySelection: Binding<UUID?> {
-        Binding(
-            get: {
-                draft.subcategoryId
-            },
-            set: { subcategoryId in
-                /*
-                 * Once the user touches this Picker,
-                 * AFM no longer owns the field.
-                 */
+        Binding(get: {
+                    draft.subcategoryId
+                },
+                set: { subcategoryId in
+                    /*
+                     * Once the user touches this Picker,
+                     * AFM no longer owns the field.
+                     */
 
-                cancelSubcategoryAISelection()
+                    cancelSubcategoryAISelection()
 
-                setSubcategory(
-                    subcategoryId,
-                    origin: .human
-                )
-            }
-        )
+                    setSubcategory(subcategoryId,
+                                   origin: .human)
+                })
     }
 
     // MARK: - Body
@@ -196,58 +183,35 @@ struct TransactionForm: View {
             Form {
                 Section("Transaction") {
                     if quickAmountEntry {
-                        TransactionAmountInput(
-                            amount: $draft.amount,
-                            focus: $focusedField
-                        )
-                        .listRowSeparator(
-                            .hidden,
-                            edges: .bottom
-                        )
+                        TransactionAmountInput(amount: $draft.amount,
+                                               focus: $focusedField)
+                            .listRowSeparator(.hidden,
+                                              edges: .bottom)
                     } else {
-                        TextField(
-                            "Amount",
-                            text: $draft.amount
-                        )
-                        .keyboardType(
-                            .decimalPad
-                        )
+                        TextField("Amount",
+                                  text: $draft.amount)
+                            .keyboardType(.decimalPad)
                     }
 
-                    TextField(
-                        "Description",
-                        text: $draft.note
-                    )
-                    .focused(
-                        $focusedField,
-                        equals: .description
-                    )
-                    .onChange(
-                        of: draft.note
-                    ) {
-                        descriptionDidChange()
-                    }
+                    TextField("Description",
+                              text: $draft.note)
+                        .focused($focusedField,
+                                 equals: .description)
+                        .onChange(of: draft.note) {
+                            descriptionDidChange()
+                        }
 
-                    Picker(
-                        "Type",
-                        selection: $draft.type
-                    ) {
+                    Picker("Type",
+                           selection: $draft.type)
+                    {
                         Text("Expense")
-                            .tag(
-                                TransactionType.expense
-                            )
+                            .tag(TransactionType.expense)
 
                         Text("Income")
-                            .tag(
-                                TransactionType.income
-                            )
+                            .tag(TransactionType.income)
                     }
-                    .pickerStyle(
-                        .segmented
-                    )
-                    .onChange(
-                        of: draft.type
-                    ) {
+                    .pickerStyle(.segmented)
+                    .onChange(of: draft.type) {
                         transactionTypeDidChange()
                     }
 
@@ -255,48 +219,34 @@ struct TransactionForm: View {
 
                     subcategoryPicker
 
-                    DatePicker(
-                        "Occurred on",
-                        selection:
-                            $draft.occurredOn,
-                        displayedComponents:
-                            .date
-                    )
+                    DatePicker("Occurred on",
+                               selection:
+                               $draft.occurredOn,
+                               displayedComponents:
+                               .date)
                 }
 
                 Section("Tags") {
-                    TagInput(
-                        tags:
-                            $draft.tags,
+                    TagInput(tags:
+                        $draft.tags,
                         availableTags:
-                            tags,
+                        tags,
                         onNeedsVisibility: {
-                            withAnimation(
-                                .easeInOut(
-                                    duration: 0.2
-                                )
-                            ) {
-                                proxy.scrollTo(
-                                    TransactionFormScrollTarget
-                                        .tags,
-                                    anchor: .bottom
-                                )
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo(TransactionFormScrollTarget
+                                    .tags,
+                                    anchor: .bottom)
                             }
-                        }
-                    )
-                    .id(
-                        TransactionFormScrollTarget
-                            .tags
-                    )
+                        })
+                        .id(TransactionFormScrollTarget
+                            .tags)
                 }
             }
         }
         .task {
             if autoSelectCategoryWithAI {
-                categoryAISelector.prewarm(
-                    categories:
-                        matchingCategories
-                )
+                categoryAISelector.prewarm(categories:
+                    matchingCategories)
             }
 
             if autoSelectSubcategoryWithAI {
@@ -311,9 +261,7 @@ struct TransactionForm: View {
             }
         }
         .toolbar {
-            ToolbarItemGroup(
-                placement: .keyboard
-            ) {
+            ToolbarItemGroup(placement: .keyboard) {
                 if focusedField
                     == .amount
                 {
@@ -334,53 +282,37 @@ struct TransactionForm: View {
     // MARK: - Category Picker
 
     private var categoryPicker: some View {
-        Picker(
-            selection:
-                categorySelection
-        ) {
+        Picker(selection:
+            categorySelection)
+        {
             Text("Uncategorized")
-                .tag(
-                    UUID?.none
-                )
+                .tag(UUID?.none)
 
-            ForEach(
-                matchingCategories
-            ) { category in
+            ForEach(matchingCategories) { category in
                 HStack(spacing: 5) {
-                    Text(
-                        category.name
-                    )
+                    Text(category.name)
 
                     if categorySelectionOrigin
                         == .ai,
                         draft.categoryId
-                            == category.id
+                        == category.id
                     {
-                        Image(
-                            systemName:
-                                "sparkles"
-                        )
+                        Image(systemName:
+                            "sparkles")
                     }
                 }
-                .tag(
-                    Optional(
-                        category.id
-                    )
-                )
+                .tag(Optional(category.id))
             }
         } label: {
-            HStack(
-                alignment:
-                    .firstTextBaseline,
-                spacing: 6
-            ) {
+            HStack(alignment:
+                .firstTextBaseline,
+                spacing: 6)
+            {
                 Text("Category")
 
                 if isSelectingCategoryWithAI {
-                    aiSelectionIndicator(
-                        isActive:
-                            isSelectingCategoryWithAI
-                    )
+                    aiSelectionIndicator(isActive:
+                        isSelectingCategoryWithAI)
                 }
             }
         }
@@ -389,100 +321,66 @@ struct TransactionForm: View {
     // MARK: - Subcategory Picker
 
     private var subcategoryPicker: some View {
-        Picker(
-            selection:
-                subcategorySelection
-        ) {
+        Picker(selection:
+            subcategorySelection)
+        {
             Text("None")
-                .tag(
-                    UUID?.none
-                )
+                .tag(UUID?.none)
 
-            ForEach(
-                matchingSubcategories
-            ) { subcategory in
+            ForEach(matchingSubcategories) { subcategory in
                 HStack(spacing: 5) {
-                    Text(
-                        subcategory.name
-                    )
+                    Text(subcategory.name)
 
                     if subcategorySelectionOrigin
                         == .ai,
                         draft.subcategoryId
-                            == subcategory.id
+                        == subcategory.id
                     {
-                        Image(
-                            systemName:
-                                "sparkles"
-                        )
+                        Image(systemName:
+                            "sparkles")
                     }
                 }
-                .tag(
-                    Optional(
-                        subcategory.id
-                    )
-                )
+                .tag(Optional(subcategory.id))
             }
         } label: {
-            HStack(
-                alignment:
-                    .firstTextBaseline,
-                spacing: 6
-            ) {
+            HStack(alignment:
+                .firstTextBaseline,
+                spacing: 6)
+            {
                 Text("Subcategory")
 
                 if isSelectingSubcategoryWithAI {
-                    aiSelectionIndicator(
-                        isActive:
-                            isSelectingSubcategoryWithAI
-                    )
+                    aiSelectionIndicator(isActive:
+                        isSelectingSubcategoryWithAI)
                 }
             }
         }
-        .disabled(
-            draft.categoryId == nil
-        )
+        .disabled(draft.categoryId == nil)
     }
 
     // MARK: - AI Indicator
 
-    private func aiSelectionIndicator(
-        isActive: Bool
-    ) -> some View {
+    private func aiSelectionIndicator(isActive: Bool) -> some View {
         HStack(spacing: 5) {
-            Image(
-                systemName:
-                    "apple.intelligence"
-            )
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [
-                        .pink,
-                        .purple,
-                        .blue,
-                        .cyan,
-                    ],
-                    startPoint:
-                        .topLeading,
-                    endPoint:
-                        .bottomTrailing
-                )
-            )
-            .symbolEffect(
-                .breathe,
-                options:
-                    .repeat(
-                        .continuous
-                    ),
-                isActive:
-                    isActive
-            )
+            Image(systemName:
+                "apple.intelligence")
+                .foregroundStyle(LinearGradient(colors: [.pink,
+                                                         .purple,
+                                                         .blue,
+                                                         .cyan],
+                                                startPoint:
+                                                .topLeading,
+                                                endPoint:
+                                                .bottomTrailing))
+                .symbolEffect(.breathe,
+                              options:
+                              .repeat(.continuous),
+                              isActive:
+                              isActive)
 
             Text("Selecting...")
                 .font(.caption2)
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
     }
@@ -498,8 +396,8 @@ struct TransactionForm: View {
          * as soon as Category finishes.
          */
         if autoSelectCategoryWithAI,
-            categorySelectionOrigin
-                != .human
+           categorySelectionOrigin
+           != .human
         {
             cancelCategoryAISelection()
             cancelSubcategoryAISelection()
@@ -512,10 +410,8 @@ struct TransactionForm: View {
             if categorySelectionOrigin
                 == .ai
             {
-                setCategory(
-                    nil,
-                    origin: .none
-                )
+                setCategory(nil,
+                            origin: .none)
             }
 
             scheduleCategoryAISelection()
@@ -530,15 +426,13 @@ struct TransactionForm: View {
          * Subcategory can therefore be inferred
          * independently.
          */
-        guard
-            autoSelectSubcategoryWithAI
+        guard autoSelectSubcategoryWithAI
         else {
             return
         }
 
-        guard
-            subcategorySelectionOrigin
-                != .human
+        guard subcategorySelectionOrigin
+            != .human
         else {
             return
         }
@@ -548,10 +442,8 @@ struct TransactionForm: View {
         if subcategorySelectionOrigin
             == .ai
         {
-            setSubcategory(
-                nil,
-                origin: .none
-            )
+            setSubcategory(nil,
+                           origin: .none)
         }
 
         prewarmSubcategoryAI()
@@ -565,31 +457,25 @@ struct TransactionForm: View {
          * Type invalidates Category.
          * Category invalidates Subcategory.
          */
-        setCategory(
-            nil,
-            origin: .none
-        )
+        setCategory(nil,
+                    origin: .none)
 
-        guard
-            autoSelectCategoryWithAI
+        guard autoSelectCategoryWithAI
         else {
             return
         }
 
-        categoryAISelector.prewarm(
-            categories:
-                matchingCategories
-        )
+        categoryAISelector.prewarm(categories:
+            matchingCategories)
 
         scheduleCategoryAISelection()
     }
 
     // MARK: - Value Setters
 
-    private func setCategory(
-        _ categoryId: UUID?,
-        origin: AISelectionOrigin
-    ) {
+    private func setCategory(_ categoryId: UUID?,
+                             origin: AISelectionOrigin)
+    {
         if draft.categoryId
             != categoryId
         {
@@ -615,10 +501,9 @@ struct TransactionForm: View {
             origin
     }
 
-    private func setSubcategory(
-        _ subcategoryId: UUID?,
-        origin: AISelectionOrigin
-    ) {
+    private func setSubcategory(_ subcategoryId: UUID?,
+                                origin: AISelectionOrigin)
+    {
         draft.subcategoryId =
             subcategoryId
 
@@ -631,13 +516,10 @@ struct TransactionForm: View {
     private func scheduleCategoryAISelection() {
         let description =
             draft.note
-            .trimmingCharacters(
-                in:
-                    .whitespacesAndNewlines
-            )
+                .trimmingCharacters(in:
+                    .whitespacesAndNewlines)
 
-        guard
-            !description.isEmpty
+        guard !description.isEmpty
         else {
             isSelectingCategoryWithAI =
                 false
@@ -645,8 +527,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            !matchingCategories.isEmpty
+        guard !matchingCategories.isEmpty
         else {
             isSelectingCategoryWithAI =
                 false
@@ -654,9 +535,8 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            CategoryAISelector
-                .isAvailable
+        guard CategoryAISelector
+            .isAvailable
         else {
             isSelectingCategoryWithAI =
                 false
@@ -664,9 +544,8 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            categorySelectionOrigin
-                != .human
+        guard categorySelectionOrigin
+            != .human
         else {
             isSelectingCategoryWithAI =
                 false
@@ -692,46 +571,36 @@ struct TransactionForm: View {
         categoryAISelectionTask =
             Task {
                 do {
-                    try await Task.sleep(
-                        for:
-                            .milliseconds(
-                                200
-                            )
-                    )
+                    try await Task.sleep(for:
+                        .milliseconds(200))
 
                     try Task
                         .checkCancellation()
 
                     let categoryId =
                         try await categoryAISelector
-                        .selectCategoryId(
-                            description:
+                            .selectCategoryId(description:
                                 requestedDescription,
-                            categories:
-                                requestedCategories
-                        )
+                                categories:
+                                requestedCategories)
 
                     try Task
                         .checkCancellation()
 
-                    guard
-                        activeCategoryAIRequestId
-                            == requestId
+                    guard activeCategoryAIRequestId
+                        == requestId
                     else {
                         return
                     }
 
-                    guard
-                        categorySelectionOrigin
-                            != .human
+                    guard categorySelectionOrigin
+                        != .human
                     else {
                         return
                     }
 
-                    setCategory(
-                        categoryId,
-                        origin: .ai
-                    )
+                    setCategory(categoryId,
+                                origin: .ai)
 
                     /*
                      * Category is now known.
@@ -749,17 +618,14 @@ struct TransactionForm: View {
                      * manually selecting.
                      */
                 } catch {
-                    guard
-                        activeCategoryAIRequestId
-                            == requestId
+                    guard activeCategoryAIRequestId
+                        == requestId
                     else {
                         return
                     }
 
-                    print(
-                        "FAILED TO AUTO-SELECT CATEGORY:",
-                        error
-                    )
+                    print("FAILED TO AUTO-SELECT CATEGORY:",
+                          error)
                 }
 
                 if activeCategoryAIRequestId
@@ -794,43 +660,36 @@ struct TransactionForm: View {
     // MARK: - Subcategory AI
 
     private func prewarmSubcategoryAI() {
-        guard
-            autoSelectSubcategoryWithAI
+        guard autoSelectSubcategoryWithAI
         else {
             return
         }
 
-        guard
-            let category =
-                selectedCategory
+        guard let category =
+            selectedCategory
         else {
             return
         }
 
-        guard
-            !matchingSubcategories.isEmpty
+        guard !matchingSubcategories.isEmpty
         else {
             return
         }
 
-        subcategoryAISelector.prewarm(
-            category:
-                category,
+        subcategoryAISelector.prewarm(category:
+            category,
             subcategories:
-                matchingSubcategories
-        )
+            matchingSubcategories)
     }
 
     private func scheduleSubcategoryAISelection() {
-        guard
-            autoSelectSubcategoryWithAI
+        guard autoSelectSubcategoryWithAI
         else {
             return
         }
 
-        guard
-            subcategorySelectionOrigin
-                != .human
+        guard subcategorySelectionOrigin
+            != .human
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -840,13 +699,10 @@ struct TransactionForm: View {
 
         let description =
             draft.note
-            .trimmingCharacters(
-                in:
-                    .whitespacesAndNewlines
-            )
+                .trimmingCharacters(in:
+                    .whitespacesAndNewlines)
 
-        guard
-            !description.isEmpty
+        guard !description.isEmpty
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -854,11 +710,10 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            let categoryId =
-                draft.categoryId,
+        guard let categoryId =
+            draft.categoryId,
             let category =
-                selectedCategory
+            selectedCategory
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -866,8 +721,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            !matchingSubcategories.isEmpty
+        guard !matchingSubcategories.isEmpty
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -875,9 +729,8 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            SubcategoryAISelector
-                .isAvailable
+        guard SubcategoryAISelector
+            .isAvailable
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -909,33 +762,26 @@ struct TransactionForm: View {
         subcategoryAISelectionTask =
             Task {
                 do {
-                    try await Task.sleep(
-                        for:
-                            .milliseconds(
-                                200
-                            )
-                    )
+                    try await Task.sleep(for:
+                        .milliseconds(200))
 
                     try Task
                         .checkCancellation()
 
                     let subcategoryId =
                         try await subcategoryAISelector
-                        .selectSubcategoryId(
-                            description:
+                            .selectSubcategoryId(description:
                                 requestedDescription,
-                            category:
+                                category:
                                 requestedCategory,
-                            subcategories:
-                                requestedSubcategories
-                        )
+                                subcategories:
+                                requestedSubcategories)
 
                     try Task
                         .checkCancellation()
 
-                    guard
-                        activeSubcategoryAIRequestId
-                            == requestId
+                    guard activeSubcategoryAIRequestId
+                        == requestId
                     else {
                         return
                     }
@@ -945,24 +791,20 @@ struct TransactionForm: View {
                      * generated for a previous
                      * Category.
                      */
-                    guard
-                        draft.categoryId
-                            == requestedCategoryId
+                    guard draft.categoryId
+                        == requestedCategoryId
                     else {
                         return
                     }
 
-                    guard
-                        subcategorySelectionOrigin
-                            != .human
+                    guard subcategorySelectionOrigin
+                        != .human
                     else {
                         return
                     }
 
-                    setSubcategory(
-                        subcategoryId,
-                        origin: .ai
-                    )
+                    setSubcategory(subcategoryId,
+                                   origin: .ai)
 
                 } catch is CancellationError {
                     /*
@@ -971,17 +813,14 @@ struct TransactionForm: View {
                      * selecting a Subcategory.
                      */
                 } catch {
-                    guard
-                        activeSubcategoryAIRequestId
-                            == requestId
+                    guard activeSubcategoryAIRequestId
+                        == requestId
                     else {
                         return
                     }
 
-                    print(
-                        "FAILED TO AUTO-SELECT SUBCATEGORY:",
-                        error
-                    )
+                    print("FAILED TO AUTO-SELECT SUBCATEGORY:",
+                          error)
                 }
 
                 if activeSubcategoryAIRequestId

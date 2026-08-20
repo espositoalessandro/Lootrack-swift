@@ -13,66 +13,55 @@ struct AddTransactionView: View {
 
     var body: some View {
         NavigationStack {
-            TransactionForm(
-                draft: $draft,
-                autoSelectCategoryWithAI: true,
-                autoSelectSubcategoryWithAI: true,
-                quickAmountEntry: true
-            )
-            .navigationTitle(
-                "New Transaction"
-            )
-            .toolbar {
-                ToolbarItem(
-                    placement:
-                        .cancellationAction
-                ) {
-                    Button("Cancel") {
-                        dismiss()
+            TransactionForm(draft: $draft,
+                            autoSelectCategoryWithAI: true,
+                            autoSelectSubcategoryWithAI: true,
+                            quickAmountEntry: true)
+                .navigationTitle("New Transaction")
+                .toolbar {
+                    ToolbarItem(placement:
+                        .cancellationAction)
+                    {
+                        Button("Cancel") {
+                            dismiss()
+                        }
                     }
-                }
 
-                ToolbarItem(
-                    placement:
-                        .confirmationAction
-                ) {
-                    Button("Save") {
-                        save()
+                    ToolbarItem(placement:
+                        .confirmationAction)
+                    {
+                        Button("Save") {
+                            save()
+                        }
                     }
                 }
-            }
         }
     }
 
     private func save() {
-        guard
-            let amountInCents =
-                draft.amountInCents
+        guard let amountInCents =
+            draft.amountInCents
         else {
             return
         }
 
         do {
-            try transactionService.create(
-                type: draft.type,
-                amountInCents:
-                    amountInCents,
-                note: draft.note,
-                occurredOn:
-                    draft.occurredOn,
-                categoryId:
-                    draft.categoryId,
-                subcategoryId:
-                    draft.subcategoryId,
-                tags: draft.tags
-            )
+            try transactionService.create(type: draft.type,
+                                          amountInCents:
+                                          amountInCents,
+                                          note: draft.note,
+                                          occurredOn:
+                                          draft.occurredOn,
+                                          categoryId:
+                                          draft.categoryId,
+                                          subcategoryId:
+                                          draft.subcategoryId,
+                                          tags: draft.tags)
 
             dismiss()
         } catch {
-            print(
-                "FAILED TO CREATE TRANSACTION:",
-                error
-            )
+            print("FAILED TO CREATE TRANSACTION:",
+                  error)
         }
     }
 }

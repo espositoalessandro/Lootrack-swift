@@ -1,64 +1,80 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
-struct HomeView: View {
-    
+struct Dashboard: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-    
+
+    @Environment(AppSettings.self)
+    private var settings
+
     @Query(TransactionQueries.active)
     private var transactions: [Transaction]
-    
+
     private var currentMonthTransactions: [Transaction] {
-        guard let interval = Calendar.current.dateInterval(
-            of: .month,
-            for: .now
-        ) else {
+        guard let interval =
+            Calendar.current.dateInterval(of: .month,
+                                          for: .now)
+        else {
             return []
         }
 
-        return transactions.filter { transaction in
+        return transactions.filter {
+            transaction in
             interval.contains(transaction.occurredOn)
         }
     }
+
     private var totalIncome: Int {
         currentMonthTransactions
-            .filter { $0.type == .income }
-            .reduce(0) { total, transaction in
-                total + transaction.amountInCents
+            .filter {
+                $0.type == .income
+            }
+            .reduce(0) {
+                total,
+                transaction in
+                total
+                    + transaction
+                    .amountInCents
             }
     }
 
     private var totalExpenses: Int {
         currentMonthTransactions
-            .filter { $0.type == .expense }
-            .reduce(0) { total, transaction in
-                total + transaction.amountInCents
+            .filter {
+                $0.type == .expense
+            }
+            .reduce(0) {
+                total,
+                transaction in
+                total
+                    + transaction
+                    .amountInCents
             }
     }
 
     private var netTotal: Int {
         totalIncome - totalExpenses
     }
-    
-    private func formattedAmount(_ cents: Int) -> String {
-        (Double(cents) / 100)
-            .formatted(.currency(code: "EUR"))
-    }
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                Text(Date.now.formatted(.dateTime.month(.wide).year()))
+                Text(Date.now,
+                     format:
+                     .dateTime
+                         .month(.wide)
+                         .year())
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity,
+                           alignment: .leading)
 
                 VStack(spacing: 8) {
                     Text("Net this month")
                         .foregroundStyle(.secondary)
 
-                    Text(formattedAmount(netTotal))
+                    Text(settings.formattedAmount(netTotal))
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .monospacedDigit()
@@ -69,10 +85,13 @@ struct HomeView: View {
 
                 HStack(spacing: 16) {
                     VStack(spacing: 6) {
-                        Label("Income", systemImage: "arrow.down")
+                        Label("Income",
+                              systemImage:
+                              "arrow.down")
                             .foregroundStyle(.green)
 
-                        Text(formattedAmount(totalIncome))
+                        Text(settings
+                            .formattedAmount(totalIncome))
                             .font(.title2)
                             .fontWeight(.semibold)
                             .monospacedDigit()
@@ -80,10 +99,13 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
 
                     VStack(spacing: 6) {
-                        Label("Expenses", systemImage: "arrow.up")
+                        Label("Expenses",
+                              systemImage:
+                              "arrow.up")
                             .foregroundStyle(.red)
 
-                        Text(formattedAmount(totalExpenses))
+                        Text(settings
+                            .formattedAmount(totalExpenses))
                             .font(.title2)
                             .fontWeight(.semibold)
                             .monospacedDigit()
@@ -94,7 +116,8 @@ struct HomeView: View {
             .padding()
         }
         .refreshable {
-            await syncCoordinator.synchronize()
+            await syncCoordinator
+                .synchronize()
         }
         .navigationTitle("Lootrack v\(BuildInfo.version)")
     }

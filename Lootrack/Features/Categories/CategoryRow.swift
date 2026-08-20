@@ -13,10 +13,10 @@ struct CategoryRow: View {
     private var typeLabel: String {
         switch category.type {
         case .expense:
-            return String(localized: "Expense")
+            String(localized: "Expense")
 
         case .income:
-            return String(localized: "Income")
+            String(localized: "Income")
         }
     }
 
@@ -29,45 +29,29 @@ struct CategoryRow: View {
                     .transition(.opacity)
             }
         }
-        .background(
-            Color(
-                uiColor:
-                    .secondarySystemGroupedBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 22,
-                style: .continuous
-            )
-        )
-        .contentShape(
-            RoundedRectangle(
-                cornerRadius: 22,
-                style: .continuous
-            )
-        )
+        .background(Color(uiColor:
+            .secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22,
+                                    style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 22,
+                                       style: .continuous))
         .padding(.horizontal, 16)
-        .swipeActions(
-            edge: .trailing,
-            allowsFullSwipe: false
-        ) {
-            Button(
-                "Delete",
-                systemImage: "trash",
-                role: .destructive
-            ) {
+        .swipeActions(edge: .trailing,
+                      allowsFullSwipe: false)
+        {
+            Button("Delete",
+                   systemImage: "trash",
+                   role: .destructive)
+            {
                 onDelete()
             }
         }
-        .swipeActions(
-            edge: .leading,
-            allowsFullSwipe: true
-        ) {
-            Button(
-                "Edit",
-                systemImage: "pencil"
-            ) {
+        .swipeActions(edge: .leading,
+                      allowsFullSwipe: true)
+        {
+            Button("Edit",
+                   systemImage: "pencil")
+            {
                 onEdit()
             }
             .tint(.blue)
@@ -78,11 +62,7 @@ struct CategoryRow: View {
 
     private var header: some View {
         Button {
-            withAnimation(
-                .easeInOut(
-                    duration: 0.2
-                )
-            ) {
+            withAnimation(.easeInOut(duration: 0.2)) {
                 isExpanded.toggle()
             }
         } label: {
@@ -91,40 +71,22 @@ struct CategoryRow: View {
                     .font(.headline)
                     .foregroundStyle(.primary)
 
-                Spacer(
-                    minLength: 12
-                )
+                Spacer(minLength: 12)
 
                 Text(typeLabel)
-                    .foregroundStyle(
-                        .secondary
-                    )
+                    .foregroundStyle(.secondary)
 
-                Image(
-                    systemName:
-                        "chevron.right"
-                )
-                .font(
-                    .subheadline.weight(
-                        .semibold
-                    )
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-                .rotationEffect(
-                    isExpanded
+                Image(systemName:
+                    "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(isExpanded
                         ? .degrees(90)
-                        : .zero
-                )
+                        : .zero)
             }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
-            .contentShape(
-                Rectangle()
-            )
+            .frame(maxWidth: .infinity,
+                   alignment: .leading)
+            .contentShape(Rectangle())
             .padding(16)
         }
         .buttonStyle(.plain)
@@ -133,10 +95,9 @@ struct CategoryRow: View {
     // MARK: - Details
 
     private var details: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 18
-        ) {
+        VStack(alignment: .leading,
+               spacing: 18)
+        {
             Divider()
 
             descriptionSection
@@ -147,76 +108,47 @@ struct CategoryRow: View {
 
             actions
         }
-        .padding(
-            .horizontal,
-            16
-        )
-        .padding(
-            .bottom,
-            16
-        )
+        .padding(.horizontal,
+                 16)
+        .padding(.bottom,
+                 16)
     }
 
     private var descriptionSection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 8
-        ) {
+        VStack(alignment: .leading,
+               spacing: 8)
+        {
             Text("Description")
-                .font(
-                    .subheadline.weight(
-                        .semibold
-                    )
-                )
+                .font(.subheadline.weight(.semibold))
 
             if category.note.isEmpty {
-                Text(
-                    "No description"
-                )
-                .foregroundStyle(
-                    .secondary
-                )
+                Text("No description")
+                    .foregroundStyle(.secondary)
             } else {
                 Text(category.note)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        alignment: .leading
-                    )
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity,
+                           alignment: .leading)
             }
         }
     }
 
     private var subcategoriesSection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 10
-        ) {
+        VStack(alignment: .leading,
+               spacing: 10)
+        {
             Text("Subcategories")
-                .font(
-                    .subheadline.weight(
-                        .semibold
-                    )
-                )
+                .font(.subheadline.weight(.semibold))
 
             if subcategories.isEmpty {
                 Text("None")
-                    .foregroundStyle(
-                        .secondary
-                    )
+                    .foregroundStyle(.secondary)
             } else {
-                FlowLayout(
-                    horizontalSpacing: 6,
-                    verticalSpacing: 6
-                ) {
-                    ForEach(
-                        subcategories
-                    ) { subcategory in
-                        Chip(
-                            subcategory.name
-                        )
+                FlowLayout(horizontalSpacing: 6,
+                           verticalSpacing: 6)
+                {
+                    ForEach(subcategories) { subcategory in
+                        Chip(subcategory.name)
                     }
                 }
             }
@@ -230,34 +162,20 @@ struct CategoryRow: View {
             Button {
                 onEdit()
             } label: {
-                Label(
-                    "Edit",
-                    systemImage: "pencil"
-                )
-                .frame(
-                    maxWidth: .infinity
-                )
+                Label("Edit",
+                      systemImage: "pencil")
+                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(
-                .borderedProminent
-            )
+            .buttonStyle(.borderedProminent)
 
-            Button(
-                role: .destructive
-            ) {
+            Button(role: .destructive) {
                 onDelete()
             } label: {
-                Label(
-                    "Delete",
-                    systemImage: "trash"
-                )
-                .frame(
-                    maxWidth: .infinity
-                )
+                Label("Delete",
+                      systemImage: "trash")
+                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(
-                .bordered
-            )
+            .buttonStyle(.bordered)
             .tint(.red)
         }
         .controlSize(.large)

@@ -13,10 +13,9 @@ final class SyncCoordinator {
     var syncResult: String?
     var conflicts: [SyncConflictCandidate] = []
 
-    init(
-        syncEngine: SyncEngine,
-        conflictResolutionService: ConflictResolutionService
-    ) {
+    init(syncEngine: SyncEngine,
+         conflictResolutionService: ConflictResolutionService)
+    {
         self.syncEngine = syncEngine
         self.conflictResolutionService =
             conflictResolutionService
@@ -78,22 +77,17 @@ final class SyncCoordinator {
             syncResult =
                 "ERROR: \(String(describing: error))"
 
-            print(
-                "Synchronization failed:",
-                error
-            )
+            print("Synchronization failed:",
+                  error)
         }
     }
 
-    func resolveConflict(
-        _ conflict: SyncConflictCandidate,
-        using resolution: ConflictResolution
-    ) {
+    func resolveConflict(_ conflict: SyncConflictCandidate,
+                         using resolution: ConflictResolution)
+    {
         do {
-            try conflictResolutionService.resolve(
-                conflict,
-                using: resolution
-            )
+            try conflictResolutionService.resolve(conflict,
+                                                  using: resolution)
 
             conflicts.removeAll {
                 $0.id == conflict.id
@@ -108,10 +102,8 @@ final class SyncCoordinator {
             syncResult =
                 "ERROR: \(String(describing: error))"
 
-            print(
-                "Conflict resolution failed:",
-                error
-            )
+            print("Conflict resolution failed:",
+                  error)
         }
     }
 }
