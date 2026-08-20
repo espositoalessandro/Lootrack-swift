@@ -34,9 +34,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        TabView(
-            selection: $selectedTab
-        ) {
+        TabView(selection: $selectedTab) {
             Tab(
                 "Dashboard",
                 systemImage: "rectangle.3.group",
@@ -80,13 +78,11 @@ struct RootView: View {
                 systemImage: "gear",
                 value: AppTab.settings
             ) {
-              EmptyView()
+                EmptyView()
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .sheet(
-            isPresented: $isSyncPresented
-        ) {
+        .sheet(isPresented: $isSyncPresented) {
             NavigationStack {
                 SyncView()
             }
@@ -102,9 +98,7 @@ struct RootView: View {
 
     @ToolbarContentBuilder
     private var appToolbar: some ToolbarContent {
-        ToolbarItem(
-            placement: .topBarTrailing
-        ) {
+        ToolbarItem(placement: .topBarTrailing) {
             syncStatusButton
         }
     }
@@ -119,39 +113,20 @@ struct RootView: View {
                     ? "exclamationmark.triangle.fill"
                     : "arrow.triangle.2.circlepath"
             )
-            .overlay(
-                alignment: .topTrailing
-            ) {
+            .overlay(alignment: .topTrailing) {
                 if syncBadgeCount > 0 {
-                    Text(
-                        syncBadgeCount > 99
-                            ? "99+"
-                            : "\(syncBadgeCount)"
-                    )
-                    .font(
-                        .caption2.bold()
-                    )
-                    .foregroundStyle(
-                        .white
-                    )
-                    .padding(
-                        .horizontal,
-                        4
-                    )
-                    .frame(
-                        minWidth: 16,
-                        minHeight: 16
-                    )
-                    .background(
-                        hasConflicts
-                            ? Color.red
-                            : Color.accentColor,
-                        in: Capsule()
-                    )
-                    .offset(
-                        x: 9,
-                        y: -8
-                    )
+                    Text(syncBadgeCount > 99 ? "99+" : "\(syncBadgeCount)")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .background(
+                            hasConflicts
+                                ? Color.red
+                                : Color.accentColor,
+                            in: Capsule()
+                        )
+                        .offset(x: 9, y: -8)
                 }
             }
         }

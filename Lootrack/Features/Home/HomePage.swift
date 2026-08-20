@@ -1,19 +1,17 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct HomeView: View {
-    
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-    
+
     @Query(TransactionQueries.active)
     private var transactions: [Transaction]
-    
+
     private var currentMonthTransactions: [Transaction] {
-        guard let interval = Calendar.current.dateInterval(
-            of: .month,
-            for: .now
-        ) else {
+        guard let interval = Calendar.current.dateInterval(of: .month,
+                                                           for: .now)
+        else {
             return []
         }
 
@@ -21,6 +19,7 @@ struct HomeView: View {
             interval.contains(transaction.occurredOn)
         }
     }
+
     private var totalIncome: Int {
         currentMonthTransactions
             .filter { $0.type == .income }
@@ -40,12 +39,12 @@ struct HomeView: View {
     private var netTotal: Int {
         totalIncome - totalExpenses
     }
-    
+
     private func formattedAmount(_ cents: Int) -> String {
         (Double(cents) / 100)
             .formatted(.currency(code: "EUR"))
     }
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {

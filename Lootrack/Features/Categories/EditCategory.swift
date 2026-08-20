@@ -36,9 +36,7 @@ struct EditCategoryView: View {
 
     private var canSave: Bool {
         let categoryName = draft.name
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !categoryName.isEmpty else {
             return false
@@ -48,9 +46,7 @@ struct EditCategoryView: View {
 
         for subcategory in subcategoryDrafts {
             let name = subcategory.name
-                .trimmingCharacters(
-                    in: .whitespacesAndNewlines
-                )
+                .trimmingCharacters(in: .whitespacesAndNewlines)
 
             guard !name.isEmpty else {
                 return false
@@ -69,43 +65,33 @@ struct EditCategoryView: View {
     init(category: Category) {
         self.category = category
 
-        _draft = State(
-            initialValue: CategoryDraft(
-                category: category
-            )
-        )
+        _draft = State(initialValue: CategoryDraft(category: category))
     }
 
     var body: some View {
         NavigationStack {
-            CategoryForm(
-                draft: $draft,
-                typeDisabled: hasTransactions,
-                subcategories:
-                    $subcategoryDrafts
-            )
-            .navigationTitle("Edit Category")
-            .toolbar {
-                ToolbarItem(
-                    placement: .cancellationAction
-                ) {
-                    Button("Cancel") {
-                        dismiss()
+            CategoryForm(draft: $draft,
+                         typeDisabled: hasTransactions,
+                         subcategories:
+                         $subcategoryDrafts)
+                .navigationTitle("Edit Category")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
                     }
-                }
 
-                ToolbarItem(
-                    placement: .confirmationAction
-                ) {
-                    Button("Save") {
-                        save()
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            save()
+                        }
+                        .disabled(!canSave)
                     }
-                    .disabled(!canSave)
                 }
-            }
-            .task {
-                loadSubcategoriesIfNeeded()
-            }
+                .task {
+                    loadSubcategoriesIfNeeded()
+                }
         }
     }
 
@@ -118,46 +104,35 @@ struct EditCategoryView: View {
 
         subcategoryDrafts =
             subcategories
-            .filter { subcategory in
-                subcategory.categoryId
-                    == category.id
-            }
-            .map { subcategory in
-                SubcategoryDraft(
-                    subcategory: subcategory
-                )
-            }
+                .filter { subcategory in
+                    subcategory.categoryId
+                        == category.id
+                }
+                .map { subcategory in
+                    SubcategoryDraft(subcategory: subcategory)
+                }
     }
 
     private func save() {
         do {
-            try categoryService.update(
-                category,
-                name: draft.name,
-                type: draft.type,
-                note: draft.note
-            )
+            try categoryService.update(category,
+                                       name: draft.name,
+                                       type: draft.type,
+                                       note: draft.note)
 
-            try subcategoryService.reconcile(
-                categoryId: category.id,
-                desired:
-                    subcategoryDrafts.map {
-                        subcategory in
-
-                        (
-                            id: subcategory.id,
-                            name:
-                                subcategory.name
-                        )
-                    }
-            )
+            try subcategoryService.reconcile(categoryId: category.id,
+                                             desired:
+                                             subcategoryDrafts.map {
+                                                 subcategory in
+                                                 (id: subcategory.id,
+                                                  name:
+                                                  subcategory.name)
+                                             })
 
             dismiss()
         } catch {
-            print(
-                "FAILED TO UPDATE CATEGORY:",
-                error
-            )
+            print("FAILED TO UPDATE CATEGORY:",
+                  error)
         }
     }
 }

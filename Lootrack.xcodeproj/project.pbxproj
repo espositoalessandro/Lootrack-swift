@@ -7,12 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		312FE036303712C800B6007D /* .swiftformat in Resources */ = {isa = PBXBuildFile; fileRef = 312FE035303712BD00B6007D /* .swiftformat */; };
+		312FE03A303713D800B6007D /* setup-dev-tools.sh in Resources */ = {isa = PBXBuildFile; fileRef = 312FE038303713D800B6007D /* setup-dev-tools.sh */; };
+		312FE03B303713D800B6007D /* Brewfile in Resources */ = {isa = PBXBuildFile; fileRef = 312FE037303713D800B6007D /* Brewfile */; };
 		31F567183033776D00E07656 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 31F567173033776D00E07656 /* GoogleSignIn */; };
 		31F5671A3033776D00E07656 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 31F567193033776D00E07656 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		312FDFBA30358F1300B6007D /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		312FE035303712BD00B6007D /* .swiftformat */ = {isa = PBXFileReference; lastKnownFileType = text; path = .swiftformat; sourceTree = "<group>"; };
+		312FE037303713D800B6007D /* Brewfile */ = {isa = PBXFileReference; lastKnownFileType = text; path = Brewfile; sourceTree = "<group>"; };
+		312FE038303713D800B6007D /* setup-dev-tools.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "setup-dev-tools.sh"; sourceTree = "<group>"; };
 		31626FB6302E146800F885C8 /* Lootrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lootrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -74,10 +80,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		312FE039303713D800B6007D /* Scripts */ = {
+			isa = PBXGroup;
+			children = (
+				312FE038303713D800B6007D /* setup-dev-tools.sh */,
+			);
+			path = Scripts;
+			sourceTree = "<group>";
+		};
 		31626FAD302E146800F885C8 = {
 			isa = PBXGroup;
 			children = (
+				312FE035303712BD00B6007D /* .swiftformat */,
 				312FDFBA30358F1300B6007D /* .gitignore */,
+				312FE037303713D800B6007D /* Brewfile */,
+				312FE039303713D800B6007D /* Scripts */,
 				312FDFB530358ED800B6007D /* Versioning */,
 				31626FB8302E146800F885C8 /* Lootrack */,
 				31626FB7302E146800F885C8 /* Products */,
@@ -162,6 +179,9 @@
 		31626FB4302E146800F885C8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				312FE03A303713D800B6007D /* setup-dev-tools.sh in Resources */,
+				312FE03B303713D800B6007D /* Brewfile in Resources */,
+				312FE036303712C800B6007D /* .swiftformat in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */

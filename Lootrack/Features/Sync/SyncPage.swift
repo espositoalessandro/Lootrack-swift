@@ -9,13 +9,13 @@ enum PendingMutationKind {
     var displayName: String {
         switch self {
         case .created:
-            return "Created"
+            "Created"
 
         case .updated:
-            return "Updated"
+            "Updated"
 
         case .deleted:
-            return "Deleted"
+            "Deleted"
         }
     }
 }
@@ -34,129 +34,95 @@ extension Mutation {
     }
 }
 
-extension SyncConflictCandidate {
-    fileprivate var title: String {
+private extension SyncConflictCandidate {
+    var title: String {
         switch local {
-        case .transaction(
-            let transaction
-        ):
+        case let .transaction(transaction):
             let note =
                 transaction.note
-                .trimmingCharacters(
-                    in:
-                        .whitespacesAndNewlines
-                )
+                    .trimmingCharacters(in:
+                        .whitespacesAndNewlines)
 
             return note.isEmpty
-                ? String(
-                    localized:
-                        "Transaction"
-                )
+                ? String(localized:
+                    "Transaction")
                 : note
 
-        case .category(
-            let category
-        ):
+        case let .category(category):
             return category.name
 
-        case .subcategory(
-            let subcategory
-        ):
+        case let .subcategory(subcategory):
             return subcategory.name
         }
     }
 
-    fileprivate var entityName: String {
+    var entityName: String {
         switch key.type {
         case .transaction:
-            return String(
-                localized:
-                    "Transaction"
-            )
+            String(localized:
+                "Transaction")
 
         case .category:
-            return String(
-                localized:
-                    "Category"
-            )
+            String(localized:
+                "Category")
 
         case .subcategory:
-            return String(
-                localized:
-                    "Subcategory"
-            )
+            String(localized:
+                "Subcategory")
         }
     }
 
-    fileprivate var message: String {
+    var message: String {
         switch reason {
         case .diverged:
-            return String(
-                localized:
-                    "This item changed both on this device and in Google Sheets."
-            )
+            String(localized:
+                "This item changed both on this device and in Google Sheets.")
 
         case .remoteMissing:
-            return String(
-                localized:
-                    "This item exists on this device but is missing from Google Sheets."
-            )
+            String(localized:
+                "This item exists on this device but is missing from Google Sheets.")
 
         case .invalidLocalChain:
-            return String(
-                localized:
-                    "Lootrack could not safely replay your local changes on top of the Google Sheets version."
-            )
+            String(localized:
+                "Lootrack could not safely replay your local changes on top of the Google Sheets version.")
         }
     }
 }
 
-
-
 struct SyncView: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
-   
-    @Query(
-        MutationQueries
-            .pendingByOldest
-    )
+
+    @Query(MutationQueries
+        .pendingByOldest)
     private var mutations: [Mutation]
 
     private var pendingEntities: [PendingEntityChanges] {
-        Dictionary(
-            grouping: mutations,
-            by: {
-                $0.payload.key
-            }
-        )
-        .values
-        .map { mutations in
-            PendingEntityChanges(
-                mutations:
-                    mutations
-            )
-        }
-        .sorted {
-            $0.latestMutation
-                .createdAt
-                > $1.latestMutation
-                .createdAt
-        }
+        Dictionary(grouping: mutations,
+                   by: {
+                       $0.payload.key
+                   })
+                   .values
+                   .map { mutations in
+                       PendingEntityChanges(mutations:
+                           mutations)
+                   }
+                   .sorted {
+                       $0.latestMutation
+                           .createdAt
+                           > $1.latestMutation
+                           .createdAt
+                   }
     }
 
-    
-    
     var body: some View {
         if let syncResult = syncCoordinator.syncResult {
             Section {
                 Text(syncResult)
                     .font(.footnote)
-                    .foregroundStyle(
-                        syncResult.hasPrefix("ERROR:")
+                    .foregroundStyle(syncResult.hasPrefix("ERROR:")
                         ? .red
-                        : .secondary
-                    )
+                        : .secondary)
                     .textSelection(.enabled)
             } header: {
                 Text("Synchronization")
@@ -168,252 +134,163 @@ struct SyncView: View {
                 .isEmpty
             {
                 Section {
-                    ForEach(
-                        syncCoordinator
-                            .conflicts
-                    ) { conflict in
-                        VStack(
-                            alignment:
-                                .leading,
-                            spacing: 12
-                        ) {
+                    ForEach(syncCoordinator
+                        .conflicts)
+                    { conflict in
+                        VStack(alignment:
+                            .leading,
+                            spacing: 12)
+                        {
                             HStack {
-                                Image(
-                                    systemName:
-                                        "exclamationmark.triangle.fill"
-                                )
-                                .foregroundStyle(
-                                    .orange
-                                )
+                                Image(systemName:
+                                    "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
 
-                                VStack(
-                                    alignment:
-                                        .leading,
-                                    spacing: 2
-                                ) {
-                                    Text(
-                                        conflict
-                                            .title
-                                    )
-                                    .fontWeight(
-                                        .semibold
-                                    )
+                                VStack(alignment:
+                                    .leading,
+                                    spacing: 2)
+                                {
+                                    Text(conflict
+                                        .title)
+                                        .fontWeight(.semibold)
 
-                                    Text(
-                                        conflict
-                                            .entityName
-                                    )
-                                    .font(
-                                        .caption
-                                    )
-                                    .foregroundStyle(
-                                        .secondary
-                                    )
+                                    Text(conflict
+                                        .entityName)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
 
-                            Text(
-                                conflict
-                                    .message
-                            )
-                            .font(
-                                .subheadline
-                            )
-                            .foregroundStyle(
-                                .secondary
-                            )
+                            Text(conflict
+                                .message)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
 
                             HStack {
                                 Button {
                                     syncCoordinator
-                                        .resolveConflict(
-                                            conflict,
-                                            using:
-                                                .keepRemote
-                                        )
+                                        .resolveConflict(conflict,
+                                                         using:
+                                                         .keepRemote)
                                 } label: {
-                                    Text(
-                                        conflict
-                                            .remote
-                                            == nil
-                                            ? "Discard local"
-                                            : "Use remote"
-                                    )
+                                    Text(conflict
+                                        .remote
+                                        == nil
+                                        ? "Discard local"
+                                        : "Use remote")
                                 }
-                                .buttonStyle(
-                                    .bordered
-                                )
+                                .buttonStyle(.bordered)
 
                                 Spacer()
 
                                 Button {
                                     syncCoordinator
-                                        .resolveConflict(
-                                            conflict,
-                                            using:
-                                                .keepLocal
-                                        )
+                                        .resolveConflict(conflict,
+                                                         using:
+                                                         .keepLocal)
                                 } label: {
-                                    Text(
-                                        "Keep mine"
-                                    )
+                                    Text("Keep mine")
                                 }
-                                .buttonStyle(
-                                    .borderedProminent
-                                )
+                                .buttonStyle(.borderedProminent)
                             }
                         }
-                        .padding(
-                            .vertical,
-                            6
-                        )
+                        .padding(.vertical,
+                                 6)
                     }
                 } header: {
-                    Label(
-                        syncCoordinator
-                            .conflicts
-                            .count
-                            == 1
-                            ? "1 conflict needs attention"
-                            : "\(syncCoordinator.conflicts.count) conflicts need attention",
+                    Label(syncCoordinator
+                        .conflicts
+                        .count
+                        == 1
+                        ? "1 conflict needs attention"
+                        : "\(syncCoordinator.conflicts.count) conflicts need attention",
                         systemImage:
-                            "exclamationmark.triangle"
-                    )
+                        "exclamationmark.triangle")
                 } footer: {
-                    Text(
-                        "Synchronization is paused until these conflicts are resolved."
-                    )
+                    Text("Synchronization is paused until these conflicts are resolved.")
                 }
             }
 
-            ForEach(
-                pendingEntities
-            ) { pending in
+            ForEach(pendingEntities) { pending in
                 Section {
-                    ForEach(
-                        pending
-                            .mutations
-                            .reversed()
-                    ) { mutation in
+                    ForEach(pending
+                        .mutations
+                        .reversed())
+                    { mutation in
                         DisclosureGroup {
-                            VStack(
-                                alignment:
-                                    .leading,
-                                spacing: 12
-                            ) {
+                            VStack(alignment:
+                                .leading,
+                                spacing: 12)
+                            {
                                 Text("Base")
-                                    .font(
-                                        .headline
-                                    )
+                                    .font(.headline)
 
-                                Text(
-                                    mutation
-                                        .base
-                                        .map {
-                                            String(
-                                                describing:
-                                                    $0
-                                            )
-                                        }
-                                        ?? "nil"
-                                )
-                                .font(
-                                    .caption
-                                        .monospaced()
-                                )
+                                Text(mutation
+                                    .base
+                                    .map {
+                                        String(describing:
+                                            $0)
+                                    }
+                                    ?? "nil")
+                                    .font(.caption
+                                        .monospaced())
 
                                 Divider()
 
                                 Text("Payload")
-                                    .font(
-                                        .headline
-                                    )
+                                    .font(.headline)
 
-                                Text(
-                                    String(
-                                        describing:
-                                            mutation
-                                            .payload
-                                    )
-                                )
-                                .font(
-                                    .caption
-                                        .monospaced()
-                                )
+                                Text(String(describing:
+                                    mutation
+                                        .payload))
+                                    .font(.caption
+                                        .monospaced())
 
                                 Divider()
 
-                                Text(
-                                    """
-                                    expectedRevision: \(String(describing: mutation.expectedRevision))
-                                    expectedMutationId: \(String(describing: mutation.expectedMutationId))
-                                    """
-                                )
-                                .font(
-                                    .caption
-                                        .monospaced()
-                                )
+                                Text("""
+                                expectedRevision: \(String(describing: mutation.expectedRevision))
+                                expectedMutationId: \(String(describing: mutation.expectedMutationId))
+                                """)
+                                .font(.caption
+                                    .monospaced())
                             }
-                            .padding(
-                                .vertical,
-                                8
-                            )
+                            .padding(.vertical,
+                                     8)
 
                         } label: {
                             HStack {
-                                Text(
-                                    mutation
-                                        .kind
-                                        .displayName
-                                )
+                                Text(mutation
+                                    .kind
+                                    .displayName)
 
                                 Spacer()
 
-                                Text(
-                                    mutation
-                                        .createdAt
-                                        .formatted(
-                                            date:
-                                                .abbreviated,
-                                            time:
-                                                .shortened
-                                        )
-                                )
-                                .foregroundStyle(
-                                    .secondary
-                                )
+                                Text(mutation
+                                    .createdAt
+                                    .formatted(date:
+                                        .abbreviated,
+                                        time:
+                                        .shortened))
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
 
                 } header: {
                     switch pending.entity {
-                    case .transaction(
-                        let transaction
-                    ):
-                        Text(
-                            transaction.note
-                        )
+                    case let .transaction(transaction):
+                        Text(transaction.note)
 
-                    case .category(
-                        let category
-                    ):
-                        Text(
-                            category.name
-                        )
+                    case let .category(category):
+                        Text(category.name)
 
-                    case .subcategory(
-                        let subcategory
-                    ):
-                        Text(
-                            subcategory.name
-                        )
+                    case let .subcategory(subcategory):
+                        Text(subcategory.name)
                     }
                 }
             }
         }
-        .navigationTitle(
-            "Pending modifications"
-        )
+        .navigationTitle("Pending modifications")
     }
 }

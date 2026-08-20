@@ -14,15 +14,14 @@ final class Category: Entity {
     var name: String
     var note: String = ""
 
-    init(
-        id: UUID = UUID(),
-        createdAt: Date = .now,
-        updatedAt: Date = .now,
-        deletedAt: Date? = nil,
-        type: TransactionType,
-        name: String,
-        note: String = ""
-    ) {
+    init(id: UUID = UUID(),
+         createdAt: Date = .now,
+         updatedAt: Date = .now,
+         deletedAt: Date? = nil,
+         type: TransactionType,
+         name: String,
+         note: String = "")
+    {
         self.id = id
 
         self.createdAt = createdAt
@@ -37,22 +36,20 @@ final class Category: Entity {
 
 extension Category {
     convenience init(_ snapshot: CategoryDTO) {
-        self.init(
-            id: snapshot.id,
-            createdAt: snapshot.createdAt,
-            updatedAt: snapshot.updatedAt,
-            deletedAt: snapshot.deletedAt,
-            type: snapshot.type,
-            name: snapshot.name,
-            note: snapshot.note
-        )
+        self.init(id: snapshot.id,
+                  createdAt: snapshot.createdAt,
+                  updatedAt: snapshot.updatedAt,
+                  deletedAt: snapshot.deletedAt,
+                  type: snapshot.type,
+                  name: snapshot.name,
+                  note: snapshot.note)
     }
-    
+
     func apply(_ snapshot: CategoryDTO) {
         createdAt = snapshot.createdAt
         updatedAt = snapshot.updatedAt
         deletedAt = snapshot.deletedAt
-        
+
         type = snapshot.type
         name = snapshot.name
         note = snapshot.note
@@ -72,14 +69,14 @@ nonisolated struct CategoryDTO: Codable, Equatable {
 nonisolated extension CategoryDTO {
     @MainActor
     init(_ category: Category) {
-        self.id = category.id
-        self.createdAt = category.createdAt
-        self.updatedAt = category.updatedAt
-        self.deletedAt = category.deletedAt
+        id = category.id
+        createdAt = category.createdAt
+        updatedAt = category.updatedAt
+        deletedAt = category.deletedAt
 
-        self.type = category.type
-        self.name = category.name
-        self.note = category.note
+        type = category.type
+        name = category.name
+        note = category.note
     }
 }
 
@@ -97,85 +94,53 @@ nonisolated extension CategoryDTO {
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(
-            keyedBy: CodingKeys.self
-        )
+        let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        id = try container.decode(
-            UUID.self,
-            forKey: .id
-        )
+        id = try container.decode(UUID.self,
+                                  forKey: .id)
 
-        createdAt = try container.decode(
-            Date.self,
-            forKey: .createdAt
-        )
+        createdAt = try container.decode(Date.self,
+                                         forKey: .createdAt)
 
-        updatedAt = try container.decode(
-            Date.self,
-            forKey: .updatedAt
-        )
+        updatedAt = try container.decode(Date.self,
+                                         forKey: .updatedAt)
 
-        deletedAt = try container.decodeIfPresent(
-            Date.self,
-            forKey: .deletedAt
-        )
+        deletedAt = try container.decodeIfPresent(Date.self,
+                                                  forKey: .deletedAt)
 
-        type = try container.decode(
-            TransactionType.self,
-            forKey: .type
-        )
+        type = try container.decode(TransactionType.self,
+                                    forKey: .type)
 
-        name = try container.decode(
-            String.self,
-            forKey: .name
-        )
+        name = try container.decode(String.self,
+                                    forKey: .name)
 
         note =
-            try container.decodeIfPresent(
-                String.self,
-                forKey: .note
-            ) ?? ""
+            try container.decodeIfPresent(String.self,
+                                          forKey: .note) ?? ""
     }
 
     func encode(to encoder: Encoder) throws {
-        var container = encoder.container(
-            keyedBy: CodingKeys.self
-        )
+        var container = encoder.container(keyedBy: CodingKeys.self)
 
-        try container.encode(
-            id,
-            forKey: .id
-        )
+        try container.encode(id,
+                             forKey: .id)
 
-        try container.encode(
-            createdAt,
-            forKey: .createdAt
-        )
+        try container.encode(createdAt,
+                             forKey: .createdAt)
 
-        try container.encode(
-            updatedAt,
-            forKey: .updatedAt
-        )
+        try container.encode(updatedAt,
+                             forKey: .updatedAt)
 
-        try container.encodeIfPresent(
-            deletedAt,
-            forKey: .deletedAt
-        )
+        try container.encodeIfPresent(deletedAt,
+                                      forKey: .deletedAt)
 
-        try container.encode(
-            type,
-            forKey: .type
-        )
+        try container.encode(type,
+                             forKey: .type)
 
-        try container.encode(
-            name,
-            forKey: .name
-        )
+        try container.encode(name,
+                             forKey: .name)
 
-        try container.encode(
-            note,
-            forKey: .note
-        )
+        try container.encode(note,
+                             forKey: .note)
     }
 }

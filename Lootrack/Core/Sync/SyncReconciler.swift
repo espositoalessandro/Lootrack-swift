@@ -21,10 +21,9 @@ nonisolated struct SyncPushResult:
 }
 
 nonisolated struct SyncReconciler {
-    func reconcile(
-        local: LocalSyncSnapshot,
-        remote: RemoteSyncSnapshot
-    ) -> SyncReconciliationPlan {
+    func reconcile(local: LocalSyncSnapshot,
+                   remote: RemoteSyncSnapshot) -> SyncReconciliationPlan
+    {
         var localEntities:
             [SyncEntityKey:
                 EntitySnapshot] = [:]
@@ -34,13 +33,9 @@ nonisolated struct SyncReconciler {
         {
             let snapshot =
                 EntitySnapshot
-                .transaction(
-                    transaction
-                )
+                    .transaction(transaction)
 
-            localEntities[
-                snapshot.key
-            ] = snapshot
+            localEntities[snapshot.key] = snapshot
         }
 
         for category
@@ -48,13 +43,9 @@ nonisolated struct SyncReconciler {
         {
             let snapshot =
                 EntitySnapshot
-                .category(
-                    category
-                )
+                    .category(category)
 
-            localEntities[
-                snapshot.key
-            ] = snapshot
+            localEntities[snapshot.key] = snapshot
         }
 
         for subcategory
@@ -62,39 +53,27 @@ nonisolated struct SyncReconciler {
         {
             let snapshot =
                 EntitySnapshot
-                .subcategory(
-                    subcategory
-                )
+                    .subcategory(subcategory)
 
-            localEntities[
-                snapshot.key
-            ] = snapshot
+            localEntities[snapshot.key] = snapshot
         }
 
         let remoteRecords =
-            Dictionary(
-                uniqueKeysWithValues:
-                    remote.records.map {
-                        record in
-
-                        (
-                            record.id,
-                            record
-                        )
-                    }
-            )
+            Dictionary(uniqueKeysWithValues:
+                remote.records.map {
+                    record in
+                    (record.id,
+                     record)
+                })
 
         let pendingByEntity =
-            Dictionary(
-                grouping:
-                    local.mutations,
+            Dictionary(grouping:
+                local.mutations,
                 by: { mutation in
                     mutation.payload.key
-                }
-            )
+                })
             .mapValues {
                 mutations in
-
                 mutations.sorted {
                     $0.createdAt
                         < $1.createdAt
@@ -102,17 +81,11 @@ nonisolated struct SyncReconciler {
             }
 
         var keys =
-            Set(
-                localEntities.keys
-            )
+            Set(localEntities.keys)
 
-        keys.formUnion(
-            remoteRecords.keys
-        )
+        keys.formUnion(remoteRecords.keys)
 
-        keys.formUnion(
-            pendingByEntity.keys
-        )
+        keys.formUnion(pendingByEntity.keys)
 
         var remoteRecordsToApply: [RemoteSyncRecord] = []
 
@@ -131,7 +104,7 @@ nonisolated struct SyncReconciler {
 
             let pending =
                 pendingByEntity[key]
-                ?? []
+                    ?? []
 
             /*
              * No local pending changes:
@@ -142,39 +115,29 @@ nonisolated struct SyncReconciler {
                     let remoteRecord
                 else {
                     if let localEntity {
-                        conflicts.append(
-                            SyncConflictCandidate(
-                                key: key,
-                                reason:
-                                    .remoteMissing,
-                                base:
-                                    localEntity,
-                                local:
-                                    localEntity,
-                                remote: nil,
-                                pendingMutations: []
-                            )
-                        )
+                        conflicts.append(SyncConflictCandidate(key: key,
+                                                               reason:
+                                                               .remoteMissing,
+                                                               base:
+                                                               localEntity,
+                                                               local:
+                                                               localEntity,
+                                                               remote: nil,
+                                                               pendingMutations: []))
                     }
 
                     continue
                 }
 
                 if localEntity == nil
-                    || !sameRemoteVersion(
-                        metadata:
-                            local
-                            .metadata[
-                                key
-                            ],
+                    || !sameRemoteVersion(metadata:
+                        local
+                            .metadata[key],
                         remote:
-                            remoteRecord
-                    )
+                        remoteRecord)
                 {
                     remoteRecordsToApply
-                        .append(
-                            remoteRecord
-                        )
+                        .append(remoteRecord)
                 }
 
                 continue
@@ -182,9 +145,9 @@ nonisolated struct SyncReconciler {
 
             guard
                 let firstPending =
-                    pending.first,
+                pending.first,
                 let lastPending =
-                    pending.last
+                pending.last
             else {
                 continue
             }
@@ -194,34 +157,25 @@ nonisolated struct SyncReconciler {
              * previous push.
              */
             if let remoteRecord,
-                let remotelyAppliedIndex =
-                    pending.firstIndex(
-                        where: {
-                            mutation in
-
-                            mutation.id
-                                == remoteRecord
-                                .mutationId
-                        }
-                    )
+               let remotelyAppliedIndex =
+               pending.firstIndex(where: {
+                   mutation in
+                   mutation.id
+                       == remoteRecord
+                       .mutationId
+               })
             {
                 let acknowledged =
-                    pending[
-                        ...remotelyAppliedIndex
-                    ]
+                    pending[...remotelyAppliedIndex]
 
                 let remaining =
-                    pending.dropFirst(
-                        remotelyAppliedIndex
-                            + 1
-                    )
+                    pending.dropFirst(remotelyAppliedIndex
+                        + 1)
 
                 mutationIdsToAcknowledge
-                    .append(
-                        contentsOf:
-                            acknowledged
-                            .map(\.id)
-                    )
+                    .append(contentsOf:
+                        acknowledged
+                            .map(\.id))
 
                 if remaining.isEmpty {
                     continue
@@ -229,43 +183,36 @@ nonisolated struct SyncReconciler {
 
                 guard
                     let firstRemaining =
-                        remaining.first
+                    remaining.first
                 else {
                     continue
                 }
 
-                if !remoteMatchesExpectedBase(
-                    remote:
-                        remoteRecord,
+                if !remoteMatchesExpectedBase(remote:
+                    remoteRecord,
                     mutation:
-                        firstRemaining
-                ) {
-                    conflicts.append(
-                        SyncConflictCandidate(
-                            key: key,
-                            reason:
-                                .invalidLocalChain,
-                            base:
-                                firstRemaining
-                                .base,
-                            local:
-                                lastPending
-                                .payload,
-                            remote:
-                                remoteRecord,
-                            pendingMutations:
-                                pending
-                        )
-                    )
+                    firstRemaining)
+                {
+                    conflicts.append(SyncConflictCandidate(key: key,
+                                                           reason:
+                                                           .invalidLocalChain,
+                                                           base:
+                                                           firstRemaining
+                                                               .base,
+                                                           local:
+                                                           lastPending
+                                                               .payload,
+                                                           remote:
+                                                           remoteRecord,
+                                                           pendingMutations:
+                                                           pending))
 
                     continue
                 }
 
                 mutationsToPush
-                    .append(
-                        contentsOf:
-                            remaining
-                    )
+                    .append(contentsOf:
+                        remaining)
 
                 continue
             }
@@ -274,13 +221,10 @@ nonisolated struct SyncReconciler {
              * Ordinary non-conflicting
              * pending chain.
              */
-            if remoteMatchesExpectedBase(
-                remote: remoteRecord,
-                mutation: firstPending
-            ) {
-                mutationsToPush.append(
-                    contentsOf: pending
-                )
+            if remoteMatchesExpectedBase(remote: remoteRecord,
+                                         mutation: firstPending)
+            {
+                mutationsToPush.append(contentsOf: pending)
 
                 continue
             }
@@ -289,62 +233,54 @@ nonisolated struct SyncReconciler {
              * Remote changed since the first
              * local mutation was based on it.
              */
-            conflicts.append(
-                SyncConflictCandidate(
-                    key: key,
-                    reason:
-                        remoteRecord == nil
-                        ? .remoteMissing
-                        : .diverged,
-                    base:
-                        firstPending.base,
-                    local:
-                        lastPending
-                        .payload,
-                    remote:
-                        remoteRecord,
-                    pendingMutations:
-                        pending
-                )
-            )
+            conflicts.append(SyncConflictCandidate(key: key,
+                                                   reason:
+                                                   remoteRecord == nil
+                                                       ? .remoteMissing
+                                                       : .diverged,
+                                                   base:
+                                                   firstPending.base,
+                                                   local:
+                                                   lastPending
+                                                       .payload,
+                                                   remote:
+                                                   remoteRecord,
+                                                   pendingMutations:
+                                                   pending))
         }
 
-        return SyncReconciliationPlan(
-            remoteRecordsToApply:
-                remoteRecordsToApply,
+        return SyncReconciliationPlan(remoteRecordsToApply:
+            remoteRecordsToApply,
             mutationsToPush:
-                mutationsToPush,
+            mutationsToPush,
             mutationIdsToAcknowledge:
-                mutationIdsToAcknowledge,
-            conflicts: conflicts
-        )
+            mutationIdsToAcknowledge,
+            conflicts: conflicts)
     }
 
-    private func remoteMatchesExpectedBase(
-        remote: RemoteSyncRecord?,
-        mutation: MutationDTO
-    ) -> Bool {
+    private func remoteMatchesExpectedBase(remote: RemoteSyncRecord?,
+                                           mutation: MutationDTO) -> Bool
+    {
         guard let remote else {
             return mutation
                 .expectedRevision
                 == nil
                 && mutation
-                    .expectedMutationId
-                    == nil
+                .expectedMutationId
+                == nil
         }
 
         return mutation
             .expectedRevision
             == remote.revision
             && mutation
-                .expectedMutationId
-                == remote.mutationId
+            .expectedMutationId
+            == remote.mutationId
     }
 
-    private func sameRemoteVersion(
-        metadata: SyncMetadata?,
-        remote: RemoteSyncRecord
-    ) -> Bool {
+    private func sameRemoteVersion(metadata: SyncMetadata?,
+                                   remote: RemoteSyncRecord) -> Bool
+    {
         guard let metadata else {
             return false
         }
@@ -352,7 +288,7 @@ nonisolated struct SyncReconciler {
         return metadata.revision
             == remote.revision
             && metadata
-                .lastMutationId
-                == remote.mutationId
+            .lastMutationId
+            == remote.mutationId
     }
 }

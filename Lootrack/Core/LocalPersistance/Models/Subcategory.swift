@@ -13,14 +13,13 @@ final class Subcategory: Entity {
     var categoryId: UUID
     var name: String
 
-    init(
-        id: UUID = UUID(),
-        createdAt: Date = .now,
-        updatedAt: Date = .now,
-        deletedAt: Date? = nil,
-        categoryId: UUID,
-        name: String
-    ) {
+    init(id: UUID = UUID(),
+         createdAt: Date = .now,
+         updatedAt: Date = .now,
+         deletedAt: Date? = nil,
+         categoryId: UUID,
+         name: String)
+    {
         self.id = id
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -32,14 +31,12 @@ final class Subcategory: Entity {
 
 extension Subcategory {
     convenience init(_ snapshot: SubcategoryDTO) {
-        self.init(
-            id: snapshot.id,
-            createdAt: snapshot.createdAt,
-            updatedAt: snapshot.updatedAt,
-            deletedAt: snapshot.deletedAt,
-            categoryId: snapshot.categoryId,
-            name: snapshot.name
-        )
+        self.init(id: snapshot.id,
+                  createdAt: snapshot.createdAt,
+                  updatedAt: snapshot.updatedAt,
+                  deletedAt: snapshot.deletedAt,
+                  categoryId: snapshot.categoryId,
+                  name: snapshot.name)
     }
 
     func apply(_ snapshot: SubcategoryDTO) {
@@ -66,12 +63,12 @@ nonisolated struct SubcategoryDTO: Codable, Equatable {
 nonisolated extension SubcategoryDTO {
     @MainActor
     init(_ subcategory: Subcategory) {
-        self.id = subcategory.id
-        self.createdAt = subcategory.createdAt
-        self.updatedAt = subcategory.updatedAt
-        self.deletedAt = subcategory.deletedAt
+        id = subcategory.id
+        createdAt = subcategory.createdAt
+        updatedAt = subcategory.updatedAt
+        deletedAt = subcategory.deletedAt
 
-        self.categoryId = subcategory.categoryId
-        self.name = subcategory.name
+        categoryId = subcategory.categoryId
+        name = subcategory.name
     }
 }

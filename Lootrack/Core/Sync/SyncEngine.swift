@@ -14,11 +14,10 @@ final class SyncEngine {
     private let provider: any SyncProvider
     private let reconciler: SyncReconciler
 
-    init(
-        localStore: LocalSyncStore,
-        provider: any SyncProvider,
-        reconciler: SyncReconciler = SyncReconciler()
-    ) {
+    init(localStore: LocalSyncStore,
+         provider: any SyncProvider,
+         reconciler: SyncReconciler = SyncReconciler())
+    {
         self.localStore = localStore
         self.provider = provider
         self.reconciler = reconciler
@@ -29,22 +28,14 @@ final class SyncEngine {
 
         let remoteSnapshot = try await provider.pull()
 
-        let plan = reconciler.reconcile(
-            local: localSnapshot,
-            remote: remoteSnapshot
-        )
+        let plan = reconciler.reconcile(local: localSnapshot,
+                                        remote: remoteSnapshot)
 
         guard plan.conflicts.isEmpty else {
-            throw SyncRunConflictError(
-                plan.conflicts
-            )
+            throw SyncRunConflictError(plan.conflicts)
         }
 
-        let pushResult = try await provider.push(
-            SyncPushRequest(
-                mutations: plan.mutationsToPush
-            )
-        )
+        let pushResult = try await provider.push(SyncPushRequest(mutations: plan.mutationsToPush))
 
         let pushedMutationIds = plan.mutationsToPush.map(\.id)
 
@@ -56,16 +47,12 @@ final class SyncEngine {
          * newer mutations while the network operations were
          * running.
          */
-        try localStore.applyChanges(
-            LocalSyncChanges(
-                remoteRecords:
-                    plan.remoteRecordsToApply
-                    + pushResult.records,
+        try localStore.applyChanges(LocalSyncChanges(remoteRecords:
+            plan.remoteRecordsToApply
+                + pushResult.records,
 
-                mutationIdsToAcknowledge:
-                    plan.mutationIdsToAcknowledge
-                    + pushedMutationIds
-            )
-        )
+            mutationIdsToAcknowledge:
+            plan.mutationIdsToAcknowledge
+                + pushedMutationIds))
     }
 }

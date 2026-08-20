@@ -13,17 +13,13 @@ struct AddCategoryView: View {
             CategoryForm(draft: $draft)
                 .navigationTitle("New Category")
                 .toolbar {
-                    ToolbarItem(
-                        placement: .cancellationAction
-                    ) {
+                    ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {
                             dismiss()
                         }
                     }
 
-                    ToolbarItem(
-                        placement: .confirmationAction
-                    ) {
+                    ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
                             save()
                         }
@@ -35,18 +31,14 @@ struct AddCategoryView: View {
 
     private func save() {
         do {
-            try categoryService.create(
-                name: draft.name,
-                type: draft.type,
-                note: draft.note
-            )
+            try categoryService.create(name: draft.name,
+                                       type: draft.type,
+                                       note: draft.note)
 
             dismiss()
         } catch {
-            print(
-                "FAILED TO CREATE CATEGORY:",
-                error
-            )
+            print("FAILED TO CREATE CATEGORY:",
+                  error)
         }
     }
-}   
+}

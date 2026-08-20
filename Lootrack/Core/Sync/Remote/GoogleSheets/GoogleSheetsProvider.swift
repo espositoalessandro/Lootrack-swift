@@ -6,11 +6,9 @@ nonisolated struct GoogleSheetsConfiguration {
     let clientId: String
     let spreadsheetId: String
 
-    static let development = GoogleSheetsConfiguration(
-        clientId:
-            "301925252646-k9ev1fi2eqcb0abkoc8glqjkupajrb5e.apps.googleusercontent.com",
-        spreadsheetId: "1c1fO_W-pfRMNu8vBjpBdKr-q3wAnjYrWB9srocgnYUk"
-    )
+    static let development = GoogleSheetsConfiguration(clientId:
+        "301925252646-k9ev1fi2eqcb0abkoc8glqjkupajrb5e.apps.googleusercontent.com",
+        spreadsheetId: "1c1fO_W-pfRMNu8vBjpBdKr-q3wAnjYrWB9srocgnYUk")
 }
 
 @MainActor
@@ -23,16 +21,12 @@ final class GoogleAuthorizationService {
     init(configuration: GoogleSheetsConfiguration) {
         self.configuration = configuration
 
-        GIDSignIn.sharedInstance.configuration = GIDConfiguration(
-            clientID: configuration.clientId
-        )
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: configuration.clientId)
     }
 
     func accessToken() async throws -> String {
         let user = try await getUser()
-        let authorizedUser = try await ensureDrivePermission(
-            for: user
-        )
+        let authorizedUser = try await ensureDrivePermission(for: user)
         let refreshedUser =
             try await authorizedUser.refreshTokensIfNeeded()
 
@@ -51,8 +45,8 @@ final class GoogleAuthorizationService {
         }
 
         if GIDSignIn.sharedInstance.hasPreviousSignIn(),
-            let restoredUser = try? await GIDSignIn.sharedInstance
-                .restorePreviousSignIn()
+           let restoredUser = try? await GIDSignIn.sharedInstance
+           .restorePreviousSignIn()
         {
             return restoredUser
         }
@@ -64,18 +58,12 @@ final class GoogleAuthorizationService {
         let viewController =
             try presentingViewController()
 
-        let result = try await GIDSignIn.sharedInstance.signIn(
-            withPresenting: viewController,
-            hint: nil,
-            additionalScopes: [
-                Self.driveFileScope
-            ]
-        )
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: viewController,
+                                                               hint: nil,
+                                                               additionalScopes: [Self.driveFileScope])
 
         guard
-            result.user.grantedScopes?.contains(
-                Self.driveFileScope
-            ) == true
+            result.user.grantedScopes?.contains(Self.driveFileScope) == true
         else {
             throw GoogleSheetsError.missingDrivePermission
         }
@@ -83,24 +71,16 @@ final class GoogleAuthorizationService {
         return result.user
     }
 
-    private func ensureDrivePermission(
-        for user: GIDGoogleUser
-    ) async throws -> GIDGoogleUser {
-        if user.grantedScopes?.contains(
-            Self.driveFileScope
-        ) == true {
+    private func ensureDrivePermission(for user: GIDGoogleUser) async throws -> GIDGoogleUser {
+        if user.grantedScopes?.contains(Self.driveFileScope) == true {
             return user
         }
 
-        let result = try await user.addScopes(
-            [Self.driveFileScope],
-            presenting: presentingViewController()
-        )
+        let result = try await user.addScopes([Self.driveFileScope],
+                                              presenting: presentingViewController())
 
         guard
-            result.user.grantedScopes?.contains(
-                Self.driveFileScope
-            ) == true
+            result.user.grantedScopes?.contains(Self.driveFileScope) == true
         else {
             throw GoogleSheetsError.missingDrivePermission
         }
@@ -119,45 +99,35 @@ final class GoogleAuthorizationService {
 
         guard
             let rootViewController =
-                activeScene?.keyWindow?.rootViewController
+            activeScene?.keyWindow?.rootViewController
         else {
             throw GoogleSheetsError.missingPresentationContext
         }
 
-        return topViewController(
-            from: rootViewController
-        )
+        return topViewController(from: rootViewController)
     }
 
-    private func topViewController(
-        from viewController: UIViewController
-    ) -> UIViewController {
+    private func topViewController(from viewController: UIViewController) -> UIViewController {
         if let presented =
             viewController.presentedViewController
         {
-            return topViewController(
-                from: presented
-            )
+            return topViewController(from: presented)
         }
 
         if let navigationController =
             viewController as? UINavigationController,
             let visible =
-                navigationController.visibleViewController
+            navigationController.visibleViewController
         {
-            return topViewController(
-                from: visible
-            )
+            return topViewController(from: visible)
         }
 
         if let tabBarController =
             viewController as? UITabBarController,
             let selected =
-                tabBarController.selectedViewController
+            tabBarController.selectedViewController
         {
-            return topViewController(
-                from: selected
-            )
+            return topViewController(from: selected)
         }
 
         return viewController
@@ -175,11 +145,10 @@ final class GoogleSheetsProvider: SyncProvider {
     private let authorization: GoogleAuthorizationService
     private let client: GoogleSheetsClient
 
-    init(
-        configuration: GoogleSheetsConfiguration,
-        authorization: GoogleAuthorizationService,
-        client: GoogleSheetsClient
-    ) {
+    init(configuration: GoogleSheetsConfiguration,
+         authorization: GoogleAuthorizationService,
+         client: GoogleSheetsClient)
+    {
         self.configuration = configuration
         self.authorization = authorization
         self.client = client
@@ -188,21 +157,15 @@ final class GoogleSheetsProvider: SyncProvider {
     func pull() async throws -> RemoteSyncSnapshot {
         let accessToken = try await authorization.accessToken()
 
-        return try await client.readSnapshot(
-            accessToken: accessToken,
-            spreadsheetId: configuration.spreadsheetId
-        )
+        return try await client.readSnapshot(accessToken: accessToken,
+                                             spreadsheetId: configuration.spreadsheetId)
     }
 
-    func push(
-        _ request: SyncPushRequest
-    ) async throws -> SyncPushResult {
+    func push(_ request: SyncPushRequest) async throws -> SyncPushResult {
         let accessToken = try await authorization.accessToken()
 
-        return try await client.push(
-            request,
-            accessToken: accessToken,
-            spreadsheetId: configuration.spreadsheetId
-        )
+        return try await client.push(request,
+                                     accessToken: accessToken,
+                                     spreadsheetId: configuration.spreadsheetId)
     }
 }

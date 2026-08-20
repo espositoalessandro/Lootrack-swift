@@ -12,20 +12,17 @@ struct TagInput: View {
     @FocusState
     private var isFocused: Bool
 
-    init(
-        tags: Binding<[String]>,
-        availableTags: [Tag],
-        onNeedsVisibility: @escaping () -> Void = {}
-    ) {
-        self._tags = tags
+    init(tags: Binding<[String]>,
+         availableTags: [Tag],
+         onNeedsVisibility: @escaping () -> Void = {})
+    {
+        _tags = tags
         self.availableTags = availableTags
         self.onNeedsVisibility = onNeedsVisibility
     }
 
     private var trimmedInput: String {
-        input.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+        input.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var suggestions: [Tag] {
@@ -33,80 +30,61 @@ struct TagInput: View {
             return []
         }
 
-        return Array(
-            availableTags
-                .filter { tag in
-                    !tags.contains(tag.name)
-                        && tag.name
-                            .localizedCaseInsensitiveContains(
-                                trimmedInput
-                            )
-                }
-                .prefix(5)
-        )
+        return Array(availableTags
+            .filter { tag in
+                !tags.contains(tag.name)
+                    && tag.name
+                    .localizedCaseInsensitiveContains(trimmedInput)
+            }
+            .prefix(5))
     }
 
     var body: some View {
-        VStack(
-            alignment: .leading,
-            spacing: 10
-        ) {
+        VStack(alignment: .leading,
+               spacing: 10)
+        {
             FlowLayout {
-                ForEach(
-                    tags,
-                    id: \.self
-                ) { tag in
-                    Chip(
-                        tag,
-                        trailingSystemImage:
-                            "xmark.circle.fill"
-                    ) {
+                ForEach(tags,
+                        id: \.self)
+                { tag in
+                    Chip(tag,
+                         trailingSystemImage:
+                         "xmark.circle.fill")
+                    {
                         removeTag(tag)
                     }
                 }
 
-                TextField(
-                    "Add tag",
-                    text: $input
-                )
-                .frame(
-                    minWidth: 90,
-                    idealWidth: 120,
-                    maxWidth: 150
-                )
-                .padding(
-                    .vertical,
-                    4
-                )
-                .focused($isFocused)
-                .textInputAutocapitalization(
-                    .words
-                )
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .onChange(of: input) {
-                    inputDidChange()
-                }
-                .onSubmit {
-                    submit()
-                }
+                TextField("Add tag",
+                          text: $input)
+                    .frame(minWidth: 90,
+                           idealWidth: 120,
+                           maxWidth: 150)
+                    .padding(.vertical,
+                             4)
+                    .focused($isFocused)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .onChange(of: input) {
+                        inputDidChange()
+                    }
+                    .onSubmit {
+                        submit()
+                    }
             }
 
             if !suggestions.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
-                        ForEach(
-                            suggestions,
-                            id: \.name
-                        ) { tag in
-                            Chip(
-                                tag.name,
-                                leadingSystemImage:
-                                    "tag"
-                            ) {
-                                addTag(
-                                    tag.name
-                                )
+                        ForEach(suggestions,
+                                id: \.name)
+                        { tag in
+                            Chip(tag.name,
+                                 leadingSystemImage:
+                                 "tag")
+                            {
+                                addTag(tag.name)
 
                                 input = ""
 
@@ -115,9 +93,7 @@ struct TagInput: View {
                         }
                     }
                 }
-                .scrollIndicators(
-                    .hidden
-                )
+                .scrollIndicators(.hidden)
             }
         }
         .onChange(of: isFocused) {
@@ -126,9 +102,7 @@ struct TagInput: View {
             }
 
             Task { @MainActor in
-                try? await Task.sleep(
-                    for: .milliseconds(300)
-                )
+                try? await Task.sleep(for: .milliseconds(300))
 
                 guard isFocused else {
                     return
@@ -153,9 +127,7 @@ struct TagInput: View {
 
     private func inputDidChange() {
         guard
-            input.contains(
-                where: \.isWhitespace
-            )
+            input.contains(where: \.isWhitespace)
         else {
             return
         }
@@ -166,11 +138,7 @@ struct TagInput: View {
          * If multiple words are pasted,
          * each word becomes its own tag.
          */
-        addTags(
-            Tag.normalizedTokens(
-                from: input
-            )
-        )
+        addTags(Tag.normalizedTokens(from: input))
 
         input = ""
     }
@@ -185,11 +153,7 @@ struct TagInput: View {
     }
 
     private func commitInput() {
-        addTags(
-            Tag.normalizedTokens(
-                from: input
-            )
-        )
+        addTags(Tag.normalizedTokens(from: input))
 
         input = ""
 
@@ -198,17 +162,13 @@ struct TagInput: View {
 
     // MARK: - Tags
 
-    private func addTags(
-        _ newTags: [String]
-    ) {
+    private func addTags(_ newTags: [String]) {
         for tag in newTags {
             addTag(tag)
         }
     }
 
-    private func addTag(
-        _ tag: String
-    ) {
+    private func addTag(_ tag: String) {
         guard !tags.contains(tag) else {
             return
         }
@@ -216,9 +176,7 @@ struct TagInput: View {
         tags.append(tag)
     }
 
-    private func removeTag(
-        _ tag: String
-    ) {
+    private func removeTag(_ tag: String) {
         tags.removeAll {
             $0 == tag
         }

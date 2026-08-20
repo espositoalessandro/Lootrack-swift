@@ -9,16 +9,13 @@ enum SubcategoryAISelectorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelUnavailable:
-            return
-                "Apple Intelligence isn't available on this device right now."
+            "Apple Intelligence isn't available on this device right now."
 
         case .noSubcategories:
-            return
-                "There are no subcategories available."
+            "There are no subcategories available."
 
         case .invalidSelection:
-            return
-                "The model returned an invalid subcategory."
+            "The model returned an invalid subcategory."
         }
     }
 }
@@ -33,10 +30,9 @@ final class SubcategoryAISelector {
 
     private var prewarmedContextKey: String?
 
-    func prewarm(
-        category: Category,
-        subcategories: [Subcategory]
-    ) {
+    func prewarm(category: Category,
+                 subcategories: [Subcategory])
+    {
         guard Self.isAvailable else {
             return
         }
@@ -46,14 +42,12 @@ final class SubcategoryAISelector {
         }
 
         let promptPrefix =
-            makePromptPrefix(
-                category: category,
-                subcategories: subcategories
-            )
+            makePromptPrefix(category: category,
+                             subcategories: subcategories)
 
         guard
             prewarmedContextKey
-                != promptPrefix
+            != promptPrefix
         else {
             return
         }
@@ -67,19 +61,14 @@ final class SubcategoryAISelector {
         prewarmedContextKey =
             promptPrefix
 
-        session.prewarm(
-            promptPrefix:
-                Prompt(
-                    promptPrefix
-                )
-        )
+        session.prewarm(promptPrefix:
+            Prompt(promptPrefix))
     }
 
-    func selectSubcategoryId(
-        description: String,
-        category: Category,
-        subcategories: [Subcategory]
-    ) async throws -> UUID {
+    func selectSubcategoryId(description: String,
+                             category: Category,
+                             subcategories: [Subcategory]) async throws -> UUID
+    {
         guard !subcategories.isEmpty else {
             throw
                 SubcategoryAISelectorError
@@ -93,64 +82,42 @@ final class SubcategoryAISelector {
         }
 
         let subcategoryCodes =
-            subcategories.indices.map(
-                String.init
-            )
+            subcategories.indices.map(String.init)
 
         let subcategoryCodeSchema =
-            DynamicGenerationSchema(
-                type: String.self,
-                guides: [
-                    .anyOf(
-                        subcategoryCodes
-                    )
-                ]
-            )
+            DynamicGenerationSchema(type: String.self,
+                                    guides: [.anyOf(subcategoryCodes)])
 
         let selectionSchema =
-            DynamicGenerationSchema(
-                name:
-                    "SubcategorySelection",
-                properties: [
-                    DynamicGenerationSchema
-                        .Property(
-                            name:
-                                "subcategoryCode",
-                            description:
-                                "Code of the best matching subcategory.",
-                            schema:
-                                subcategoryCodeSchema
-                        )
-                ]
-            )
+            DynamicGenerationSchema(name:
+                "SubcategorySelection",
+                properties: [DynamicGenerationSchema
+                    .Property(name:
+                        "subcategoryCode",
+                        description:
+                        "Code of the best matching subcategory.",
+                        schema:
+                        subcategoryCodeSchema)])
 
         let schema =
-            try GenerationSchema(
-                root:
-                    selectionSchema,
-                dependencies: []
-            )
+            try GenerationSchema(root:
+                selectionSchema,
+                dependencies: [])
 
         let promptPrefix =
-            makePromptPrefix(
-                category: category,
-                subcategories: subcategories
-            )
+            makePromptPrefix(category: category,
+                             subcategories: subcategories)
 
-        let session: LanguageModelSession
-
-        if prewarmedContextKey
+        let session: LanguageModelSession = if prewarmedContextKey
             == promptPrefix,
             let prewarmedSession
         {
-            session =
-                prewarmedSession
+            prewarmedSession
         } else {
-            session =
-                makeSession()
+            makeSession()
         }
 
-        self.prewarmedSession =
+        prewarmedSession =
             nil
 
         prewarmedContextKey =
@@ -158,8 +125,8 @@ final class SubcategoryAISelector {
 
         let prompt =
             promptPrefix
-            + "\n"
-            + description
+                + "\n"
+                + description
 
         #if DEBUG
             let clock =
@@ -170,110 +137,87 @@ final class SubcategoryAISelector {
         #endif
 
         let response =
-            try await session.respond(
-                to: Prompt(prompt),
-                schema: schema
-            )
+            try await session.respond(to: Prompt(prompt),
+                                      schema: schema)
 
         #if DEBUG
-            print(
-                "SUBCATEGORY AI INFERENCE:",
-                start.duration(
-                    to: clock.now
-                )
-            )
+            print("SUBCATEGORY AI INFERENCE:",
+                  start.duration(to: clock.now))
         #endif
 
         let subcategoryCode: String =
-            try response.content.value(
-                String.self,
-                forProperty:
-                    "subcategoryCode"
-            )
+            try response.content.value(String.self,
+                                       forProperty:
+                                       "subcategoryCode")
 
         guard
             let subcategoryIndex =
-                Int(subcategoryCode),
+            Int(subcategoryCode),
             subcategories.indices
-                .contains(
-                    subcategoryIndex
-                )
+            .contains(subcategoryIndex)
         else {
             throw
                 SubcategoryAISelectorError
                 .invalidSelection
         }
 
-        return subcategories[
-            subcategoryIndex
-        ].id
+        return subcategories[subcategoryIndex].id
     }
 
     private func makeSession()
         -> LanguageModelSession
     {
-        LanguageModelSession(
-            instructions: """
-                Categorize personal finance transactions for an Italian user.
+        LanguageModelSession(instructions: """
+        Categorize personal finance transactions for an Italian user.
 
-                The parent category has already been selected by the app.
+        The parent category has already been selected by the app.
 
-                Choose exactly one of the subcategories provided by the app.
+        Choose exactly one of the subcategories provided by the app.
 
-                Never invent a new subcategory.
-                """
-        )
+        Never invent a new subcategory.
+        """)
     }
 
-    private func makePromptPrefix(
-        category: Category,
-        subcategories: [Subcategory]
-    ) -> String {
+    private func makePromptPrefix(category: Category,
+                                  subcategories: [Subcategory]) -> String
+    {
         let categoryNote =
             category.note
-            .trimmingCharacters(
-                in:
-                    .whitespacesAndNewlines
-            )
+                .trimmingCharacters(in:
+                    .whitespacesAndNewlines)
 
-        let categoryContext: String
-
-        if categoryNote.isEmpty {
-            categoryContext =
-                category.name
+        let categoryContext: String = if categoryNote.isEmpty {
+            category.name
         } else {
-            categoryContext = """
-                \(category.name)
+            """
+            \(category.name)
 
-                \(categoryNote)
-                """
+            \(categoryNote)
+            """
         }
 
         let subcategoryContext =
             subcategories
-            .enumerated()
-            .map {
-                index,
-                subcategory in
-
-                "\(index): \(subcategory.name)"
-            }
-            .joined(
-                separator: "\n"
-            )
+                .enumerated()
+                .map {
+                    index,
+                    subcategory in
+                    "\(index): \(subcategory.name)"
+                }
+                .joined(separator: "\n")
 
         return """
-            Choose the subcategory that best matches this personal finance transaction.
+        Choose the subcategory that best matches this personal finance transaction.
 
-            Parent category:
+        Parent category:
 
-            \(categoryContext)
+        \(categoryContext)
 
-            Available subcategories:
+        Available subcategories:
 
-            \(subcategoryContext)
+        \(subcategoryContext)
 
-            Description:
-            """
+        Description:
+        """
     }
 }

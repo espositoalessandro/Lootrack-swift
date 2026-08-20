@@ -2,16 +2,13 @@ import SwiftUI
 import UIKit
 
 struct UndoResponderView: UIViewControllerRepresentable {
-    func makeUIViewController(
-        context: Context
-    ) -> UndoResponderViewController {
+    func makeUIViewController(context _: Context) -> UndoResponderViewController {
         UndoResponderViewController()
     }
 
-    func updateUIViewController(
-        _ uiViewController: UndoResponderViewController,
-        context: Context
-    ) {
+    func updateUIViewController(_ uiViewController: UndoResponderViewController,
+                                context _: Context)
+    {
         /*
          * Don't steal focus from TextFields, search,
          * sheets, etc.
@@ -39,9 +36,7 @@ final class UndoResponderViewController: UIViewController {
             ?? super.undoManager
     }
 
-    override func viewDidAppear(
-        _ animated: Bool
-    ) {
+    override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
         becomeFirstResponder()
@@ -49,13 +44,11 @@ final class UndoResponderViewController: UIViewController {
 }
 
 extension UIResponder {
-    private static weak var capturedFirstResponder:
+    private weak static var capturedFirstResponder:
         UIResponder?
 
     @objc
-    private func captureFirstResponder(
-        _ sender: Any
-    ) {
+    private func captureFirstResponder(_: Any) {
         UIResponder.capturedFirstResponder = self
     }
 
@@ -64,14 +57,10 @@ extension UIResponder {
     {
         capturedFirstResponder = nil
 
-        UIApplication.shared.sendAction(
-            #selector(
-                captureFirstResponder(_:)
-            ),
-            to: nil,
-            from: nil,
-            for: nil
-        )
+        UIApplication.shared.sendAction(#selector(captureFirstResponder(_:)),
+                                        to: nil,
+                                        from: nil,
+                                        for: nil)
 
         return capturedFirstResponder
     }

@@ -10,22 +10,16 @@ struct TransactionDraft {
     var tags: [String] = []
 
     var amountInCents: Int? {
-        let normalized = amount.replacingOccurrences(
-            of: ",",
-            with: "."
-        )
+        let normalized = amount.replacingOccurrences(of: ",",
+                                                     with: ".")
 
         guard
-            let decimal = Decimal(
-                string: normalized
-            )
+            let decimal = Decimal(string: normalized)
         else {
             return nil
         }
 
-        return NSDecimalNumber(
-            decimal: decimal * 100
-        ).intValue
+        return NSDecimalNumber(decimal: decimal * 100).intValue
     }
 
     init() {}
@@ -34,11 +28,9 @@ struct TransactionDraft {
         note = transaction.note
 
         amount =
-            NSDecimalNumber(
-                value: transaction.amountInCents
-            )
-            .dividing(by: 100)
-            .stringValue
+            NSDecimalNumber(value: transaction.amountInCents)
+                .dividing(by: 100)
+                .stringValue
 
         categoryId = transaction.categoryId
         subcategoryId =

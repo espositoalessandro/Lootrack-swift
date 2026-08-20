@@ -21,79 +21,63 @@ struct LootrackApp: App {
     init() {
         do {
             let modelContainer =
-                try ModelContainer(
-                    for:
-                        Transaction.self,
+                try ModelContainer(for:
+                    Transaction.self,
                     Category.self,
                     Subcategory.self,
                     Tag.self,
                     Mutation.self,
-                    EntitySyncState.self
-                )
+                    EntitySyncState.self)
 
             #if DEBUG
                 SwiftDataDebugLogger
                     .shared
-                    .install(
-                        context:
-                            modelContainer
-                            .mainContext
-                    )
+                    .install(context:
+                        modelContainer
+                            .mainContext)
             #endif
 
             let mutationService =
-                MutationService(
-                    modelContext:
-                        modelContainer
-                        .mainContext
-                )
+                MutationService(modelContext:
+                    modelContainer
+                        .mainContext)
 
             let tagService =
-                TagService(
-                    modelContext:
-                        modelContainer
-                        .mainContext
-                )
+                TagService(modelContext:
+                    modelContainer
+                        .mainContext)
 
             let transactionService =
-                TransactionService(
-                    modelContext:
-                        modelContainer
+                TransactionService(modelContext:
+                    modelContainer
                         .mainContext,
                     mutationService:
-                        mutationService,
+                    mutationService,
                     tagService:
-                        tagService
-                )
+                    tagService)
 
             let categoryService =
-                CategoryService(
-                    modelContext:
-                        modelContainer
+                CategoryService(modelContext:
+                    modelContainer
                         .mainContext,
                     mutationService:
-                        mutationService
-                )
+                    mutationService)
 
             let subcategoryService =
-                SubcategoryService(
-                    modelContext:
-                        modelContainer
+                SubcategoryService(modelContext:
+                    modelContainer
                         .mainContext,
                     mutationService:
-                        mutationService
-                )
+                    mutationService)
 
             let conflictResolutionService =
-                ConflictResolutionService(
-                    modelContext:
-                        modelContainer
+                ConflictResolutionService(modelContext:
+                    modelContainer
                         .mainContext,
                     mutationService:
-                        mutationService,
+                    mutationService,
                     tagService:
-                        tagService
-                )
+                    tagService)
 
             self.modelContainer =
                 modelContainer
@@ -115,51 +99,41 @@ struct LootrackApp: App {
 
             let googleSheetsConfiguration =
                 GoogleSheetsConfiguration
-                .development
+                    .development
 
             let googleAuthorizationService =
-                GoogleAuthorizationService(
-                    configuration:
-                        googleSheetsConfiguration
-                )
+                GoogleAuthorizationService(configuration:
+                    googleSheetsConfiguration)
 
             let googleSheetsClient =
                 GoogleSheetsClient()
 
             let googleSheetsProvider =
-                GoogleSheetsProvider(
-                    configuration:
-                        googleSheetsConfiguration,
+                GoogleSheetsProvider(configuration:
+                    googleSheetsConfiguration,
                     authorization:
-                        googleAuthorizationService,
+                    googleAuthorizationService,
                     client:
-                        googleSheetsClient
-                )
+                    googleSheetsClient)
 
             let localSyncStore =
-                LocalSyncStore(
-                    modelContext:
-                        modelContainer
+                LocalSyncStore(modelContext:
+                    modelContainer
                         .mainContext,
                     tagService:
-                        tagService
-                )
+                    tagService)
 
             let syncEngine =
-                SyncEngine(
-                    localStore:
-                        localSyncStore,
+                SyncEngine(localStore:
+                    localSyncStore,
                     provider:
-                        googleSheetsProvider
-                )
+                    googleSheetsProvider)
 
-            self.syncCoordinator =
-                SyncCoordinator(
-                    syncEngine:
-                        syncEngine,
+            syncCoordinator =
+                SyncCoordinator(syncEngine:
+                    syncEngine,
                     conflictResolutionService:
-                        conflictResolutionService
-                )
+                    conflictResolutionService)
 
             /*
              * The Tag table is a derived local cache.
@@ -168,38 +142,24 @@ struct LootrackApp: App {
             tagService.rebuild()
 
         } catch {
-            fatalError(
-                "Failed to create SwiftData container: \(error)"
-            )
+            fatalError("Failed to create SwiftData container: \(error)")
         }
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(
-                    syncCoordinator
-                )
+                .environment(syncCoordinator)
                 .onOpenURL { url in
                     GIDSignIn
                         .sharedInstance
                         .handle(url)
                 }
         }
-        .modelContainer(
-            modelContainer
-        )
-        .environment(
-            transactionService
-        )
-        .environment(
-            categoryService
-        )
-        .environment(
-            subcategoryService
-        )
-        .environment(
-            tagService
-        )
+        .modelContainer(modelContainer)
+        .environment(transactionService)
+        .environment(categoryService)
+        .environment(subcategoryService)
+        .environment(tagService)
     }
 }
