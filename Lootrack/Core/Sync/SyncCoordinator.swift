@@ -8,21 +8,21 @@ final class SyncCoordinator {
     private let syncEngine: SyncEngine
     private let conflictResolutionService: ConflictResolutionService
     private let networkMonitor: NetworkMonitor
-    
+
     private var syncTask: Task<Void, Never>?
-    
+
     private(set) var status: SyncStatus = .idle
     private(set) var lastSuccessfulSync: Date?
     var conflicts: [SyncConflictCandidate] = []
-    
+
     var isSyncing: Bool {
         if case .syncing = status {
             return true
         }
-        
+
         return false
     }
-    
+
     init(syncEngine: SyncEngine,
          conflictResolutionService: ConflictResolutionService,
          networkMonitor: NetworkMonitor)
@@ -30,13 +30,25 @@ final class SyncCoordinator {
         self.syncEngine = syncEngine
         self.conflictResolutionService = conflictResolutionService
         self.networkMonitor = networkMonitor
+
+        networkMonitor.statusDidChange = { [weak self] oldStatus, newStatus in
+            guard oldStatus == .offline, newStatus == .online else {
+                return
+            }
+
+            Task { @MainActor [weak self] in
+                await self?.synchronize(trigger: .connectivityRestored)
+            }
+        }
     }
-    
-    func synchronize() async {
+
+    func synchronize(trigger: SyncTrigger = .manual) async {
         guard networkMonitor.status == .online else {
             return
         }
-        
+        guard conflicts.isEmpty else {
+            return
+        }
         /*
          * If a synchronization is already running,
          * simply wait for that same run.
@@ -45,7 +57,7 @@ final class SyncCoordinator {
             await syncTask.value
             return
         }
-        
+
         /*
          * Synchronization owns its own task.
          *
@@ -54,24 +66,24 @@ final class SyncCoordinator {
          * that triggered it disappears or is cancelled.
          */
         let task = Task { @MainActor in
-            await performSynchronization()
+            await performSynchronization(trigger: trigger)
         }
-        
+
         syncTask = task
         await task.value
     }
-    
-    private func performSynchronization() async {
+
+    private func performSynchronization(trigger: SyncTrigger) async {
         status = .syncing
         conflicts = []
-        
+
         defer {
             syncTask = nil
         }
-        
+
         do {
             try await syncEngine.synchronize()
-            
+
             let now = Date.now
             lastSuccessfulSync = now
             status = .succeeded(now)
@@ -80,48 +92,49 @@ final class SyncCoordinator {
             status = .waitingForConflictResolution
         } catch {
             conflicts = []
-            
+
             let syncError = mapError(error)
             status = .failed(syncError)
             
             let errorDescription = String(describing: error)
-            AppLogger.sync.error("Synchronization failed: \(errorDescription, privacy: .public)")
+            let triggerName = trigger.rawValue
+            AppLogger.sync.error("Synchronization failed [\(triggerName, privacy: .public)]: \(errorDescription, privacy: .public)")
         }
     }
-    
+
     func resolveConflict(_ conflict: SyncConflictCandidate, using resolution: ConflictResolution) {
         do {
             try conflictResolutionService.resolve(conflict, using: resolution)
-            
+
             conflicts.removeAll {
                 $0.id == conflict.id
             }
-            
+
             status = conflicts.isEmpty ? .idle : .waitingForConflictResolution
         } catch {
             status = .failed(.conflictResolutionFailed)
-            
+
             let errorDescription = String(describing: error)
             AppLogger.sync.error("Conflict resolution failed: \(errorDescription, privacy: .public)")
         }
     }
-    
+
     private func mapError(_ error: Error) -> SyncError {
         if let error = error as? URLError {
             switch error.code {
             case .notConnectedToInternet,
-                    .networkConnectionLost,
-                    .cannotConnectToHost,
-                    .cannotFindHost,
-                    .dnsLookupFailed,
-                    .timedOut:
+                 .networkConnectionLost,
+                 .cannotConnectToHost,
+                 .cannotFindHost,
+                 .dnsLookupFailed,
+                 .timedOut:
                 return .connectionUnavailable
-                
+
             default:
                 return .unexpected
             }
         }
-        
+
         if let error = error as? GoogleSheetsError {
             switch error {
             case .missingDrivePermission:
@@ -132,13 +145,13 @@ final class SyncCoordinator {
                 return .noSpreadsheetSelected
             }
         }
-        
+
         if let error = error as? GoogleSheetsClientError {
             switch error {
             case .invalidURL,
-                    .invalidResponse:
+                 .invalidResponse:
                 return .unexpected
-                
+
             case let .apiError(status, _):
                 switch status {
                 case 401:
@@ -156,15 +169,15 @@ final class SyncCoordinator {
                 default:
                     return .unexpected
                 }
-                
+
             case .invalidData:
                 return .invalidSpreadsheet
-                
+
             case .writeConflict:
                 return .remoteChanged
             }
         }
-        
+
         return .unexpected
     }
 }

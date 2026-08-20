@@ -1,7 +1,6 @@
 import Foundation
 
-nonisolated
-enum SyncError: LocalizedError {
+nonisolated enum SyncError: LocalizedError {
     case connectionUnavailable
     case authenticationRequired
     case permissionDenied
@@ -69,8 +68,15 @@ enum SyncError: LocalizedError {
     }
 }
 
-nonisolated
-enum SyncStatus {
+nonisolated enum SyncTrigger: String {
+    case manual
+    case connectivityRestored
+    case foreground
+    case automatic
+    case background
+}
+
+nonisolated enum SyncStatus {
     case idle
     case syncing
     case succeeded(Date)

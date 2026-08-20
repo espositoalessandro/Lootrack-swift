@@ -41,18 +41,18 @@ struct RootView: View {
 
     private var connectivityStatusLabel: some View {
         let isOffline = networkMonitor.status == .offline
-        
+
         return HStack(spacing: 5) {
             Circle()
                 .fill(isOffline ? Color.red : Color.green)
                 .frame(width: 7, height: 7)
-            
+
             Text(isOffline ? "Offline" : "Online")
                 .font(.caption.weight(.semibold))
         }
         .foregroundStyle(isOffline ? .red : .green)
     }
-    
+
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Dashboard",
@@ -116,7 +116,7 @@ struct RootView: View {
         .onChange(of: networkMonitor.status) { oldStatus, newStatus in
             if newStatus == .offline {
                 showOnlineStatus = false
-            } else if oldStatus == .offline && newStatus == .online {
+            } else if oldStatus == .offline, newStatus == .online {
                 showOnlineStatus = true
             }
         }
@@ -124,13 +124,13 @@ struct RootView: View {
             guard showOnlineStatus else {
                 return
             }
-            
+
             try? await Task.sleep(for: .seconds(2))
-            
+
             guard !Task.isCancelled else {
                 return
             }
-            
+
             showOnlineStatus = false
         }
     }
@@ -142,7 +142,7 @@ struct RootView: View {
                 connectivityStatusLabel
             }
         }
-        
+
         if syncBadgeCount > 0 {
             ToolbarItem(placement: .topBarTrailing) {
                 syncStatusButton

@@ -15,13 +15,14 @@ final class NetworkMonitor {
     private let queue = DispatchQueue(label: "com.alessandroesposito.Lootrack.network-monitor")
 
     private(set) var status: ConnectivityStatus = .unknown
+    var statusDidChange: ((ConnectivityStatus, ConnectivityStatus) -> Void)?
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
             let status: ConnectivityStatus = path.status == .satisfied ? .online : .offline
 
             Task { @MainActor [weak self] in
-                self?.status = status
+                self?.updateStatus(status)
             }
         }
 
@@ -30,5 +31,15 @@ final class NetworkMonitor {
 
     deinit {
         monitor.cancel()
+    }
+
+    private func updateStatus(_ newStatus: ConnectivityStatus) {
+        guard status != newStatus else {
+            return
+        }
+
+        let oldStatus = status
+        status = newStatus
+        statusDidChange?(oldStatus, newStatus)
     }
 }

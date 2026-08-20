@@ -120,7 +120,7 @@ struct SyncView: View {
             switch syncCoordinator.status {
             case .idle:
                 EmptyView()
-                
+
             case .syncing:
                 Section("Synchronization") {
                     HStack {
@@ -128,7 +128,7 @@ struct SyncView: View {
                         Text("Synchronizing…")
                     }
                 }
-                
+
             case let .succeeded(date):
                 Section("Synchronization") {
                     Label {
@@ -138,16 +138,16 @@ struct SyncView: View {
                             .foregroundStyle(.green)
                     }
                 }
-                
+
             case .waitingForConflictResolution:
                 EmptyView()
-                
+
             case let .failed(error):
                 Section("Synchronization") {
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(error.errorDescription ?? String(localized: "Synchronization failed."))
-                            
+
                             if let recoverySuggestion = error.recoverySuggestion {
                                 Text(recoverySuggestion)
                                     .font(.footnote)
