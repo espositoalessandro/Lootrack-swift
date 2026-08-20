@@ -1,3 +1,4 @@
+internal import os
 import Foundation
 import Observation
 import SwiftData
@@ -6,36 +7,31 @@ nonisolated enum SubcategoryServiceError: LocalizedError {
     case emptyName
     case duplicateName
     case invalidIdentity
+    case couldNotUpdate
 
     var errorDescription: String? {
         switch self {
         case .emptyName:
-            String(localized:
-                "Subcategory name can't be empty.")
-
+            String(localized: "Subcategory name can't be empty.")
         case .duplicateName:
-            String(localized:
-                "Subcategory already exists.")
-
+            String(localized: "Subcategory already exists.")
         case .invalidIdentity:
-            String(localized:
-                "Subcategory can't be updated.")
+            String(localized: "Subcategory can't be updated.")
+        case .couldNotUpdate:
+            String(localized: "Subcategories couldn't be updated.")
         }
     }
 
     var recoverySuggestion: String? {
         switch self {
         case .emptyName:
-            String(localized:
-                "Enter a name for the subcategory.")
-
+            String(localized: "Enter a name for the subcategory.")
         case .duplicateName:
-            String(localized:
-                "Use a different name for this subcategory.")
-
+            String(localized: "Use a different name for this subcategory.")
         case .invalidIdentity:
-            String(localized:
-                "Reload the category and try again.")
+            String(localized: "Reload the category and try again.")
+        case .couldNotUpdate:
+            String(localized: "Your subcategory changes weren't saved. Try again.")
         }
     }
 }
@@ -53,71 +49,62 @@ final class SubcategoryService {
         self.mutationService = mutationService
     }
 
-    func reconcile(categoryId: UUID,
-                   desired: [(id: UUID, name: String)]) throws
-    {
-        let normalizedDesired = try validateAndNormalize(desired)
-
-        let allSubcategories = try modelContext.fetch(FetchDescriptor<Subcategory>())
-
-        let subcategoriesById = Dictionary(uniqueKeysWithValues:
-            allSubcategories.map { subcategory in
-                (subcategory.id, subcategory)
-            })
-
-        /*
-         * Parent category is immutable.
-         *
-         * An existing UUID can only be reconciled inside
-         * the category it was originally created for.
-         */
-        for item in normalizedDesired {
-            if let existing = subcategoriesById[item.id] {
-                guard existing.categoryId == categoryId,
-                      existing.deletedAt == nil
-                else {
-                    throw SubcategoryServiceError
-                        .invalidIdentity
-                }
-            }
-        }
-
-        let activeExisting = allSubcategories.filter {
-            subcategory in
-            subcategory.categoryId == categoryId
-                && subcategory.deletedAt == nil
-        }
-
-        let desiredById = Dictionary(uniqueKeysWithValues:
-            normalizedDesired.map { item in
-                (item.id, item.name)
-            })
-
-        try modelContext.transaction {
-            /*
-             * Anything that existed before but is no longer
-             * present in the edited draft is deleted.
-             */
-            for subcategory in activeExisting
-                where desiredById[subcategory.id] == nil
-            {
-                try delete(subcategory)
-            }
+    func reconcile(categoryId: UUID, desired: [(id: UUID, name: String)]) throws {
+        do {
+            let normalizedDesired = try validateAndNormalize(desired)
+            let allSubcategories = try modelContext.fetch(FetchDescriptor<Subcategory>())
+            let subcategoriesById = Dictionary(uniqueKeysWithValues: allSubcategories.map { ($0.id, $0) })
 
             /*
-             * Existing IDs are renamed; unknown IDs are new
-             * subcategories created by the Edit Category form.
+             * Parent category is immutable.
+             *
+             * An existing UUID can only be reconciled inside
+             * the category it was originally created for.
              */
             for item in normalizedDesired {
                 if let existing = subcategoriesById[item.id] {
-                    try rename(existing,
-                               to: item.name)
-                } else {
-                    try create(id: item.id,
-                               categoryId: categoryId,
-                               name: item.name)
+                    guard existing.categoryId == categoryId, existing.deletedAt == nil else {
+                        throw SubcategoryServiceError.invalidIdentity
+                    }
                 }
             }
+
+            let activeExisting = allSubcategories.filter {
+                $0.categoryId == categoryId && $0.deletedAt == nil
+            }
+
+            let desiredById = Dictionary(uniqueKeysWithValues: normalizedDesired.map { ($0.id, $0.name) })
+
+            try modelContext.transaction {
+                /*
+                 * Anything that existed before but is no longer
+                 * present in the edited draft is deleted.
+                 */
+                for subcategory in activeExisting where desiredById[subcategory.id] == nil {
+                    try delete(subcategory)
+                }
+
+                /*
+                 * Existing IDs are renamed; unknown IDs are new
+                 * subcategories created by the Edit Category form.
+                 */
+                for item in normalizedDesired {
+                    if let existing = subcategoriesById[item.id] {
+                        try rename(existing, to: item.name)
+                    } else {
+                        try create(id: item.id, categoryId: categoryId, name: item.name)
+                    }
+                }
+            }
+        } catch let error as SubcategoryServiceError {
+            throw error
+        } catch {
+            modelContext.rollback()
+
+            let errorDescription = String(describing: error)
+            AppLogger.persistence.error("Failed to reconcile subcategories: \(errorDescription, privacy: .public)")
+
+            throw SubcategoryServiceError.couldNotUpdate
         }
     }
 

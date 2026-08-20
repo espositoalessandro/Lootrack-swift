@@ -171,14 +171,14 @@ struct CategoryListView: View {
             self.error = error as? CategoryServiceError ?? .couldNotDelete
         }
     }
-    
+
     private func registerUndo(for category: Category) {
         guard let undoManager else {
             return
         }
-        
+
         undoManager.removeAllActions(withTarget: categoryService)
-        
+
         undoManager.registerUndo(withTarget: categoryService) { service in
             do {
                 try service.restore(category)
@@ -186,7 +186,7 @@ struct CategoryListView: View {
                 self.error = error as? CategoryServiceError ?? .couldNotRestore
             }
         }
-        
+
         undoManager.setActionName(String(localized: "Delete Category"))
     }
 }
