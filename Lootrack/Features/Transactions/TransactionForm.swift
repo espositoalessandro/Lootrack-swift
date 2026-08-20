@@ -104,8 +104,7 @@ struct TransactionForm: View {
     }
 
     private var matchingSubcategories: [Subcategory] {
-        guard
-            let categoryId =
+        guard let categoryId =
             draft.categoryId
         else {
             return []
@@ -119,8 +118,7 @@ struct TransactionForm: View {
     }
 
     private var selectedCategory: Category? {
-        guard
-            let categoryId =
+        guard let categoryId =
             draft.categoryId
         else {
             return nil
@@ -428,14 +426,12 @@ struct TransactionForm: View {
          * Subcategory can therefore be inferred
          * independently.
          */
-        guard
-            autoSelectSubcategoryWithAI
+        guard autoSelectSubcategoryWithAI
         else {
             return
         }
 
-        guard
-            subcategorySelectionOrigin
+        guard subcategorySelectionOrigin
             != .human
         else {
             return
@@ -464,8 +460,7 @@ struct TransactionForm: View {
         setCategory(nil,
                     origin: .none)
 
-        guard
-            autoSelectCategoryWithAI
+        guard autoSelectCategoryWithAI
         else {
             return
         }
@@ -524,8 +519,7 @@ struct TransactionForm: View {
                 .trimmingCharacters(in:
                     .whitespacesAndNewlines)
 
-        guard
-            !description.isEmpty
+        guard !description.isEmpty
         else {
             isSelectingCategoryWithAI =
                 false
@@ -533,8 +527,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            !matchingCategories.isEmpty
+        guard !matchingCategories.isEmpty
         else {
             isSelectingCategoryWithAI =
                 false
@@ -542,8 +535,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            CategoryAISelector
+        guard CategoryAISelector
             .isAvailable
         else {
             isSelectingCategoryWithAI =
@@ -552,8 +544,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            categorySelectionOrigin
+        guard categorySelectionOrigin
             != .human
         else {
             isSelectingCategoryWithAI =
@@ -596,15 +587,13 @@ struct TransactionForm: View {
                     try Task
                         .checkCancellation()
 
-                    guard
-                        activeCategoryAIRequestId
+                    guard activeCategoryAIRequestId
                         == requestId
                     else {
                         return
                     }
 
-                    guard
-                        categorySelectionOrigin
+                    guard categorySelectionOrigin
                         != .human
                     else {
                         return
@@ -629,8 +618,7 @@ struct TransactionForm: View {
                      * manually selecting.
                      */
                 } catch {
-                    guard
-                        activeCategoryAIRequestId
+                    guard activeCategoryAIRequestId
                         == requestId
                     else {
                         return
@@ -672,21 +660,18 @@ struct TransactionForm: View {
     // MARK: - Subcategory AI
 
     private func prewarmSubcategoryAI() {
-        guard
-            autoSelectSubcategoryWithAI
+        guard autoSelectSubcategoryWithAI
         else {
             return
         }
 
-        guard
-            let category =
+        guard let category =
             selectedCategory
         else {
             return
         }
 
-        guard
-            !matchingSubcategories.isEmpty
+        guard !matchingSubcategories.isEmpty
         else {
             return
         }
@@ -698,14 +683,12 @@ struct TransactionForm: View {
     }
 
     private func scheduleSubcategoryAISelection() {
-        guard
-            autoSelectSubcategoryWithAI
+        guard autoSelectSubcategoryWithAI
         else {
             return
         }
 
-        guard
-            subcategorySelectionOrigin
+        guard subcategorySelectionOrigin
             != .human
         else {
             isSelectingSubcategoryWithAI =
@@ -719,8 +702,7 @@ struct TransactionForm: View {
                 .trimmingCharacters(in:
                     .whitespacesAndNewlines)
 
-        guard
-            !description.isEmpty
+        guard !description.isEmpty
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -728,8 +710,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            let categoryId =
+        guard let categoryId =
             draft.categoryId,
             let category =
             selectedCategory
@@ -740,8 +721,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            !matchingSubcategories.isEmpty
+        guard !matchingSubcategories.isEmpty
         else {
             isSelectingSubcategoryWithAI =
                 false
@@ -749,8 +729,7 @@ struct TransactionForm: View {
             return
         }
 
-        guard
-            SubcategoryAISelector
+        guard SubcategoryAISelector
             .isAvailable
         else {
             isSelectingSubcategoryWithAI =
@@ -801,8 +780,7 @@ struct TransactionForm: View {
                     try Task
                         .checkCancellation()
 
-                    guard
-                        activeSubcategoryAIRequestId
+                    guard activeSubcategoryAIRequestId
                         == requestId
                     else {
                         return
@@ -813,15 +791,13 @@ struct TransactionForm: View {
                      * generated for a previous
                      * Category.
                      */
-                    guard
-                        draft.categoryId
+                    guard draft.categoryId
                         == requestedCategoryId
                     else {
                         return
                     }
 
-                    guard
-                        subcategorySelectionOrigin
+                    guard subcategorySelectionOrigin
                         != .human
                     else {
                         return
@@ -837,8 +813,7 @@ struct TransactionForm: View {
                      * selecting a Subcategory.
                      */
                 } catch {
-                    guard
-                        activeSubcategoryAIRequestId
+                    guard activeSubcategoryAIRequestId
                         == requestId
                     else {
                         return

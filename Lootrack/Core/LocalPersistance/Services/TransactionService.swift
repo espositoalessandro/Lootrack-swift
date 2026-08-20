@@ -80,8 +80,7 @@ final class TransactionService {
         let normalizedTags =
             Tag.normalizedTags(tags)
 
-        guard
-            transaction.type != type
+        guard transaction.type != type
             || transaction.amountInCents
             != amountInCents
             || transaction.note != note
@@ -219,9 +218,8 @@ final class TransactionService {
                 .subcategoryRequiresCategory
         }
 
-        guard
-            try validSubcategoryId(categoryId: categoryId,
-                                   subcategoryId: subcategoryId) != nil
+        guard try validSubcategoryId(categoryId: categoryId,
+                                     subcategoryId: subcategoryId) != nil
         else {
             throw TransactionServiceError
                 .invalidSubcategory
@@ -231,9 +229,8 @@ final class TransactionService {
     private func validSubcategoryId(categoryId: UUID?,
                                     subcategoryId: UUID?) throws -> UUID?
     {
-        guard
-            let categoryId,
-            let subcategoryId
+        guard let categoryId,
+              let subcategoryId
         else {
             return nil
         }
@@ -247,10 +244,9 @@ final class TransactionService {
                 subcategory.id == id
             })).first
 
-        guard
-            let subcategory,
-            subcategory.deletedAt == nil,
-            subcategory.categoryId == categoryId
+        guard let subcategory,
+              subcategory.deletedAt == nil,
+              subcategory.categoryId == categoryId
         else {
             return nil
         }

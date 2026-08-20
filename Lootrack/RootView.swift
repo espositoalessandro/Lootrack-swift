@@ -35,11 +35,10 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab(
-                "Dashboard",
+            Tab("Dashboard",
                 systemImage: "rectangle.3.group",
-                value: AppTab.dashboard
-            ) {
+                value: AppTab.dashboard)
+            {
                 NavigationStack {
                     Dashboard()
                         .toolbar {
@@ -48,11 +47,10 @@ struct RootView: View {
                 }
             }
 
-            Tab(
-                "Transactions",
+            Tab("Transactions",
                 systemImage: "list.bullet",
-                value: AppTab.transactions
-            ) {
+                value: AppTab.transactions)
+            {
                 NavigationStack {
                     TransactionListView()
                         .toolbar {
@@ -61,11 +59,10 @@ struct RootView: View {
                 }
             }
 
-            Tab(
-                "Categories",
+            Tab("Categories",
                 systemImage: "square.grid.2x2",
-                value: AppTab.categories
-            ) {
+                value: AppTab.categories)
+            {
                 NavigationStack {
                     CategoryListView()
                         .toolbar {
@@ -73,11 +70,10 @@ struct RootView: View {
                         }
                 }
             }
-            Tab(
-                "Settings",
+            Tab("Settings",
                 systemImage: "gear",
-                value: AppTab.settings
-            ) {
+                value: AppTab.settings)
+            {
                 NavigationStack {
                     SettingsView()
                         .toolbar {
@@ -94,10 +90,8 @@ struct RootView: View {
         }
         .background {
             UndoResponderView()
-                .frame(
-                    width: 0,
-                    height: 0
-                )
+                .frame(width: 0,
+                       height: 0)
         }
     }
 
@@ -112,33 +106,27 @@ struct RootView: View {
         Button {
             isSyncPresented = true
         } label: {
-            Image(
-                systemName:
-                    hasConflicts
+            Image(systemName:
+                hasConflicts
                     ? "exclamationmark.triangle.fill"
-                    : "arrow.triangle.2.circlepath"
-            )
-            .overlay(alignment: .topTrailing) {
-                if syncBadgeCount > 0 {
-                    Text(syncBadgeCount > 99 ? "99+" : "\(syncBadgeCount)")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
-                        .frame(minWidth: 16, minHeight: 16)
-                        .background(
-                            hasConflicts
+                    : "arrow.triangle.2.circlepath")
+                .overlay(alignment: .topTrailing) {
+                    if syncBadgeCount > 0 {
+                        Text(syncBadgeCount > 99 ? "99+" : "\(syncBadgeCount)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .frame(minWidth: 16, minHeight: 16)
+                            .background(hasConflicts
                                 ? Color.red
                                 : Color.accentColor,
-                            in: Capsule()
-                        )
-                        .offset(x: 9, y: -8)
+                                in: Capsule())
+                            .offset(x: 9, y: -8)
+                    }
                 }
-            }
         }
-        .accessibilityLabel(
-            hasConflicts
-                ? "Synchronization conflicts"
-                : "Synchronization"
-        )
+        .accessibilityLabel(hasConflicts
+            ? "Synchronization conflicts"
+            : "Synchronization")
     }
 }

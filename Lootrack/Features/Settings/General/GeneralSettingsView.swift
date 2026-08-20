@@ -17,28 +17,19 @@ struct GeneralSettingsView: View {
                 NavigationLink {
                     LanguageSettingsView()
                 } label: {
-                    SettingsValueRow(
-                        title: "Language",
-                        value: languageValue
-                    )
+                    SettingsValueRow(title: "Language", value: languageValue)
                 }
 
                 NavigationLink {
                     RegionSettingsView()
                 } label: {
-                    SettingsValueRow(
-                        title: "Region",
-                        value: regionValue
-                    )
+                    SettingsValueRow(title: "Region", value: regionValue)
                 }
 
                 NavigationLink {
                     CurrencySettingsView()
                 } label: {
-                    SettingsValueRow(
-                        title: "Currency",
-                        value: currencyValue
-                    )
+                    SettingsValueRow(title: "Currency", value: currencyValue)
                 }
             } footer: {
                 Text("System uses the corresponding iPhone setting.")
@@ -49,27 +40,22 @@ struct GeneralSettingsView: View {
     }
 
     private var languageValue: String {
-        settings.language.displayName(
-            locale: settings.resolvedLocale
-        )
+        settings.language.displayName(locale: settings.resolvedLocale)
     }
 
     private var regionValue: String {
-        guard
-            let regionCode =
-                settings.regionCode
+        guard let regionCode = settings.regionCode
         else {
             return String(localized: "System")
         }
 
-        return settings.resolvedLocale
-            .localizedString(forRegionCode: regionCode)
-            ?? regionCode
+        return settings.resolvedLocale.localizedString(
+            forRegionCode: regionCode
+        ) ?? regionCode
     }
 
     private var currencyValue: String {
-        settings.currencyCode
-            ?? String(localized: "System")
+        settings.currencyCode ?? String(localized: "System")
     }
 }
 

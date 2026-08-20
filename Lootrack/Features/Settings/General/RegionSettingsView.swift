@@ -64,8 +64,7 @@ struct RegionSettingsView: View {
                 let code =
                     region.identifier
 
-                guard
-                    let name =
+                guard let name =
                     locale.localizedString(forRegionCode: code)
                 else {
                     return nil

@@ -24,9 +24,8 @@ final class Tag {
                 .lowercased()
                 .capitalized
 
-            guard
-                !normalized.isEmpty,
-                found.insert(normalized).inserted
+            guard !normalized.isEmpty,
+                  found.insert(normalized).inserted
             else {
                 continue
             }

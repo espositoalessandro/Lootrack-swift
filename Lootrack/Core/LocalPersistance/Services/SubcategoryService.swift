@@ -41,9 +41,8 @@ final class SubcategoryService {
          */
         for item in normalizedDesired {
             if let existing = subcategoriesById[item.id] {
-                guard
-                    existing.categoryId == categoryId,
-                    existing.deletedAt == nil
+                guard existing.categoryId == categoryId,
+                      existing.deletedAt == nil
                 else {
                     throw SubcategoryServiceError
                         .invalidIdentity

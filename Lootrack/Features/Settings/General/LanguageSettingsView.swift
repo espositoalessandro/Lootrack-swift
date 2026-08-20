@@ -15,12 +15,8 @@ struct LanguageSettingsView: View {
                         settings.language = language
                         dismiss()
                     } label: {
-                        SelectionRow(
-                            title: language.displayName(
-                                locale: settings.resolvedLocale
-                            ),
-                            selected: settings.language == language
-                        )
+                        SelectionRow(title: language.displayName(locale: settings.resolvedLocale),
+                                     selected: settings.language == language)
                     }
                 }
             }

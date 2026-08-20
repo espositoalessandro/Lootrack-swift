@@ -39,8 +39,7 @@ struct AddTransactionView: View {
     }
 
     private func save() {
-        guard
-            let amountInCents =
+        guard let amountInCents =
             draft.amountInCents
         else {
             return

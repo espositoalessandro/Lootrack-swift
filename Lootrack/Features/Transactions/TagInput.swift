@@ -112,9 +112,8 @@ struct TagInput: View {
             }
         }
         .onChange(of: suggestions.count) {
-            guard
-                isFocused,
-                !suggestions.isEmpty
+            guard isFocused,
+                  !suggestions.isEmpty
             else {
                 return
             }
@@ -126,8 +125,7 @@ struct TagInput: View {
     // MARK: - Input
 
     private func inputDidChange() {
-        guard
-            input.contains(where: \.isWhitespace)
+        guard input.contains(where: \.isWhitespace)
         else {
             return
         }

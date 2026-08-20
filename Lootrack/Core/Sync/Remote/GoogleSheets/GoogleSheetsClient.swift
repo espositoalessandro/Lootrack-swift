@@ -43,9 +43,8 @@ final class GoogleSheetsClient {
     func readSnapshot(accessToken: String,
                       spreadsheetId: String) async throws -> RemoteSyncSnapshot
     {
-        guard
-            var components = URLComponents(string:
-                "\(Self.baseURL)/\(spreadsheetId)/values:batchGet")
+        guard var components = URLComponents(string:
+            "\(Self.baseURL)/\(spreadsheetId)/values:batchGet")
         else {
             throw GoogleSheetsClientError.invalidURL
         }
@@ -72,8 +71,7 @@ final class GoogleSheetsClient {
                               accessToken:
                               accessToken)
 
-        guard
-            response.valueRanges.count
+        guard response.valueRanges.count
             == 4
         else {
             throw
@@ -160,8 +158,7 @@ final class GoogleSheetsClient {
         accessToken: String,
         spreadsheetId: String) async throws -> SyncPushResult
     {
-        guard
-            !pushRequest
+        guard !pushRequest
             .mutations
             .isEmpty
         else {
@@ -223,10 +220,9 @@ final class GoogleSheetsClient {
                 continue
             }
 
-            guard
-                matchesExpectedRemote(currentRecord,
-                                      mutation:
-                                      mutation)
+            guard matchesExpectedRemote(currentRecord,
+                                        mutation:
+                                        mutation)
             else {
                 throw
                     GoogleSheetsClientError
@@ -290,9 +286,8 @@ final class GoogleSheetsClient {
         let subcategoryValues =
             try buildSubcategorySheetValues(Array(subcategoryRecords))
 
-        guard
-            let url = URL(string:
-                "\(Self.baseURL)/\(spreadsheetId)/values:batchUpdate")
+        guard let url = URL(string:
+            "\(Self.baseURL)/\(spreadsheetId)/values:batchUpdate")
         else {
             throw
                 GoogleSheetsClientError
@@ -378,8 +373,7 @@ final class GoogleSheetsClient {
 
         switch mutation.operation {
         case .upsert:
-            guard
-                deletedAt == nil
+            guard deletedAt == nil
             else {
                 throw
                     GoogleSheetsClientError
@@ -390,8 +384,7 @@ final class GoogleSheetsClient {
             }
 
         case .delete:
-            guard
-                deletedAt != nil
+            guard deletedAt != nil
             else {
                 throw
                     GoogleSheetsClientError
@@ -425,8 +418,7 @@ final class GoogleSheetsClient {
             }]
 
         for record in records {
-            guard
-                case let .transaction(transaction) = record.payload
+            guard case let .transaction(transaction) = record.payload
             else {
                 throw
                     GoogleSheetsClientError
@@ -493,8 +485,7 @@ final class GoogleSheetsClient {
             }]
 
         for record in records {
-            guard
-                case let .category(category) = record.payload
+            guard case let .category(category) = record.payload
             else {
                 throw
                     GoogleSheetsClientError
@@ -546,8 +537,7 @@ final class GoogleSheetsClient {
             }]
 
         for record in records {
-            guard
-                case let .subcategory(subcategory) = record.payload
+            guard case let .subcategory(subcategory) = record.payload
             else {
                 throw
                     GoogleSheetsClientError
@@ -619,8 +609,7 @@ final class GoogleSheetsClient {
                                            context,
                                            field: "type")
 
-                guard
-                    let type =
+                guard let type =
                     TransactionType(rawValue:
                         typeString)
                 else {
@@ -777,8 +766,7 @@ final class GoogleSheetsClient {
                                            context,
                                            field: "type")
 
-                guard
-                    let type =
+                guard let type =
                     TransactionType(rawValue:
                         typeString)
                 else {
@@ -983,15 +971,13 @@ final class GoogleSheetsClient {
         for row
             in rows.dropFirst()
         {
-            guard
-                row.count >= 2
+            guard row.count >= 2
             else {
                 continue
             }
 
-            guard
-                case let .string(key) = row[0],
-                case let .string(value) = row[1]
+            guard case let .string(key) = row[0],
+                  case let .string(value) = row[1]
             else {
                 continue
             }
@@ -999,8 +985,7 @@ final class GoogleSheetsClient {
             metadata[key] = value
         }
 
-        guard
-            metadata["appId"]
+        guard metadata["appId"]
             == "lootrack"
         else {
             throw
@@ -1008,8 +993,7 @@ final class GoogleSheetsClient {
                 .invalidData("Spreadsheet does not belong to Lootrack")
         }
 
-        guard
-            metadata["schemaVersion"] == "4"
+        guard metadata["schemaVersion"] == "4"
         else {
             throw
                 GoogleSheetsClientError
@@ -1033,8 +1017,7 @@ final class GoogleSheetsClient {
         let actualHeaders =
             try actual.map {
                 cell in
-                guard
-                    case let .string(value) = cell
+                guard case let .string(value) = cell
                 else {
                     throw
                         GoogleSheetsClientError
@@ -1044,8 +1027,7 @@ final class GoogleSheetsClient {
                 return value
             }
 
-        guard
-            actualHeaders == expected
+        guard actualHeaders == expected
         else {
             throw
                 GoogleSheetsClientError
@@ -1060,8 +1042,7 @@ final class GoogleSheetsClient {
             Set<SyncEntityKey>()
 
         for record in records {
-            guard
-                keys.insert(record.id).inserted
+            guard keys.insert(record.id).inserted
             else {
                 throw
                     GoogleSheetsClientError
@@ -1083,12 +1064,11 @@ final class GoogleSheetsClient {
                 .invalidData("\(context): missing \(field)")
         }
 
-        guard
-            case let .string(value) = row[index],
-            !value
-            .trimmingCharacters(in:
-                .whitespacesAndNewlines)
-            .isEmpty
+        guard case let .string(value) = row[index],
+              !value
+              .trimmingCharacters(in:
+                  .whitespacesAndNewlines)
+              .isEmpty
         else {
             throw
                 GoogleSheetsClientError
@@ -1146,12 +1126,11 @@ final class GoogleSheetsClient {
                              field: String,
                              minimum: Int) throws -> Int
     {
-        guard
-            index < row.count,
-            case let .number(value) = row[index],
-            let integer =
-            Int(exactly: value),
-            integer >= minimum
+        guard index < row.count,
+              case let .number(value) = row[index],
+              let integer =
+              Int(exactly: value),
+              integer >= minimum
         else {
             throw
                 GoogleSheetsClientError
@@ -1172,8 +1151,7 @@ final class GoogleSheetsClient {
                                    context: context,
                                    field: field)
 
-        guard
-            let uuid =
+        guard let uuid =
             UUID(uuidString: value)
         else {
             throw
@@ -1189,8 +1167,7 @@ final class GoogleSheetsClient {
                                   context: String,
                                   field: String) throws -> UUID?
     {
-        guard
-            let value =
+        guard let value =
             try readOptionalString(row,
                                    index: index,
                                    context: context,
@@ -1199,8 +1176,7 @@ final class GoogleSheetsClient {
             return nil
         }
 
-        guard
-            let uuid =
+        guard let uuid =
             UUID(uuidString: value)
         else {
             throw
@@ -1232,8 +1208,7 @@ final class GoogleSheetsClient {
                                   context: String,
                                   field: String) throws -> Date?
     {
-        guard
-            let value =
+        guard let value =
             try readOptionalString(row,
                                    index: index,
                                    context: context,
@@ -1302,8 +1277,7 @@ final class GoogleSheetsClient {
                                  .day],
                                 from: date)
 
-        guard
-            let year =
+        guard let year =
             components.year,
             let month =
             components.month,
@@ -1358,8 +1332,7 @@ final class GoogleSheetsClient {
                 .shared
                 .data(for: request)
 
-        guard
-            let response =
+        guard let response =
             response
                 as? HTTPURLResponse
         else {
@@ -1368,8 +1341,7 @@ final class GoogleSheetsClient {
                 .invalidResponse
         }
 
-        guard
-            (200 ..< 300)
+        guard (200 ..< 300)
             .contains(response
                 .statusCode)
         else {

@@ -13,8 +13,7 @@ struct TransactionDraft {
         let normalized = amount.replacingOccurrences(of: ",",
                                                      with: ".")
 
-        guard
-            let decimal = Decimal(string: normalized)
+        guard let decimal = Decimal(string: normalized)
         else {
             return nil
         }

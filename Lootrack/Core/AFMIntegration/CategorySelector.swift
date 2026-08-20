@@ -42,8 +42,7 @@ final class CategoryAISelector {
         let promptPrefix =
             makePromptPrefix(categories: categories)
 
-        guard
-            prewarmedContextKey
+        guard prewarmedContextKey
             != promptPrefix
         else {
             return
@@ -137,8 +136,7 @@ final class CategoryAISelector {
                                        forProperty:
                                        "categoryCode")
 
-        guard
-            let categoryIndex =
+        guard let categoryIndex =
             Int(categoryCode),
             categories.indices
             .contains(categoryIndex)

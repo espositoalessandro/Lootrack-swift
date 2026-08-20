@@ -1,11 +1,14 @@
 --swiftversion 6
 --indent 4
 
---maxwidth 120
+--maxwidth none
 
 --wraparguments after-first
 --wrapparameters after-first
 --wrapcollections after-first
+--wrapconditions after-first
+
+--no-wrap-operators =
 
 --commas inline
 --trimwhitespace always

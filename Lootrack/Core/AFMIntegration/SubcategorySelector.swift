@@ -45,8 +45,7 @@ final class SubcategoryAISelector {
             makePromptPrefix(category: category,
                              subcategories: subcategories)
 
-        guard
-            prewarmedContextKey
+        guard prewarmedContextKey
             != promptPrefix
         else {
             return
@@ -150,8 +149,7 @@ final class SubcategoryAISelector {
                                        forProperty:
                                        "subcategoryCode")
 
-        guard
-            let subcategoryIndex =
+        guard let subcategoryIndex =
             Int(subcategoryCode),
             subcategories.indices
             .contains(subcategoryIndex)

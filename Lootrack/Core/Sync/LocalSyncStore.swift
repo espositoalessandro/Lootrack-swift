@@ -211,8 +211,7 @@ final class LocalSyncStore {
         for record in remoteRecords {
             let key = record.id
 
-            guard
-                foundRemoteRecords
+            guard foundRemoteRecords
                 .insert(key)
                 .inserted
             else {
@@ -223,8 +222,7 @@ final class LocalSyncStore {
 
             try validate(record)
 
-            guard
-                !pendingEntityKeys
+            guard !pendingEntityKeys
                 .contains(key)
             else {
                 continue

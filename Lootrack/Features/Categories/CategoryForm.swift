@@ -105,8 +105,7 @@ struct CategoryForm: View {
     private func addSubcategory(to subcategories:
         Binding<[SubcategoryDraft]>)
     {
-        guard
-            canAddSubcategory(to: subcategories)
+        guard canAddSubcategory(to: subcategories)
         else {
             return
         }

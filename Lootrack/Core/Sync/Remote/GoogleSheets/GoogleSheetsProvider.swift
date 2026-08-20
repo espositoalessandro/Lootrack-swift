@@ -62,8 +62,7 @@ final class GoogleAuthorizationService {
                                                                hint: nil,
                                                                additionalScopes: [Self.driveFileScope])
 
-        guard
-            result.user.grantedScopes?.contains(Self.driveFileScope) == true
+        guard result.user.grantedScopes?.contains(Self.driveFileScope) == true
         else {
             throw GoogleSheetsError.missingDrivePermission
         }
@@ -79,8 +78,7 @@ final class GoogleAuthorizationService {
         let result = try await user.addScopes([Self.driveFileScope],
                                               presenting: presentingViewController())
 
-        guard
-            result.user.grantedScopes?.contains(Self.driveFileScope) == true
+        guard result.user.grantedScopes?.contains(Self.driveFileScope) == true
         else {
             throw GoogleSheetsError.missingDrivePermission
         }
@@ -97,8 +95,7 @@ final class GoogleAuthorizationService {
                 scene.activationState == .foregroundActive
             }
 
-        guard
-            let rootViewController =
+        guard let rootViewController =
             activeScene?.keyWindow?.rootViewController
         else {
             throw GoogleSheetsError.missingPresentationContext

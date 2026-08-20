@@ -49,8 +49,7 @@
         private func willSave(_ notification:
             Notification)
         {
-            guard
-                let context =
+            guard let context =
                 notification.object
                     as? ModelContext
             else {

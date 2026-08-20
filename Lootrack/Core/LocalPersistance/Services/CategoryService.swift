@@ -51,8 +51,7 @@ final class CategoryService {
                 type: TransactionType,
                 note: String) throws
     {
-        guard
-            category.name != name
+        guard category.name != name
             || category.type != type
             || category.note != note
         else {

@@ -1,10 +1,3 @@
-//
-//  CurrencySettingsView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 20/08/2026.
-//
-
 import SwiftUI
 
 struct CurrencySettingsView: View {
@@ -24,26 +17,24 @@ struct CurrencySettingsView: View {
                     settings.currencyCode = nil
                     dismiss()
                 } label: {
-                    SelectionRow(title: systemTitle,
-                                 selected:
-                                 settings.currencyCode
-                                     == nil)
+                    SelectionRow(
+                        title: systemTitle,
+                        selected: settings.currencyCode == nil
+                    )
                 }
             }
 
             Section {
-                ForEach(filteredCurrencies) {
-                    currency in
+                ForEach(filteredCurrencies) { currency in
                     Button {
-                        settings.currencyCode =
-                            currency.code
-
+                        settings.currencyCode = currency.code
                         dismiss()
                     } label: {
                         HStack {
-                            VStack(alignment: .leading,
-                                   spacing: 2)
-                            {
+                            VStack(
+                                alignment: .leading,
+                                spacing: 2
+                            ) {
                                 Text(currency.name)
                                     .foregroundStyle(.primary)
 
@@ -54,11 +45,8 @@ struct CurrencySettingsView: View {
 
                             Spacer()
 
-                            if settings.currencyCode
-                                == currency.code
-                            {
-                                Image(systemName:
-                                    "checkmark")
+                            if settings.currencyCode == currency.code {
+                                Image(systemName: "checkmark")
                                     .fontWeight(.semibold)
                                     .foregroundStyle(Color.accentColor)
                             }
@@ -69,38 +57,35 @@ struct CurrencySettingsView: View {
         }
         .navigationTitle("Currency")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText,
-                    prompt: "Search currencies")
+        .searchable(
+            text: $searchText,
+            prompt: "Search currencies"
+        )
     }
 
     private var systemTitle: String {
         "\(String(localized: "System")) (\(settings.resolvedCurrencyCode))"
     }
 
-    private var currencies:
-        [CurrencyOption]
-    {
-        let locale =
-            settings.resolvedLocale
+    private var currencies: [CurrencyOption] {
+        let locale = settings.resolvedLocale
 
         return Locale.Currency
             .isoCurrencies
             .map(\.identifier)
             .uniqued()
             .map { code in
-                CurrencyOption(code: code,
-                               name:
-                               locale.localizedString(forCurrencyCode: code)
-                                   ?? code)
+                CurrencyOption(
+                    code: code,
+                    name: locale.localizedString(forCurrencyCode: code) ?? code
+                )
             }
             .sorted {
                 $0.name.localizedStandardCompare($1.name) == .orderedAscending
             }
     }
 
-    private var filteredCurrencies:
-        [CurrencyOption]
-    {
+    private var filteredCurrencies: [CurrencyOption] {
         guard !searchText.isEmpty else {
             return currencies
         }
@@ -123,10 +108,9 @@ private struct CurrencyOption:
     }
 }
 
-private extension Sequence
-    where Element: Hashable
-{
-    func uniqued() -> [Element] {
+extension Sequence
+where Element: Hashable {
+    fileprivate func uniqued() -> [Element] {
         var seen = Set<Element>()
 
         return filter {

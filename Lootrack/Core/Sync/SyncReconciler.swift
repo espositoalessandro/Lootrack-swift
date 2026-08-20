@@ -111,8 +111,7 @@ nonisolated struct SyncReconciler {
              * remote state is authoritative.
              */
             if pending.isEmpty {
-                guard
-                    let remoteRecord
+                guard let remoteRecord
                 else {
                     if let localEntity {
                         conflicts.append(SyncConflictCandidate(key: key,
@@ -143,8 +142,7 @@ nonisolated struct SyncReconciler {
                 continue
             }
 
-            guard
-                let firstPending =
+            guard let firstPending =
                 pending.first,
                 let lastPending =
                 pending.last
@@ -181,8 +179,7 @@ nonisolated struct SyncReconciler {
                     continue
                 }
 
-                guard
-                    let firstRemaining =
+                guard let firstRemaining =
                     remaining.first
                 else {
                     continue
