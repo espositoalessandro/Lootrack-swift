@@ -5,11 +5,9 @@
 //  Created by Alessandro Esposito on 20/08/2026.
 //
 
-
 import OSLog
 
-nonisolated
-enum AppLogger {
+nonisolated enum AppLogger {
     static let persistence =
         Logger(subsystem: "com.alessandroesposito.Lootrack",
                category: "Persistence")

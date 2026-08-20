@@ -4,37 +4,37 @@ import SwiftUI
 struct GoogleSheetSettingsView: View {
     @Environment(GoogleSheetSettings.self)
     private var sheetSettings
-    
+
     @Environment(GoogleSheetSelectionService.self)
     private var selectionService
-    
+
     @Environment(GoogleAuthorizationService.self)
     private var authorization
-    
+
     @State
     private var isSigningIn = false
-    
+
     @State
     private var errorTitle = ""
-    
+
     @State
     private var errorMessage = ""
-    
+
     @State
     private var showingError = false
-    
+
     private var profileImageURL: URL? {
         authorization.user?.profile?.imageURL(withDimension: 256)
     }
-    
+
     private var displayName: String {
         authorization.user?.profile?.name ?? String(localized: "Google Account")
     }
-    
+
     private var email: String {
         authorization.user?.profile?.email ?? ""
     }
-    
+
     var body: some View {
         Group {
             if authorization.user == nil {
@@ -54,17 +54,17 @@ struct GoogleSheetSettingsView: View {
             Text(errorMessage)
         }
     }
-    
+
     private var accountView: some View {
         List {
             accountHeader
-            
+
             if sheetSettings.spreadsheetId != nil {
                 Section {
                     LabeledContent("Selected Sheet", value: sheetSettings.spreadsheetName ?? "Name unavailable")
                 }
             }
-            
+
             Section {
                 Button {
                     Task {
@@ -81,14 +81,14 @@ struct GoogleSheetSettingsView: View {
                     }
                 }
                 .disabled(selectionService.isSelecting)
-                
+
                 Button {
                     // TODO: Create Google Sheet
                 } label: {
                     Label("Create New Sheet", systemImage: "doc.badge.plus")
                 }
             }
-            
+
             Section {
                 Button(role: .destructive) {
                     authorization.signOut()
@@ -98,7 +98,7 @@ struct GoogleSheetSettingsView: View {
             }
         }
     }
-    
+
     private var noAccountView: some View {
         ContentUnavailableView {
             Label("No Account Linked", systemImage: "person.crop.circle.badge.xmark")
@@ -117,15 +117,15 @@ struct GoogleSheetSettingsView: View {
             }
         }
     }
-    
+
     private var accountHeader: some View {
         VStack(spacing: 8) {
             profileImage
-            
+
             Text(displayName)
                 .font(.title)
                 .fontWeight(.semibold)
-            
+
             if !email.isEmpty {
                 Text(email)
                     .font(.subheadline)
@@ -137,7 +137,7 @@ struct GoogleSheetSettingsView: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
-    
+
     @ViewBuilder
     private var profileImage: some View {
         if let profileImageURL {
@@ -158,18 +158,18 @@ struct GoogleSheetSettingsView: View {
                 .frame(width: 112, height: 112)
         }
     }
-    
+
     private func signIn() async {
         isSigningIn = true
         defer { isSigningIn = false }
-        
+
         do {
             try await authorization.signIn()
         } catch {
             showError(title: "Unable to Log In", error: error)
         }
     }
-    
+
     private func selectSheet() async {
         do {
             try await selectionService.selectSheet(loginHint: email.isEmpty ? nil : email)
@@ -179,7 +179,7 @@ struct GoogleSheetSettingsView: View {
             showError(title: "Unable to Select Sheet", error: error)
         }
     }
-    
+
     private func showError(title: String, error: Error) {
         errorTitle = title
         errorMessage = error.localizedDescription

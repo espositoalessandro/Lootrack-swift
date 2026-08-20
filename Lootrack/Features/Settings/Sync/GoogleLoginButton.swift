@@ -2,7 +2,7 @@ import SwiftUI
 
 struct GoogleLoginButton: View {
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -11,10 +11,10 @@ struct GoogleLoginButton: View {
                     .renderingMode(.original)
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                
+
                 Text("Sign in with Google")
                     .fontWeight(.semibold)
-                
+
                 Spacer()
             }
             .padding(.horizontal, 18)

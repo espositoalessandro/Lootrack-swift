@@ -16,7 +16,7 @@ struct LootrackApp: App {
     private let googleSheetSettings: GoogleSheetSettings
     private let googleSheetSelectionService: GoogleSheetSelectionService
     private let googleAuthorizationService: GoogleAuthorizationService
-    
+
     init() {
         appSettings = AppSettings()
 
@@ -60,22 +60,20 @@ struct LootrackApp: App {
 
             let googleSheetsConfiguration = GoogleSheetsConfiguration.development
             let googleSheetsClient = GoogleSheetsClient()
-            
+
             let googleAuthorizationService = GoogleAuthorizationService(configuration: googleSheetsConfiguration)
             self.googleAuthorizationService = googleAuthorizationService
-            
+
             let googlePickerService = GooglePickerService(configuration: googleSheetsConfiguration)
-            
-            let googleSheetSelectionService = GoogleSheetSelectionService(
-                settings: googleSheetSettings,
-                picker: googlePickerService,
-                authorization: googleAuthorizationService,
-                client: googleSheetsClient,
-                modelContext: modelContainer.mainContext
-            )
-            
+
+            let googleSheetSelectionService = GoogleSheetSelectionService(settings: googleSheetSettings,
+                                                                          picker: googlePickerService,
+                                                                          authorization: googleAuthorizationService,
+                                                                          client: googleSheetsClient,
+                                                                          modelContext: modelContainer.mainContext)
+
             self.googleSheetSelectionService = googleSheetSelectionService
-            
+
             let googleSheetsProvider = GoogleSheetsProvider(settings: googleSheetSettings,
                                                             authorization: googleAuthorizationService,
                                                             client: googleSheetsClient)

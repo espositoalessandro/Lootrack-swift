@@ -6,36 +6,36 @@ nonisolated enum SubcategoryServiceError: LocalizedError {
     case emptyName
     case duplicateName
     case invalidIdentity
-    
+
     var errorDescription: String? {
         switch self {
         case .emptyName:
             String(localized:
-                    "Subcategory name can't be empty.")
-            
+                "Subcategory name can't be empty.")
+
         case .duplicateName:
             String(localized:
-                    "Subcategory already exists.")
-            
+                "Subcategory already exists.")
+
         case .invalidIdentity:
             String(localized:
-                    "Subcategory can't be updated.")
+                "Subcategory can't be updated.")
         }
     }
-    
+
     var recoverySuggestion: String? {
         switch self {
         case .emptyName:
             String(localized:
-                    "Enter a name for the subcategory.")
-            
+                "Enter a name for the subcategory.")
+
         case .duplicateName:
             String(localized:
-                    "Use a different name for this subcategory.")
-            
+                "Use a different name for this subcategory.")
+
         case .invalidIdentity:
             String(localized:
-                    "Reload the category and try again.")
+                "Reload the category and try again.")
         }
     }
 }
