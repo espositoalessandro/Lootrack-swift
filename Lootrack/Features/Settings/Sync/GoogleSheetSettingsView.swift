@@ -8,34 +8,60 @@ struct GoogleSheetSettingsView: View {
     @Environment(GoogleSheetSelectionService.self)
     private var selectionService
     
-    @State
-    private var user: GIDGoogleUser?
+    @Environment(GoogleAuthorizationService.self)
+    private var authorization
     
     @State
-    private var selectionErrorMessage = ""
+    private var isSigningIn = false
     
     @State
-    private var showingSelectionError = false
+    private var errorTitle = ""
+    
+    @State
+    private var errorMessage = ""
+    
+    @State
+    private var showingError = false
     
     private var profileImageURL: URL? {
-        user?.profile?.imageURL(withDimension: 256)
+        authorization.user?.profile?.imageURL(withDimension: 256)
     }
     
     private var displayName: String {
-        user?.profile?.name ?? String(localized: "Google Account")
+        authorization.user?.profile?.name ?? String(localized: "Google Account")
     }
     
     private var email: String {
-        user?.profile?.email ?? ""
+        authorization.user?.profile?.email ?? ""
     }
     
     var body: some View {
+        Group {
+            if authorization.user == nil {
+                noAccountView
+            } else {
+                accountView
+            }
+        }
+        .navigationTitle("Google Sheet")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await authorization.restoreSession()
+        }
+        .alert(errorTitle, isPresented: $showingError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private var accountView: some View {
         List {
             accountHeader
             
             if sheetSettings.spreadsheetId != nil {
                 Section {
-                    LabeledContent("Selected Sheet", value: sheetSettings.spreadsheetName ?? "Current Google Sheet")
+                    LabeledContent("Selected Sheet", value: sheetSettings.spreadsheetName ?? "Name unavailable")
                 }
             }
             
@@ -65,21 +91,30 @@ struct GoogleSheetSettingsView: View {
             
             Section {
                 Button(role: .destructive) {
-                    // TODO: Log out
+                    authorization.signOut()
                 } label: {
                     Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
         }
-        .navigationTitle("Google Sheet")
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await loadUser()
-        }
-        .alert("Unable to Select Sheet", isPresented: $showingSelectionError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(selectionErrorMessage)
+    }
+    
+    private var noAccountView: some View {
+        ContentUnavailableView {
+            Label("No Account Linked", systemImage: "person.crop.circle.badge.xmark")
+        } description: {
+            Text("Link a Google account to synchronize Lootrack with Google Sheets.")
+        } actions: {
+            if isSigningIn {
+                ProgressView()
+            } else {
+                GoogleLoginButton {
+                    Task {
+                        await signIn()
+                    }
+                }
+                .frame(width: 300)
+            }
         }
     }
     
@@ -124,27 +159,30 @@ struct GoogleSheetSettingsView: View {
         }
     }
     
+    private func signIn() async {
+        isSigningIn = true
+        defer { isSigningIn = false }
+        
+        do {
+            try await authorization.signIn()
+        } catch {
+            showError(title: "Unable to Log In", error: error)
+        }
+    }
+    
     private func selectSheet() async {
         do {
             try await selectionService.selectSheet(loginHint: email.isEmpty ? nil : email)
         } catch GooglePickerError.cancelled {
             return
         } catch {
-            selectionErrorMessage = error.localizedDescription
-            showingSelectionError = true
+            showError(title: "Unable to Select Sheet", error: error)
         }
     }
     
-    private func loadUser() async {
-        if let currentUser = GIDSignIn.sharedInstance.currentUser {
-            user = currentUser
-            return
-        }
-        
-        guard GIDSignIn.sharedInstance.hasPreviousSignIn() else {
-            return
-        }
-        
-        user = try? await GIDSignIn.sharedInstance.restorePreviousSignIn()
+    private func showError(title: String, error: Error) {
+        errorTitle = title
+        errorMessage = error.localizedDescription
+        showingError = true
     }
 }

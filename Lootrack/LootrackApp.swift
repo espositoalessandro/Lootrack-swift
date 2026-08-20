@@ -15,6 +15,7 @@ struct LootrackApp: App {
     private let appSettings: AppSettings
     private let googleSheetSettings: GoogleSheetSettings
     private let googleSheetSelectionService: GoogleSheetSelectionService
+    private let googleAuthorizationService: GoogleAuthorizationService
     
     init() {
         appSettings = AppSettings()
@@ -58,8 +59,10 @@ struct LootrackApp: App {
             self.subcategoryService = subcategoryService
 
             let googleSheetsConfiguration = GoogleSheetsConfiguration.development
-            let googleAuthorizationService = GoogleAuthorizationService(configuration: googleSheetsConfiguration)
             let googleSheetsClient = GoogleSheetsClient()
+            
+            let googleAuthorizationService = GoogleAuthorizationService(configuration: googleSheetsConfiguration)
+            self.googleAuthorizationService = googleAuthorizationService
             
             let googlePickerService = GooglePickerService(configuration: googleSheetsConfiguration)
             
@@ -111,6 +114,7 @@ struct LootrackApp: App {
         .environment(appSettings)
         .environment(googleSheetSettings)
         .environment(googleSheetSelectionService)
+        .environment(googleAuthorizationService)
     }
 }
 
