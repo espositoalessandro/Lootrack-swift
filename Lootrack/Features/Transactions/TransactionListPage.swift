@@ -24,6 +24,9 @@ struct TransactionListView: View {
     @State
     private var scrolledTarget: TransactionScrollTarget?
 
+    @State
+    private var error: TransactionServiceError?
+
     @Environment(TransactionService.self)
     private var transactionService
 
@@ -128,33 +131,24 @@ struct TransactionListView: View {
                             .monthHeader(month.date))
 
                     ForEach(month.days) { day in
-                        dayHeader(day,
-                                  isFirst:
-                                  day.id
-                                      == month.days.first?.id)
-                            .id(TransactionScrollTarget.day(day.date,
-                                                            month: month.date))
+                        dayHeader(day, isFirst: day.id == month.days.first?.id)
+                            .id(TransactionScrollTarget.day(day.date, month: month.date))
 
                         ForEach(day.transactions) { transaction in
                             transactionRow(transaction)
-                                .padding(.bottom,
-                                         8)
-                                .id(TransactionScrollTarget
-                                    .transaction(transaction.id,
-                                                 month: month.date))
+                                .padding(.bottom, 8)
+                                .id(TransactionScrollTarget.transaction(transaction.id, month: month.date))
                         }
                     }
                 }
             }
             .scrollTargetLayout()
-            .padding(.bottom,
-                     16)
+            .padding(.bottom, 16)
         }
         .refreshable {
             await syncCoordinator.synchronize()
         }
-        .scrollPosition(id: $scrolledTarget,
-                        anchor: .top)
+        .scrollPosition(id: $scrolledTarget, anchor: .top)
         .swipeActionsContainer()
         .background(Color(uiColor: .systemGroupedBackground))
         .scrollDismissesKeyboard(.interactively)
@@ -162,16 +156,12 @@ struct TransactionListView: View {
         .toolbar {
             if let toolbarMonth {
                 ToolbarItem(placement: .title) {
-                    Text(toolbarMonth.formatted(.dateTime
-                            .month(.wide)
-                            .year()))
+                    Text(toolbarMonth.formatted(.dateTime.month(.wide).year()))
                 }
             }
 
             ToolbarItem(placement: .primaryAction) {
-                Button("Add",
-                       systemImage: "plus")
-                {
+                Button("Add", systemImage: "plus") {
                     showingAddTransaction = true
                 }
             }
@@ -181,11 +171,9 @@ struct TransactionListView: View {
         .overlay(alignment: .bottom) {
             if showsAddTransactionFAB {
                 addTransactionFAB
-                    .padding(.bottom,
-                             18)
-                    .transition(.scale(scale: 0.8,
-                                       anchor: .bottom)
-                            .combined(with: .opacity))
+                    .padding(.bottom, 18)
+                    .transition(.scale(scale: 0.8, anchor: .bottom)
+                        .combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2),
@@ -195,6 +183,13 @@ struct TransactionListView: View {
         }
         .sheet(item: $editingTransaction) { transaction in
             EditTransactionView(transaction: transaction)
+        }
+        .alert(error: $error) { _ in
+            Button("OK") {}
+        } message: { error in
+            if let recoverySuggestion = error.recoverySuggestion {
+                Text(recoverySuggestion)
+            }
         }
     }
 
@@ -206,8 +201,7 @@ struct TransactionListView: View {
         } label: {
             Image(systemName: "plus")
                 .font(.title2.weight(.semibold))
-                .frame(width: 58,
-                       height: 58)
+                .frame(width: 58, height: 58)
         }
         .buttonStyle(.glassProminent)
         .accessibilityLabel("Add Transaction")
@@ -216,23 +210,16 @@ struct TransactionListView: View {
     // MARK: - Filter
 
     private var filterPicker: some View {
-        Picker("Transaction type",
-               selection: $selectedFilter)
-        {
-            ForEach(TransactionListFilter.allCases,
-                    id: \.self)
-            { filter in
+        Picker("Transaction type", selection: $selectedFilter) {
+            ForEach(TransactionListFilter.allCases, id: \.self) { filter in
                 Text(filter.label)
                     .tag(filter)
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal,
-                 16)
-        .padding(.top,
-                 8)
-        .padding(.bottom,
-                 10)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private func matchesFilter(_ transaction: Transaction) -> Bool {
@@ -265,8 +252,7 @@ struct TransactionListView: View {
                 }
                 ?? ""
 
-        let tags =
-            transaction.tags.joined(separator: " ")
+        let tags = transaction.tags.joined(separator: " ")
 
         return [transaction.note,
                 categoryName,
@@ -287,12 +273,9 @@ struct TransactionListView: View {
                 .year()))
             .font(.title2.bold())
             .foregroundStyle(.primary)
-            .padding(.horizontal,
-                     32)
-            .padding(.top,
-                     18)
-            .padding(.bottom,
-                     18)
+            .padding(.horizontal, 32)
+            .padding(.top, 18)
+            .padding(.bottom, 18)
     }
 
     private func dayHeader(_ day: TransactionDayGroup,
@@ -304,12 +287,9 @@ struct TransactionListView: View {
                 .month(.abbreviated)))
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary)
-            .padding(.horizontal,
-                     32)
-            .padding(.top,
-                     isFirst ? 0 : 14)
-            .padding(.bottom,
-                     10)
+            .padding(.horizontal, 32)
+            .padding(.top, isFirst ? 0 : 14)
+            .padding(.bottom, 10)
     }
 
     // MARK: - Rows
@@ -327,8 +307,7 @@ struct TransactionListView: View {
                                subcategoryNamesById[$0]
                            },
                        onEdit: {
-                           editingTransaction =
-                               transaction
+                           editingTransaction = transaction
                        },
                        onDelete: {
                            delete(transaction)
@@ -340,11 +319,9 @@ struct TransactionListView: View {
     private func delete(_ transaction: Transaction) {
         do {
             try transactionService.delete(transaction)
-
             registerUndo(for: transaction)
         } catch {
-            print("FAILED TO DELETE TRANSACTION:",
-                  error)
+            self.error = error as? TransactionServiceError ?? .couldNotDelete
         }
     }
 
@@ -359,12 +336,10 @@ struct TransactionListView: View {
             do {
                 try service.restore(transaction)
             } catch {
-                print("FAILED TO UNDO TRANSACTION DELETE:",
-                      error)
+                self.error = error as? TransactionServiceError ?? .couldNotRestore
             }
         }
 
-        undoManager.setActionName(String(localized:
-            "Delete Transaction"))
+        undoManager.setActionName(String(localized: "Delete Transaction"))
     }
 }
