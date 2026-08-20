@@ -39,6 +39,9 @@ struct CategoryListView: View {
     @State
     private var selectedFilter: CategoryListFilter = .all
 
+    @State
+    private var error: CategoryServiceError?
+
     @Query(CategoryQueries.activeByName)
     private var categories: [Category]
 
@@ -84,15 +87,17 @@ struct CategoryListView: View {
                 }
             }
         }
-        .sheet(isPresented:
-            $showingAddCategory)
-        {
+        .sheet(isPresented: $showingAddCategory) {
             AddCategoryView()
         }
-        .sheet(item:
-            $editingCategory)
-        { category in
+        .sheet(item: $editingCategory) { category in
             EditCategoryView(category: category)
+        }
+        .alert(error: $error) { _ in Button("OK") {}
+        } message: { error in
+            if let recoverySuggestion = error.recoverySuggestion {
+                Text(recoverySuggestion)
+            }
         }
     }
 
@@ -161,38 +166,27 @@ struct CategoryListView: View {
     private func delete(_ category: Category) {
         do {
             try categoryService.delete(category)
-
             registerUndo(for: category)
         } catch {
-            print("FAILED TO DELETE CATEGORY:",
-                  error)
+            self.error = error as? CategoryServiceError ?? .couldNotDelete
         }
     }
-
+    
     private func registerUndo(for category: Category) {
         guard let undoManager else {
             return
         }
-
-        /*
-         * We only keep one accidental-delete
-         * undo for this service.
-         */
-        undoManager.removeAllActions(withTarget:
-            categoryService)
-
-        undoManager.registerUndo(withTarget:
-            categoryService)
-        { service in
+        
+        undoManager.removeAllActions(withTarget: categoryService)
+        
+        undoManager.registerUndo(withTarget: categoryService) { service in
             do {
                 try service.restore(category)
             } catch {
-                print("FAILED TO UNDO CATEGORY DELETE:",
-                      error)
+                self.error = error as? CategoryServiceError ?? .couldNotRestore
             }
         }
-
-        undoManager.setActionName(String(localized:
-            "Delete Category"))
+        
+        undoManager.setActionName(String(localized: "Delete Category"))
     }
 }

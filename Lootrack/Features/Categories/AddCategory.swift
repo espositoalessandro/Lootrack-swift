@@ -3,10 +3,10 @@ import SwiftUI
 struct AddCategoryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(CategoryService.self) private var categoryService
-    
+
     @State private var draft = CategoryDraft()
     @State private var error: CategoryServiceError?
-    
+
     var body: some View {
         NavigationStack {
             CategoryForm(draft: $draft)
@@ -17,7 +17,7 @@ struct AddCategoryView: View {
                             dismiss()
                         }
                     }
-                    
+
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
                             save()
@@ -34,7 +34,7 @@ struct AddCategoryView: View {
             }
         }
     }
-    
+
     private func save() {
         do {
             try categoryService.create(name: draft.name, type: draft.type, note: draft.note)
