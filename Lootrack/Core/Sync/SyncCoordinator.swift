@@ -134,52 +134,30 @@ final class SyncCoordinator {
                 return .unexpected
             }
         }
-
-        if let error = error as? GoogleSheetsError {
+        
+        if let error = error as? SyncProviderError {
             switch error {
             case .authenticationRequired:
                 return .authenticationRequired
-            case .missingDrivePermission:
+            case .permissionDenied:
                 return .permissionDenied
-            case .missingPresentationContext:
-                return .authenticationRequired
-            case .noSpreadsheetSelected:
-                return .noSpreadsheetSelected
-            }
-        }
-        
-        if let error = error as? GoogleSheetsClientError {
-            switch error {
-            case .invalidURL,
-                 .invalidResponse:
-                return .unexpected
-
-            case let .apiError(status, _):
-                switch status {
-                case 401:
-                    return .authenticationRequired
-                case 403:
-                    return .permissionDenied
-                case 404:
-                    return .spreadsheetUnavailable
-                case 408:
-                    return .connectionUnavailable
-                case 429:
-                    return .rateLimited
-                case 500 ..< 600:
-                    return .serviceUnavailable
-                default:
-                    return .unexpected
-                }
-
-            case .invalidData:
-                return .invalidSpreadsheet
-
-            case .writeConflict:
+            case .configurationRequired:
+                return .configurationRequired
+            case .connectionUnavailable:
+                return .connectionUnavailable
+            case .remoteUnavailable:
+                return .remoteUnavailable
+            case .rateLimited:
+                return .rateLimited
+            case .serviceUnavailable:
+                return .serviceUnavailable
+            case .invalidRemoteData:
+                return .invalidRemoteData
+            case .remoteChanged:
                 return .remoteChanged
             }
         }
-
+        
         return .unexpected
     }
 }

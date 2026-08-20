@@ -208,17 +208,25 @@ final class GoogleSheetsProvider: SyncProvider {
     }
 
     func pull() async throws -> RemoteSyncSnapshot {
-        let spreadsheetId = try selectedSpreadsheetId()
-        let accessToken = try await authorization.accessToken()
-
-        return try await client.readSnapshot(accessToken: accessToken, spreadsheetId: spreadsheetId)
+        do {
+            let spreadsheetId = try selectedSpreadsheetId()
+            let accessToken = try await authorization.accessToken()
+            
+            return try await client.readSnapshot(accessToken: accessToken, spreadsheetId: spreadsheetId)
+        } catch {
+            throw mapError(error)
+        }
     }
-
+    
     func push(_ request: SyncPushRequest) async throws -> SyncPushResult {
-        let spreadsheetId = try selectedSpreadsheetId()
-        let accessToken = try await authorization.accessToken()
-
-        return try await client.push(request, accessToken: accessToken, spreadsheetId: spreadsheetId)
+        do {
+            let spreadsheetId = try selectedSpreadsheetId()
+            let accessToken = try await authorization.accessToken()
+            
+            return try await client.push(request, accessToken: accessToken, spreadsheetId: spreadsheetId)
+        } catch {
+            throw mapError(error)
+        }
     }
 
     private func selectedSpreadsheetId() throws -> String {
@@ -229,5 +237,54 @@ final class GoogleSheetsProvider: SyncProvider {
         }
 
         return spreadsheetId
+    }
+    
+    private func mapError(_ error: Error) -> Error {
+        if let error = error as? GoogleSheetsError {
+            switch error {
+            case .authenticationRequired:
+                return SyncProviderError.authenticationRequired
+            case .missingDrivePermission:
+                return SyncProviderError.permissionDenied
+            case .missingPresentationContext:
+                return SyncProviderError.authenticationRequired
+            case .noSpreadsheetSelected:
+                return SyncProviderError.configurationRequired
+            }
+        }
+        
+        if let error = error as? GoogleSheetsClientError {
+            switch error {
+            case .invalidURL,
+                    .invalidResponse:
+                return error
+                
+            case let .apiError(status, _):
+                switch status {
+                case 401:
+                    return SyncProviderError.authenticationRequired
+                case 403:
+                    return SyncProviderError.permissionDenied
+                case 404:
+                    return SyncProviderError.remoteUnavailable
+                case 408:
+                    return SyncProviderError.connectionUnavailable
+                case 429:
+                    return SyncProviderError.rateLimited
+                case 500 ..< 600:
+                    return SyncProviderError.serviceUnavailable
+                default:
+                    return error
+                }
+                
+            case .invalidData:
+                return SyncProviderError.invalidRemoteData
+                
+            case .writeConflict:
+                return SyncProviderError.remoteChanged
+            }
+        }
+        
+        return error
     }
 }

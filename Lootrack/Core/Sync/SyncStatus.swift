@@ -4,60 +4,60 @@ nonisolated enum SyncError: LocalizedError {
     case connectionUnavailable
     case authenticationRequired
     case permissionDenied
-    case noSpreadsheetSelected
-    case spreadsheetUnavailable
+    case configurationRequired
+    case remoteUnavailable
     case rateLimited
     case serviceUnavailable
-    case invalidSpreadsheet
+    case invalidRemoteData
     case remoteChanged
     case conflictResolutionFailed
     case unexpected
-
+    
     var errorDescription: String? {
         switch self {
         case .connectionUnavailable:
             String(localized: "Synchronization was interrupted.")
         case .authenticationRequired:
-            String(localized: "Google authorization is required.")
+            String(localized: "Synchronization authorization is required.")
         case .permissionDenied:
-            String(localized: "Google Sheets access was denied.")
-        case .noSpreadsheetSelected:
-            String(localized: "No spreadsheet is selected.")
-        case .spreadsheetUnavailable:
-            String(localized: "The selected spreadsheet is unavailable.")
+            String(localized: "Synchronization access was denied.")
+        case .configurationRequired:
+            String(localized: "Synchronization isn't configured.")
+        case .remoteUnavailable:
+            String(localized: "The synchronization destination is unavailable.")
         case .rateLimited:
-            String(localized: "Google Sheets is temporarily busy.")
+            String(localized: "The synchronization service is temporarily busy.")
         case .serviceUnavailable:
-            String(localized: "Google Sheets is currently unavailable.")
-        case .invalidSpreadsheet:
-            String(localized: "The spreadsheet format isn't compatible with Lootrack.")
+            String(localized: "The synchronization service is currently unavailable.")
+        case .invalidRemoteData:
+            String(localized: "The synchronization data isn't compatible with Lootrack.")
         case .remoteChanged:
-            String(localized: "The spreadsheet changed during synchronization.")
+            String(localized: "Remote data changed during synchronization.")
         case .conflictResolutionFailed:
             String(localized: "The conflict couldn't be resolved.")
         case .unexpected:
             String(localized: "Synchronization failed.")
         }
     }
-
+    
     var recoverySuggestion: String? {
         switch self {
         case .connectionUnavailable:
             String(localized: "Check your connection and try again. Your local changes are safe.")
         case .authenticationRequired:
-            String(localized: "Try syncing again and complete Google sign-in if prompted.")
+            String(localized: "Reconnect your sync provider in Sync settings.")
         case .permissionDenied:
-            String(localized: "Make sure Lootrack has permission to access the selected spreadsheet.")
-        case .noSpreadsheetSelected:
-            String(localized: "Choose a spreadsheet in Sync settings.")
-        case .spreadsheetUnavailable:
-            String(localized: "Check that the spreadsheet still exists and that you can access it.")
+            String(localized: "Check the permissions of your sync provider.")
+        case .configurationRequired:
+            String(localized: "Configure a sync provider in Sync settings.")
+        case .remoteUnavailable:
+            String(localized: "Check that the synchronization destination still exists and is accessible.")
         case .rateLimited:
             String(localized: "Wait a little and try again.")
         case .serviceUnavailable:
             String(localized: "Try again later. Your local changes are safe.")
-        case .invalidSpreadsheet:
-            String(localized: "Select a valid Lootrack spreadsheet or restore its required sheets and columns.")
+        case .invalidRemoteData:
+            String(localized: "Check your synchronization destination or configure it again.")
         case .remoteChanged:
             String(localized: "Try syncing again so Lootrack can reconcile the latest version.")
         case .conflictResolutionFailed:
@@ -67,7 +67,6 @@ nonisolated enum SyncError: LocalizedError {
         }
     }
 }
-
 nonisolated enum SyncTrigger: String {
     case manual
     case connectivityRestored
