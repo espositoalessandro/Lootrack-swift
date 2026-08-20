@@ -137,6 +137,8 @@ final class SyncCoordinator {
 
         if let error = error as? GoogleSheetsError {
             switch error {
+            case .authenticationRequired:
+                return .authenticationRequired
             case .missingDrivePermission:
                 return .permissionDenied
             case .missingPresentationContext:
@@ -145,7 +147,7 @@ final class SyncCoordinator {
                 return .noSpreadsheetSelected
             }
         }
-
+        
         if let error = error as? GoogleSheetsClientError {
             switch error {
             case .invalidURL,

@@ -3,6 +3,18 @@ import GoogleSignIn
 import Observation
 import UIKit
 
+nonisolated enum GoogleSheetsError: Error {
+    case authenticationRequired
+    case missingDrivePermission
+    case missingPresentationContext
+    case noSpreadsheetSelected
+}
+
+private enum GoogleSignInErrorCode {
+    static let noAuthInKeychain = -4
+    static let refreshTokenExpired = -11
+}
+
 nonisolated struct GoogleSheetsConfiguration {
     let clientId: String
 
@@ -55,10 +67,50 @@ final class GoogleAuthorizationService {
         return authorizedUser
     }
 
-    func accessToken() async throws -> String {
-        let user = try await signIn()
-        let refreshedUser = try await user.refreshTokensIfNeeded()
+    private func userForSynchronization() async throws -> GIDGoogleUser {
+        if let currentUser = GIDSignIn.sharedInstance.currentUser {
+            return currentUser
+        }
+        
+        guard GIDSignIn.sharedInstance.hasPreviousSignIn() else {
+            throw GoogleSheetsError.authenticationRequired
+        }
+        
+        do {
+            let restoredUser = try await GIDSignIn.sharedInstance.restorePreviousSignIn()
+            self.user = restoredUser
+            return restoredUser
+        } catch {
+            if isMissingAuthentication(error) {
+                self.user = nil
+                throw GoogleSheetsError.authenticationRequired
+            }
+            
+            throw error
+        }
+    }
+    
+    private func isMissingAuthentication(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        
+        guard nsError.domain == kGIDSignInErrorDomain else {
+            return false
+        }
+        
+        return nsError.code == GoogleSignInErrorCode.noAuthInKeychain
+        || nsError.code == GoogleSignInErrorCode.refreshTokenExpired
+    }
+    
 
+    func accessToken() async throws -> String {
+        let user = try await userForSynchronization()
+        
+        guard user.grantedScopes?.contains(Self.driveFileScope) == true else {
+            throw GoogleSheetsError.authenticationRequired
+        }
+        
+        let refreshedUser = try await user.refreshTokensIfNeeded()
+        
         self.user = refreshedUser
         return refreshedUser.accessToken.tokenString
     }
@@ -141,12 +193,6 @@ final class GoogleAuthorizationService {
 
         return viewController
     }
-}
-
-nonisolated enum GoogleSheetsError: Error {
-    case missingDrivePermission
-    case missingPresentationContext
-    case noSpreadsheetSelected
 }
 
 @MainActor
