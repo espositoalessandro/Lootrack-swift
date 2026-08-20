@@ -78,7 +78,12 @@ struct RootView: View {
                 systemImage: "gear",
                 value: AppTab.settings
             ) {
-                EmptyView()
+                NavigationStack {
+                    SettingsView()
+                        .toolbar {
+                            appToolbar
+                        }
+                }
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)

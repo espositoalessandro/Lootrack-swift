@@ -8,30 +8,28 @@ struct LootrackApp: App {
 
     private let mutationService: MutationService
 
-    private let tagService: TagService
-
     private let transactionService: TransactionService
 
     private let categoryService: CategoryService
 
-    private let subcategoryService: SubcategoryService
-
     private let syncCoordinator: SyncCoordinator
 
+    private let appSettings: AppSettings
+
     init() {
+        appSettings =
+            AppSettings()
+
         do {
             let modelContainer =
                 try ModelContainer(for:
                     Transaction.self,
                     Category.self,
-                    Subcategory.self,
-                    Tag.self,
                     Mutation.self,
                     EntitySyncState.self)
 
             #if DEBUG
-                SwiftDataDebugLogger
-                    .shared
+                SwiftDataDebugLogger.shared
                     .install(context:
                         modelContainer
                             .mainContext)
@@ -63,13 +61,6 @@ struct LootrackApp: App {
                     mutationService:
                     mutationService)
 
-            let subcategoryService =
-                SubcategoryService(modelContext:
-                    modelContainer
-                        .mainContext,
-                    mutationService:
-                    mutationService)
-
             let conflictResolutionService =
                 ConflictResolutionService(modelContext:
                     modelContainer
@@ -85,17 +76,11 @@ struct LootrackApp: App {
             self.mutationService =
                 mutationService
 
-            self.tagService =
-                tagService
-
             self.transactionService =
                 transactionService
 
             self.categoryService =
                 categoryService
-
-            self.subcategoryService =
-                subcategoryService
 
             let googleSheetsConfiguration =
                 GoogleSheetsConfiguration
@@ -135,12 +120,6 @@ struct LootrackApp: App {
                     conflictResolutionService:
                     conflictResolutionService)
 
-            /*
-             * The Tag table is a derived local cache.
-             * Rebuilding once at launch makes it self-healing.
-             */
-            tagService.rebuild()
-
         } catch {
             fatalError("Failed to create SwiftData container: \(error)")
         }
@@ -148,18 +127,29 @@ struct LootrackApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            SettingsAwareRootView()
                 .environment(syncCoordinator)
                 .onOpenURL { url in
-                    GIDSignIn
-                        .sharedInstance
+                    GIDSignIn.sharedInstance
                         .handle(url)
                 }
         }
         .modelContainer(modelContainer)
         .environment(transactionService)
         .environment(categoryService)
-        .environment(subcategoryService)
-        .environment(tagService)
+        .environment(appSettings)
+    }
+}
+
+private struct SettingsAwareRootView:
+    View
+{
+    @Environment(AppSettings.self)
+    private var settings
+
+    var body: some View {
+        RootView()
+            .environment(\.locale,
+                         settings.resolvedLocale)
     }
 }

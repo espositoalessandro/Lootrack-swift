@@ -47,10 +47,8 @@ final class AppSettings {
             if language == .system {
                 storage.removeObject(forKey: Keys.language)
             } else {
-                storage.set(
-                    language.rawValue,
-                    forKey: Keys.language
-                )
+                storage.set(language.rawValue,
+                            forKey: Keys.language)
             }
         }
     }
@@ -59,10 +57,8 @@ final class AppSettings {
     /// nil means "follow the system".
     var regionCode: String? {
         didSet {
-            persistOptional(
-                regionCode,
-                forKey: Keys.regionCode
-            )
+            persistOptional(regionCode,
+                            forKey: Keys.regionCode)
         }
     }
 
@@ -70,10 +66,8 @@ final class AppSettings {
     /// nil means "derive it from the effective locale".
     var currencyCode: String? {
         didSet {
-            persistOptional(
-                currencyCode,
-                forKey: Keys.currencyCode
-            )
+            persistOptional(currencyCode,
+                            forKey: Keys.currencyCode)
         }
     }
 
@@ -95,15 +89,13 @@ final class AppSettings {
 
     var resolvedLocale: Locale {
         if language == .system,
-            regionCode == nil
+           regionCode == nil
         {
             return .current
         }
 
-        return Locale(
-            identifier:
-                "\(resolvedLanguageCode)_\(resolvedRegionCode)"
-        )
+        return Locale(identifier:
+            "\(resolvedLanguageCode)_\(resolvedRegionCode)")
     }
 
     var resolvedCurrencyCode: String {
@@ -132,15 +124,12 @@ final class AppSettings {
         currencyCode = storage.string(forKey: Keys.currencyCode)
     }
 
-    private func persistOptional(
-        _ value: String?,
-        forKey key: String
-    ) {
+    private func persistOptional(_ value: String?,
+                                 forKey key: String)
+    {
         if let value {
-            storage.set(
-                value,
-                forKey: key
-            )
+            storage.set(value,
+                        forKey: key)
         } else {
             storage.removeObject(forKey: key)
         }
