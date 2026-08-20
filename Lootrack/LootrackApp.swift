@@ -43,10 +43,11 @@ struct LootrackApp: App {
             let transactionService = TransactionService(modelContext: modelContainer.mainContext,
                                                         mutationService: mutationService,
                                                         tagService: tagService)
-            let categoryService = CategoryService(modelContext: modelContainer.mainContext,
-                                                  mutationService: mutationService)
             let subcategoryService = SubcategoryService(modelContext: modelContainer.mainContext,
                                                         mutationService: mutationService)
+            let categoryService = CategoryService(modelContext: modelContainer.mainContext,
+                                                  mutationService: mutationService,
+                                                  subcategoryService: subcategoryService)
             let conflictResolutionService = ConflictResolutionService(modelContext: modelContainer.mainContext,
                                                                       mutationService: mutationService,
                                                                       tagService: tagService)

@@ -10,6 +10,7 @@ nonisolated enum CategoryServiceError: LocalizedError {
     case couldNotUpdate
     case couldNotDelete
     case couldNotRestore
+    case subcategory(SubcategoryServiceError)
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +26,8 @@ nonisolated enum CategoryServiceError: LocalizedError {
             String(localized: "Category couldn't be deleted.")
         case .couldNotRestore:
             String(localized: "Category couldn't be restored.")
+        case let .subcategory(error):
+            error.errorDescription
         }
     }
 
@@ -42,6 +45,8 @@ nonisolated enum CategoryServiceError: LocalizedError {
             String(localized: "The category wasn't deleted. Try again.")
         case .couldNotRestore:
             String(localized: "The category wasn't restored. Try again.")
+        case let .subcategory(error):
+            error.recoverySuggestion
         }
     }
 }
@@ -51,12 +56,15 @@ nonisolated enum CategoryServiceError: LocalizedError {
 final class CategoryService {
     private let modelContext: ModelContext
     private let mutationService: MutationService
+    private let subcategoryService: SubcategoryService
 
     init(modelContext: ModelContext,
-         mutationService: MutationService)
+         mutationService: MutationService,
+         subcategoryService: SubcategoryService)
     {
         self.modelContext = modelContext
         self.mutationService = mutationService
+        self.subcategoryService = subcategoryService
     }
 
     @discardableResult
@@ -97,12 +105,11 @@ final class CategoryService {
     func update(_ category: Category,
                 name: String,
                 type: TransactionType,
-                note: String) throws
+                note: String,
+                subcategories desiredSubcategories: [(id: UUID, name: String)]) throws
     {
         do {
-            guard category.name != name || category.type != type || category.note != note else {
-                return
-            }
+            let categoryChanged = category.name != name || category.type != type || category.note != note
 
             if category.type != type, try hasActiveTransactions(category) {
                 throw CategoryServiceError.cannotChangeTypeWhileInUse
@@ -119,9 +126,13 @@ final class CategoryService {
                                   note: note)
 
             try modelContext.transaction {
-                try mutationService.createMutation(from: .category(old),
-                                                   to: .category(new),
-                                                   .upsert)
+                try subcategoryService.stageReconciliation(categoryId: category.id, desired: desiredSubcategories)
+
+                guard categoryChanged else {
+                    return
+                }
+
+                try mutationService.createMutation(from: .category(old), to: .category(new), .upsert)
 
                 category.name = name
                 category.type = type
@@ -130,6 +141,8 @@ final class CategoryService {
             }
         } catch let error as CategoryServiceError {
             throw error
+        } catch let error as SubcategoryServiceError {
+            throw CategoryServiceError.subcategory(error)
         } catch {
             modelContext.rollback()
 

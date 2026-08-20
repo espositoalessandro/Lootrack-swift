@@ -8,8 +8,8 @@ struct EditCategoryView: View {
     @Environment(CategoryService.self)
     private var categoryService
 
-    @Environment(SubcategoryService.self)
-    private var subcategoryService
+    @State
+    private var error: CategoryServiceError?
 
     let category: Category
 
@@ -92,6 +92,12 @@ struct EditCategoryView: View {
                 .task {
                     loadSubcategoriesIfNeeded()
                 }
+        }.alert(error: $error) { _ in
+            Button("OK") {}
+        } message: { error in
+            if let recoverySuggestion = error.recoverySuggestion {
+                Text(recoverySuggestion)
+            }
         }
     }
 
@@ -118,21 +124,11 @@ struct EditCategoryView: View {
             try categoryService.update(category,
                                        name: draft.name,
                                        type: draft.type,
-                                       note: draft.note)
-
-            try subcategoryService.reconcile(categoryId: category.id,
-                                             desired:
-                                             subcategoryDrafts.map {
-                                                 subcategory in
-                                                 (id: subcategory.id,
-                                                  name:
-                                                  subcategory.name)
-                                             })
-
+                                       note: draft.note,
+                                       subcategories: subcategoryDrafts.map { (id: $0.id, name: $0.name) })
             dismiss()
         } catch {
-            print("FAILED TO UPDATE CATEGORY:",
-                  error)
+            self.error = error as? CategoryServiceError ?? .couldNotUpdate
         }
     }
 }
