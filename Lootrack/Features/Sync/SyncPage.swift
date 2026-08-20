@@ -116,19 +116,50 @@ struct SyncView: View {
     }
 
     var body: some View {
-        if let syncResult = syncCoordinator.syncResult {
-            Section {
-                Text(syncResult)
-                    .font(.footnote)
-                    .foregroundStyle(syncResult.hasPrefix("ERROR:")
-                        ? .red
-                        : .secondary)
-                    .textSelection(.enabled)
-            } header: {
-                Text("Synchronization")
-            }
-        }
         List {
+            switch syncCoordinator.status {
+            case .idle:
+                EmptyView()
+                
+            case .syncing:
+                Section("Synchronization") {
+                    HStack {
+                        ProgressView()
+                        Text("Synchronizing…")
+                    }
+                }
+                
+            case let .succeeded(date):
+                Section("Synchronization") {
+                    Label {
+                        Text("Last synchronized \(date.formatted(date: .abbreviated, time: .shortened))")
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+                
+            case .waitingForConflictResolution:
+                EmptyView()
+                
+            case let .failed(error):
+                Section("Synchronization") {
+                    Label {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(error.errorDescription ?? String(localized: "Synchronization failed."))
+                            
+                            if let recoverySuggestion = error.recoverySuggestion {
+                                Text(recoverySuggestion)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
             if !syncCoordinator
                 .conflicts
                 .isEmpty
