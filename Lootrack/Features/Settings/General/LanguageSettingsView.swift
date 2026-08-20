@@ -1,10 +1,3 @@
-//
-//  LanguageSettingsView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 20/08/2026.
-//
-
 import SwiftUI
 
 struct LanguageSettingsView: View {
@@ -17,20 +10,17 @@ struct LanguageSettingsView: View {
     var body: some View {
         List {
             Section {
-                ForEach(AppLanguage.allCases) {
-                    language in
+                ForEach(AppLanguage.allCases) { language in
                     Button {
-                        settings.language =
-                            language
-
+                        settings.language = language
                         dismiss()
                     } label: {
-                        SelectionRow(title:
-                            language
-                                .displayName,
-                            selected:
-                            settings.language
-                                == language)
+                        SelectionRow(
+                            title: language.displayName(
+                                locale: settings.resolvedLocale
+                            ),
+                            selected: settings.language == language
+                        )
                     }
                 }
             }

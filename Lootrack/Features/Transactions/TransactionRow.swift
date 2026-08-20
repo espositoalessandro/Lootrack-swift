@@ -9,25 +9,29 @@ struct TransactionRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
 
+    @Environment(AppSettings.self)
+    private var settings
+
     @State
     private var isExpanded = false
 
     private var categoryPath: String {
         let category =
             categoryName
-                ?? String(localized: "Uncategorized")
-
+            ?? String(
+                localized: "Uncategorized",
+                locale: settings.resolvedLocale
+            )
         guard let subcategoryName else {
             return category
         }
-
         return "\(category) → \(subcategoryName)"
     }
 
     private var formattedAmount: String {
-        (Double(transaction.amountInCents)
-            / 100)
-            .formatted(.currency(code: "EUR"))
+        settings.formattedAmount(
+            transaction.amountInCents
+        )
     }
 
     var body: some View {
@@ -40,34 +44,47 @@ struct TransactionRow: View {
             }
         }
         .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 22,
-                                    style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 22,
-                                       style: .continuous))
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 22,
+                style: .continuous
+            )
+        )
+        .contentShape(
+            RoundedRectangle(
+                cornerRadius: 22,
+                style: .continuous
+            )
+        )
         .padding(.horizontal, 16)
-        .swipeActions(edge: .trailing,
-                      allowsFullSwipe: true)
-        {
-            Button("Delete",
-                   systemImage: "trash",
-                   role: .destructive)
-            {
+        .swipeActions(
+            edge: .trailing,
+            allowsFullSwipe: true
+        ) {
+            Button(
+                "Delete",
+                systemImage: "trash",
+                role: .destructive
+            ) {
                 onDelete()
             }
 
-            Button("Edit",
-                   systemImage: "pencil")
-            {
+            Button(
+                "Edit",
+                systemImage: "pencil"
+            ) {
                 onEdit()
             }
             .tint(.blue)
         }
-        .swipeActions(edge: .leading,
-                      allowsFullSwipe: true)
-        {
-            Button("Edit",
-                   systemImage: "pencil")
-            {
+        .swipeActions(
+            edge: .leading,
+            allowsFullSwipe: true
+        ) {
+            Button(
+                "Edit",
+                systemImage: "pencil"
+            ) {
                 onEdit()
             }
             .tint(.blue)
@@ -83,9 +100,10 @@ struct TransactionRow: View {
             }
         } label: {
             HStack(spacing: 12) {
-                VStack(alignment: .leading,
-                       spacing: 4)
-                {
+                VStack(
+                    alignment: .leading,
+                    spacing: 4
+                ) {
                     Text(transaction.note)
                         .font(.headline)
                         .foregroundStyle(.primary)
@@ -98,19 +116,25 @@ struct TransactionRow: View {
 
                 Text(formattedAmount)
                     .fontWeight(.semibold)
-                    .foregroundStyle(transaction.type == .expense
-                        ? .red
-                        : .green)
+                    .foregroundStyle(
+                        transaction.type == .expense
+                            ? .red
+                            : .green
+                    )
 
                 Image(systemName: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .rotationEffect(isExpanded
-                        ? .degrees(90)
-                        : .zero)
+                    .rotationEffect(
+                        isExpanded
+                            ? .degrees(90)
+                            : .zero
+                    )
             }
-            .frame(maxWidth: .infinity,
-                   alignment: .leading)
+            .frame(
+                maxWidth: .infinity,
+                alignment: .leading
+            )
             .contentShape(Rectangle())
             .padding(16)
         }
@@ -120,17 +144,29 @@ struct TransactionRow: View {
     // MARK: - Details
 
     private var details: some View {
-        VStack(alignment: .leading,
-               spacing: 16)
-        {
+        VStack(
+            alignment: .leading,
+            spacing: 16
+        ) {
             Divider()
 
             tagsRow
 
-            metadataRow(title: String(localized: "Created"),
-                        value:
-                        transaction.createdAt.formatted(date: .abbreviated,
-                                                        time: .shortened))
+            metadataRow(
+                title: String(localized: "Created"),
+                value:
+                    transaction.createdAt.formatted(
+                        .dateTime
+                            .day()
+                            .month(.abbreviated)
+                            .year()
+                            .hour()
+                            .minute()
+                            .locale(
+                                settings.resolvedLocale
+                            )
+                    )
+            )
 
             Divider()
 
@@ -141,9 +177,10 @@ struct TransactionRow: View {
     }
 
     private var tagsRow: some View {
-        HStack(alignment: .top,
-               spacing: 16)
-        {
+        HStack(
+            alignment: .top,
+            spacing: 16
+        ) {
             Text("Tags")
                 .foregroundStyle(.primary)
 
@@ -153,27 +190,33 @@ struct TransactionRow: View {
                 Text("None")
                     .foregroundStyle(.secondary)
             } else {
-                FlowLayout(horizontalSpacing: 6,
-                           verticalSpacing: 6)
-                {
-                    ForEach(transaction.tags,
-                            id: \.self)
-                    { tag in
+                FlowLayout(
+                    horizontalSpacing: 6,
+                    verticalSpacing: 6
+                ) {
+                    ForEach(
+                        transaction.tags,
+                        id: \.self
+                    ) { tag in
                         Chip(tag)
                     }
                 }
-                .frame(maxWidth: 220,
-                       alignment: .trailing)
+                .frame(
+                    maxWidth: 220,
+                    alignment: .trailing
+                )
             }
         }
     }
 
-    private func metadataRow(title: String,
-                             value: String) -> some View
-    {
-        HStack(alignment: .firstTextBaseline,
-               spacing: 16)
-        {
+    private func metadataRow(
+        title: String,
+        value: String
+    ) -> some View {
+        HStack(
+            alignment: .firstTextBaseline,
+            spacing: 16
+        ) {
             Text(title)
                 .foregroundStyle(.primary)
 
@@ -192,18 +235,22 @@ struct TransactionRow: View {
             Button {
                 onEdit()
             } label: {
-                Label("Edit",
-                      systemImage: "pencil")
-                    .frame(maxWidth: .infinity)
+                Label(
+                    "Edit",
+                    systemImage: "pencil"
+                )
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
 
             Button(role: .destructive) {
                 onDelete()
             } label: {
-                Label("Delete",
-                      systemImage: "trash")
-                    .frame(maxWidth: .infinity)
+                Label(
+                    "Delete",
+                    systemImage: "trash"
+                )
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .tint(.red)

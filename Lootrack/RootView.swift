@@ -41,7 +41,7 @@ struct RootView: View {
                 value: AppTab.dashboard
             ) {
                 NavigationStack {
-                    HomeView()
+                    Dashboard()
                         .toolbar {
                             appToolbar
                         }

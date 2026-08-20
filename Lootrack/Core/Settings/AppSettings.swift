@@ -23,10 +23,13 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         }
     }
 
-    var displayName: String {
+    func displayName(locale: Locale) -> String {
         switch self {
         case .system:
-            String(localized: "System")
+            String(
+                localized: "System",
+                locale: locale
+            )
 
         case .english:
             "English"
@@ -45,10 +48,14 @@ final class AppSettings {
     var language: AppLanguage {
         didSet {
             if language == .system {
-                storage.removeObject(forKey: Keys.language)
+                storage.removeObject(
+                    forKey: Keys.language
+                )
             } else {
-                storage.set(language.rawValue,
-                            forKey: Keys.language)
+                storage.set(
+                    language.rawValue,
+                    forKey: Keys.language
+                )
             }
         }
     }
@@ -57,8 +64,10 @@ final class AppSettings {
     /// nil means "follow the system".
     var regionCode: String? {
         didSet {
-            persistOptional(regionCode,
-                            forKey: Keys.regionCode)
+            persistOptional(
+                regionCode,
+                forKey: Keys.regionCode
+            )
         }
     }
 
@@ -66,8 +75,10 @@ final class AppSettings {
     /// nil means "derive it from the effective locale".
     var currencyCode: String? {
         didSet {
-            persistOptional(currencyCode,
-                            forKey: Keys.currencyCode)
+            persistOptional(
+                currencyCode,
+                forKey: Keys.currencyCode
+            )
         }
     }
 
@@ -75,7 +86,8 @@ final class AppSettings {
 
     var resolvedLanguageCode: String {
         language.languageCode
-            ?? Locale.current.language
+            ?? Locale.autoupdatingCurrent
+            .language
             .languageCode?
             .identifier
             ?? "en"
@@ -83,55 +95,115 @@ final class AppSettings {
 
     var resolvedRegionCode: String {
         regionCode
-            ?? Locale.current.region?.identifier
+            ?? Locale.autoupdatingCurrent
+            .region?
+            .identifier
             ?? "US"
     }
 
     var resolvedLocale: Locale {
         if language == .system,
-           regionCode == nil
+            regionCode == nil
         {
-            return .current
+            return .autoupdatingCurrent
         }
 
-        return Locale(identifier:
-            "\(resolvedLanguageCode)_\(resolvedRegionCode)")
+        return Locale(
+            identifier:
+                "\(resolvedLanguageCode)_\(resolvedRegionCode)"
+        )
     }
 
     var resolvedCurrencyCode: String {
         currencyCode
-            ?? resolvedLocale.currency?.identifier
-            ?? Locale.current.currency?.identifier
+            ?? resolvedLocale
+            .currency?
+            .identifier
+            ?? Locale.autoupdatingCurrent
+            .currency?
+            .identifier
             ?? "USD"
+    }
+
+    var resolvedCurrencySymbol: String {
+        let formatter = NumberFormatter()
+
+        formatter.numberStyle = .currency
+        formatter.locale = resolvedLocale
+        formatter.currencyCode =
+            resolvedCurrencyCode
+
+        return formatter.currencySymbol
+            ?? resolvedCurrencyCode
+    }
+
+    var decimalSeparator: String {
+        resolvedLocale.decimalSeparator
+            ?? "."
+    }
+
+    func formattedAmount(_ amountInCents: Int) -> String {
+        let amount = Double(amountInCents) / 100
+
+        return amount.formatted(
+            .currency(
+                code: resolvedCurrencyCode
+            )
+            .precision(
+                .fractionLength(2)
+            )
+            .locale(
+                resolvedLocale
+            )
+        )
     }
 
     // MARK: - Persistence
 
     private let storage: UserDefaults
 
-    init(storage: UserDefaults = .standard) {
+    init(
+        storage: UserDefaults = .standard
+    ) {
         self.storage = storage
 
-        if let storedLanguage = storage.string(forKey: Keys.language) {
+        if let storedLanguage =
+            storage.string(
+                forKey: Keys.language
+            )
+        {
             language =
-                AppLanguage(rawValue: storedLanguage) ?? .system
+                AppLanguage(
+                    rawValue: storedLanguage
+                ) ?? .system
         } else {
             language = .system
         }
 
-        regionCode = storage.string(forKey: Keys.regionCode)
+        regionCode =
+            storage.string(
+                forKey: Keys.regionCode
+            )
 
-        currencyCode = storage.string(forKey: Keys.currencyCode)
+        currencyCode =
+            storage.string(
+                forKey: Keys.currencyCode
+            )
     }
 
-    private func persistOptional(_ value: String?,
-                                 forKey key: String)
-    {
+    private func persistOptional(
+        _ value: String?,
+        forKey key: String
+    ) {
         if let value {
-            storage.set(value,
-                        forKey: key)
+            storage.set(
+                value,
+                forKey: key
+            )
         } else {
-            storage.removeObject(forKey: key)
+            storage.removeObject(
+                forKey: key
+            )
         }
     }
 
