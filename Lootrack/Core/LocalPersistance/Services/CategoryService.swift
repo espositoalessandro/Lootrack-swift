@@ -2,9 +2,33 @@ import Foundation
 import Observation
 import SwiftData
 
-enum CategoryServiceError: Error {
+nonisolated enum CategoryServiceError: LocalizedError {
     case cannotChangeTypeWhileInUse
     case cannotDeleteWhileInUse
+    
+    var errorDescription: String? {
+        switch self {
+        case .cannotChangeTypeWhileInUse:
+            String(localized:
+                    "Category type can't be changed.")
+            
+        case .cannotDeleteWhileInUse:
+            String(localized:
+                    "Category can't be deleted.")
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .cannotChangeTypeWhileInUse:
+            String(localized:
+                    "This category is used by one or more transactions.")
+            
+        case .cannotDeleteWhileInUse:
+            String(localized:
+                    "Reassign or delete the transactions using this category first.")
+        }
+    }
 }
 
 @MainActor

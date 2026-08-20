@@ -2,9 +2,34 @@ import Foundation
 import Observation
 import SwiftData
 
-enum TransactionServiceError: Error {
+nonisolated
+enum TransactionServiceError: LocalizedError {
     case subcategoryRequiresCategory
     case invalidSubcategory
+    
+    var errorDescription: String? {
+        switch self {
+        case .subcategoryRequiresCategory:
+            String(localized:
+                    "A subcategory requires a category.")
+            
+        case .invalidSubcategory:
+            String(localized:
+                    "The selected subcategory is invalid.")
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .subcategoryRequiresCategory:
+            String(localized:
+                    "Select a category before selecting a subcategory.")
+            
+        case .invalidSubcategory:
+            String(localized:
+                    "Select a subcategory that belongs to the chosen category.")
+        }
+    }
 }
 
 @MainActor
