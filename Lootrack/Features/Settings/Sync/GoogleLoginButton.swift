@@ -8,6 +8,7 @@ struct GoogleLoginButton: View {
             HStack(spacing: 12) {
                 Image("GoogleIcon")
                     .resizable()
+                    .renderingMode(.original)
                     .scaledToFit()
                     .frame(width: 24, height: 24)
                 

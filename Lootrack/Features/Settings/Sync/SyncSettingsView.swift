@@ -14,7 +14,15 @@ struct SyncSettingsView: View {
                 NavigationLink {
                     GoogleSheetSettingsView()
                 } label: {
-                    Label("Google Sheet", systemImage: "tablecells")
+                    Label {
+                        Text("Google Sheet")
+                    } icon: {
+                        Image("GoogleSheetLogo")
+                            .resizable()
+                            .renderingMode(.original)
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
+                    }
                 }
             }
         }
