@@ -1,11 +1,3 @@
-//
-//  GooglePickedFile.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 20/08/2026.
-//
-
-
 import AuthenticationServices
 import CryptoKit
 import Foundation
@@ -83,20 +75,18 @@ final class GooglePickerService {
             throw GooglePickerError.invalidURL
         }
 
-        components.queryItems = [
-            URLQueryItem(name: "client_id", value: configuration.clientId),
-            URLQueryItem(name: "redirect_uri", value: configuration.pickerRedirectURI),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: Self.pickerScope),
-            URLQueryItem(name: "prompt", value: "consent"),
-            URLQueryItem(name: "trigger_onepick", value: "true"),
-            URLQueryItem(name: "allow_multiple", value: "false"),
-            URLQueryItem(name: "mimetypes", value: Self.spreadsheetMimeType),
-            URLQueryItem(name: "include_granted_scopes", value: "false"),
-            URLQueryItem(name: "code_challenge", value: codeChallenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256"),
-            URLQueryItem(name: "state", value: state)
-        ]
+        components.queryItems = [URLQueryItem(name: "client_id", value: configuration.clientId),
+                                 URLQueryItem(name: "redirect_uri", value: configuration.pickerRedirectURI),
+                                 URLQueryItem(name: "response_type", value: "code"),
+                                 URLQueryItem(name: "scope", value: Self.pickerScope),
+                                 URLQueryItem(name: "prompt", value: "consent"),
+                                 URLQueryItem(name: "trigger_onepick", value: "true"),
+                                 URLQueryItem(name: "allow_multiple", value: "false"),
+                                 URLQueryItem(name: "mimetypes", value: Self.spreadsheetMimeType),
+                                 URLQueryItem(name: "include_granted_scopes", value: "false"),
+                                 URLQueryItem(name: "code_challenge", value: codeChallenge),
+                                 URLQueryItem(name: "code_challenge_method", value: "S256"),
+                                 URLQueryItem(name: "state", value: state)]
 
         if let loginHint, !loginHint.isEmpty {
             components.queryItems?.append(URLQueryItem(name: "login_hint", value: loginHint))
@@ -148,13 +138,11 @@ final class GooglePickerService {
         }
 
         var components = URLComponents()
-        components.queryItems = [
-            URLQueryItem(name: "client_id", value: configuration.clientId),
-            URLQueryItem(name: "code", value: code),
-            URLQueryItem(name: "code_verifier", value: codeVerifier),
-            URLQueryItem(name: "grant_type", value: "authorization_code"),
-            URLQueryItem(name: "redirect_uri", value: configuration.pickerRedirectURI)
-        ]
+        components.queryItems = [URLQueryItem(name: "client_id", value: configuration.clientId),
+                                 URLQueryItem(name: "code", value: code),
+                                 URLQueryItem(name: "code_verifier", value: codeVerifier),
+                                 URLQueryItem(name: "grant_type", value: "authorization_code"),
+                                 URLQueryItem(name: "redirect_uri", value: configuration.pickerRedirectURI)]
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -228,7 +216,7 @@ final class GooglePickerService {
             .first { $0.isKeyWindow }
     }
 
-    nonisolated private static func parseCallback(_ url: URL?, error: Error?, expectedState: String) -> Result<PickerCallback, Error> {
+    private nonisolated static func parseCallback(_ url: URL?, error: Error?, expectedState: String) -> Result<PickerCallback, Error> {
         if let authenticationError = error as? ASWebAuthenticationSessionError,
            authenticationError.code == .canceledLogin
         {
@@ -265,7 +253,7 @@ final class GooglePickerService {
         return .success(PickerCallback(fileId: fileId, code: code))
     }
 
-    nonisolated private static func value(_ name: String, in url: URL) -> String? {
+    private nonisolated static func value(_ name: String, in url: URL) -> String? {
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
 
         if let value = components?.queryItems?.first(where: { $0.name == name })?.value {
@@ -295,7 +283,7 @@ final class GooglePickerService {
         let mimeType: String
     }
 
-    nonisolated private struct PickerCallback {
+    private nonisolated struct PickerCallback {
         let fileId: String
         let code: String
     }
@@ -309,7 +297,7 @@ private final class GooglePickerPresentationContextProvider: NSObject, ASWebAuth
         self.window = window
     }
 
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+    func presentationAnchor(for _: ASWebAuthenticationSession) -> ASPresentationAnchor {
         window
     }
 }

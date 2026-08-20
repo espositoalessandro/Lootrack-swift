@@ -1,11 +1,4 @@
-//
-//  GoogleSheetSelectionError.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 20/08/2026.
-//
-
-
+import Foundation
 import Observation
 import SwiftData
 
