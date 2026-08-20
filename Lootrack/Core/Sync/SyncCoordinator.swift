@@ -13,6 +13,10 @@ final class SyncCoordinator {
 
     private(set) var status: SyncStatus = .idle
     private(set) var lastSuccessfulSync: Date?
+    
+    private static let automaticSyncInterval: TimeInterval = 15 * 60
+    private(set) var lastSyncAttempt: Date?
+    
     var conflicts: [SyncConflictCandidate] = []
 
     var isSyncing: Bool {
@@ -46,34 +50,34 @@ final class SyncCoordinator {
         guard networkMonitor.status == .online else {
             return
         }
+        
+        guard syncEngine.isConfigured else {
+            if trigger == .manual {
+                status = .failed(.configurationRequired)
+            }
+            return
+        }
+        
         guard conflicts.isEmpty else {
             return
         }
-        /*
-         * If a synchronization is already running,
-         * simply wait for that same run.
-         */
+        
         if let syncTask {
             await syncTask.value
             return
         }
-
-        /*
-         * Synchronization owns its own task.
-         *
-         * This prevents the network operation from
-         * being cancelled just because the UI task
-         * that triggered it disappears or is cancelled.
-         */
+        
         let task = Task { @MainActor in
             await performSynchronization(trigger: trigger)
         }
-
+        
         syncTask = task
         await task.value
     }
 
     private func performSynchronization(trigger: SyncTrigger) async {
+        
+        lastSyncAttempt = .now
         status = .syncing
         conflicts = []
 
@@ -159,5 +163,58 @@ final class SyncCoordinator {
         }
         
         return .unexpected
+    }
+    
+    func runForegroundAutomaticSync() async {
+        await synchronizeIfStale(trigger: .foreground)
+        
+        while !Task.isCancelled {
+            let delay = timeUntilNextAutomaticSync
+            
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            
+            guard !Task.isCancelled else {
+                return
+            }
+            
+            await synchronizeIfStale(trigger: .automatic)
+        }
+    }
+    
+    private func synchronizeIfStale(trigger: SyncTrigger) async {
+        guard networkMonitor.status == .online,
+              syncEngine.isConfigured,
+              conflicts.isEmpty
+                else {
+            return
+        }
+        
+        if let lastSyncAttempt,
+           Date.now.timeIntervalSince(lastSyncAttempt) < Self.automaticSyncInterval
+            {
+            return
+        }
+        
+        await synchronize(trigger: trigger)
+    }
+    
+    private var timeUntilNextAutomaticSync: TimeInterval {
+        guard networkMonitor.status == .online,
+              syncEngine.isConfigured,
+              conflicts.isEmpty
+                else {
+            return Self.automaticSyncInterval
+        }
+        
+        guard let lastSyncAttempt else {
+            return Self.automaticSyncInterval
+        }
+        
+        let elapsed = Date.now.timeIntervalSince(lastSyncAttempt)
+        return max(1, Self.automaticSyncInterval - elapsed)
     }
 }

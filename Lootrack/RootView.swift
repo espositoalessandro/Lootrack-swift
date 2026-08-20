@@ -14,6 +14,9 @@ struct RootView: View {
 
     @Environment(NetworkMonitor.self)
     private var networkMonitor
+    
+    @Environment(\.scenePhase)
+    private var scenePhase
 
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
@@ -119,6 +122,12 @@ struct RootView: View {
             } else if oldStatus == .offline, newStatus == .online {
                 showOnlineStatus = true
             }
+        }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else {
+                return
+            }
+            await syncCoordinator.runForegroundAutomaticSync()
         }
         .task(id: showOnlineStatus) {
             guard showOnlineStatus else {

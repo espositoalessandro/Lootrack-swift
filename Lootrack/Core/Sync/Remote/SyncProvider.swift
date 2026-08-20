@@ -1,5 +1,4 @@
-nonisolated
-enum SyncProviderError: Error {
+nonisolated enum SyncProviderError: Error {
     case authenticationRequired
     case permissionDenied
     case configurationRequired
@@ -12,6 +11,8 @@ enum SyncProviderError: Error {
 }
 
 protocol SyncProvider {
+    var isConfigured: Bool { get }
+    
     func pull() async throws -> RemoteSyncSnapshot
     func push(_ request: SyncPushRequest) async throws -> SyncPushResult
 }

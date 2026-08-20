@@ -201,12 +201,20 @@ final class GoogleSheetsProvider: SyncProvider {
     private let authorization: GoogleAuthorizationService
     private let client: GoogleSheetsClient
 
+    var isConfigured: Bool {
+        guard let spreadsheetId = settings.spreadsheetId?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return false
+        }
+        
+        return !spreadsheetId.isEmpty
+    }
+    
     init(settings: GoogleSheetSettings, authorization: GoogleAuthorizationService, client: GoogleSheetsClient) {
         self.settings = settings
         self.authorization = authorization
         self.client = client
     }
-
+    
     func pull() async throws -> RemoteSyncSnapshot {
         do {
             let spreadsheetId = try selectedSpreadsheetId()

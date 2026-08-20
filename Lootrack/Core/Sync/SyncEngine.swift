@@ -13,7 +13,11 @@ final class SyncEngine {
     private let localStore: LocalSyncStore
     private let provider: any SyncProvider
     private let reconciler: SyncReconciler
-
+    
+    var isConfigured: Bool {
+        provider.isConfigured
+    }
+    
     init(localStore: LocalSyncStore,
          provider: any SyncProvider,
          reconciler: SyncReconciler = SyncReconciler())
