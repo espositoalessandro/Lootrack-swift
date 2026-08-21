@@ -12,7 +12,7 @@ nonisolated enum SyncError: LocalizedError {
     case remoteChanged
     case conflictResolutionFailed
     case unexpected
-    
+
     var errorDescription: String? {
         switch self {
         case .connectionUnavailable:
@@ -39,7 +39,7 @@ nonisolated enum SyncError: LocalizedError {
             String(localized: "Synchronization failed.")
         }
     }
-    
+
     var recoverySuggestion: String? {
         switch self {
         case .connectionUnavailable:
@@ -67,6 +67,7 @@ nonisolated enum SyncError: LocalizedError {
         }
     }
 }
+
 nonisolated enum SyncTrigger: String {
     case manual
     case connectivityRestored

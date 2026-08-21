@@ -1,16 +1,29 @@
-//
-//  SyncSettingsView.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 20/08/2026.
-//
-
 import SwiftUI
 
 struct SyncSettingsView: View {
+    @Environment(AppSettings.self)
+    private var settings
+
     var body: some View {
+        @Bindable var settings = settings
+
         List {
             Section {
+                Toggle("Automatic Sync", isOn: $settings.automaticSyncEnabled)
+
+                Picker("Sync Interval", selection: $settings.syncInterval) {
+                    ForEach(SyncInterval.allCases) { interval in
+                        Text(interval.displayName)
+                            .tag(interval)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .disabled(!settings.automaticSyncEnabled)
+            } footer: {
+                Text("Automatically synchronizes while Lootrack is active and when you return to the app.")
+            }
+
+            Section("Provider") {
                 NavigationLink {
                     GoogleSheetSettingsView()
                 } label: {

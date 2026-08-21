@@ -12,7 +12,7 @@ nonisolated enum SyncProviderError: Error {
 
 protocol SyncProvider {
     var isConfigured: Bool { get }
-    
+
     func pull() async throws -> RemoteSyncSnapshot
     func push(_ request: SyncPushRequest) async throws -> SyncPushResult
 }

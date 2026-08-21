@@ -14,7 +14,7 @@ struct RootView: View {
 
     @Environment(NetworkMonitor.self)
     private var networkMonitor
-    
+
     @Environment(\.scenePhase)
     private var scenePhase
 

@@ -13,10 +13,10 @@ final class SyncCoordinator {
 
     private(set) var status: SyncStatus = .idle
     private(set) var lastSuccessfulSync: Date?
-    
+
     private static let automaticSyncInterval: TimeInterval = 15 * 60
     private(set) var lastSyncAttempt: Date?
-    
+
     var conflicts: [SyncConflictCandidate] = []
 
     var isSyncing: Bool {
@@ -50,33 +50,32 @@ final class SyncCoordinator {
         guard networkMonitor.status == .online else {
             return
         }
-        
+
         guard syncEngine.isConfigured else {
             if trigger == .manual {
                 status = .failed(.configurationRequired)
             }
             return
         }
-        
+
         guard conflicts.isEmpty else {
             return
         }
-        
+
         if let syncTask {
             await syncTask.value
             return
         }
-        
+
         let task = Task { @MainActor in
             await performSynchronization(trigger: trigger)
         }
-        
+
         syncTask = task
         await task.value
     }
 
     private func performSynchronization(trigger: SyncTrigger) async {
-        
         lastSyncAttempt = .now
         status = .syncing
         conflicts = []
@@ -99,7 +98,7 @@ final class SyncCoordinator {
 
             let syncError = mapError(error)
             status = .failed(syncError)
-            
+
             let errorDescription = String(describing: error)
             let triggerName = trigger.rawValue
             AppLogger.sync.error("Synchronization failed [\(triggerName, privacy: .public)]: \(errorDescription, privacy: .public)")
@@ -138,7 +137,7 @@ final class SyncCoordinator {
                 return .unexpected
             }
         }
-        
+
         if let error = error as? SyncProviderError {
             switch error {
             case .authenticationRequired:
@@ -161,59 +160,59 @@ final class SyncCoordinator {
                 return .remoteChanged
             }
         }
-        
+
         return .unexpected
     }
-    
+
     func runForegroundAutomaticSync() async {
         await synchronizeIfStale(trigger: .foreground)
-        
+
         while !Task.isCancelled {
             let delay = timeUntilNextAutomaticSync
-            
+
             do {
                 try await Task.sleep(for: .seconds(delay))
             } catch {
                 return
             }
-            
+
             guard !Task.isCancelled else {
                 return
             }
-            
+
             await synchronizeIfStale(trigger: .automatic)
         }
     }
-    
+
     private func synchronizeIfStale(trigger: SyncTrigger) async {
         guard networkMonitor.status == .online,
               syncEngine.isConfigured,
               conflicts.isEmpty
-                else {
+        else {
             return
         }
-        
+
         if let lastSyncAttempt,
            Date.now.timeIntervalSince(lastSyncAttempt) < Self.automaticSyncInterval
-            {
+        {
             return
         }
-        
+
         await synchronize(trigger: trigger)
     }
-    
+
     private var timeUntilNextAutomaticSync: TimeInterval {
         guard networkMonitor.status == .online,
               syncEngine.isConfigured,
               conflicts.isEmpty
-                else {
+        else {
             return Self.automaticSyncInterval
         }
-        
+
         guard let lastSyncAttempt else {
             return Self.automaticSyncInterval
         }
-        
+
         let elapsed = Date.now.timeIntervalSince(lastSyncAttempt)
         return max(1, Self.automaticSyncInterval - elapsed)
     }

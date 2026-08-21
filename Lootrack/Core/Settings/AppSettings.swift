@@ -1,6 +1,34 @@
 import Foundation
 import Observation
 
+enum SyncInterval: Int, CaseIterable, Identifiable {
+    case fiveMinutes = 5
+    case fifteenMinutes = 15
+    case thirtyMinutes = 30
+    case oneHour = 60
+
+    var id: Int {
+        rawValue
+    }
+
+    var duration: TimeInterval {
+        TimeInterval(rawValue * 60)
+    }
+
+    var displayName: String {
+        switch self {
+        case .fiveMinutes:
+            String(localized: "5 minutes")
+        case .fifteenMinutes:
+            String(localized: "15 minutes")
+        case .thirtyMinutes:
+            String(localized: "30 minutes")
+        case .oneHour:
+            String(localized: "1 hour")
+        }
+    }
+}
+
 enum AppLanguage: String, CaseIterable, Identifiable {
     case system
     case english = "en"
@@ -68,6 +96,20 @@ final class AppSettings {
         didSet {
             persistOptional(currencyCode,
                             forKey: Keys.currencyCode)
+        }
+    }
+
+    // MARK: - Sync
+
+    var automaticSyncEnabled: Bool {
+        didSet {
+            storage.set(automaticSyncEnabled, forKey: Keys.automaticSyncEnabled)
+        }
+    }
+
+    var syncInterval: SyncInterval {
+        didSet {
+            storage.set(syncInterval.rawValue, forKey: Keys.syncInterval)
         }
     }
 
@@ -147,6 +189,16 @@ final class AppSettings {
 
         regionCode = storage.string(forKey: Keys.regionCode)
         currencyCode = storage.string(forKey: Keys.currencyCode)
+
+        if storage.object(forKey: Keys.automaticSyncEnabled) == nil {
+            automaticSyncEnabled = true
+        } else {
+            automaticSyncEnabled = storage.bool(forKey: Keys.automaticSyncEnabled)
+        }
+
+        let storedSyncInterval = storage.integer(forKey: Keys.syncInterval)
+        syncInterval =
+            SyncInterval(rawValue: storedSyncInterval) ?? .fifteenMinutes
     }
 
     private func persistOptional(_ value: String?, forKey key: String) {
@@ -158,13 +210,10 @@ final class AppSettings {
     }
 
     private enum Keys {
-        static let language =
-            "settings.general.language"
-
-        static let regionCode =
-            "settings.general.region"
-
-        static let currencyCode =
-            "settings.general.currency"
+        static let language = "settings.general.language"
+        static let regionCode = "settings.general.region"
+        static let currencyCode = "settings.general.currency"
+        static let automaticSyncEnabled = "settings.sync.automatic"
+        static let syncInterval = "settings.sync.interval"
     }
 }

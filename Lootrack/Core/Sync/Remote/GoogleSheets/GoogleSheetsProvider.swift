@@ -71,46 +71,45 @@ final class GoogleAuthorizationService {
         if let currentUser = GIDSignIn.sharedInstance.currentUser {
             return currentUser
         }
-        
+
         guard GIDSignIn.sharedInstance.hasPreviousSignIn() else {
             throw GoogleSheetsError.authenticationRequired
         }
-        
+
         do {
             let restoredUser = try await GIDSignIn.sharedInstance.restorePreviousSignIn()
-            self.user = restoredUser
+            user = restoredUser
             return restoredUser
         } catch {
             if isMissingAuthentication(error) {
-                self.user = nil
+                user = nil
                 throw GoogleSheetsError.authenticationRequired
             }
-            
+
             throw error
         }
     }
-    
+
     private func isMissingAuthentication(_ error: Error) -> Bool {
         let nsError = error as NSError
-        
+
         guard nsError.domain == kGIDSignInErrorDomain else {
             return false
         }
-        
+
         return nsError.code == GoogleSignInErrorCode.noAuthInKeychain
-        || nsError.code == GoogleSignInErrorCode.refreshTokenExpired
+            || nsError.code == GoogleSignInErrorCode.refreshTokenExpired
     }
-    
 
     func accessToken() async throws -> String {
         let user = try await userForSynchronization()
-        
+
         guard user.grantedScopes?.contains(Self.driveFileScope) == true else {
             throw GoogleSheetsError.authenticationRequired
         }
-        
+
         let refreshedUser = try await user.refreshTokensIfNeeded()
-        
+
         self.user = refreshedUser
         return refreshedUser.accessToken.tokenString
     }
@@ -205,32 +204,32 @@ final class GoogleSheetsProvider: SyncProvider {
         guard let spreadsheetId = settings.spreadsheetId?.trimmingCharacters(in: .whitespacesAndNewlines) else {
             return false
         }
-        
+
         return !spreadsheetId.isEmpty
     }
-    
+
     init(settings: GoogleSheetSettings, authorization: GoogleAuthorizationService, client: GoogleSheetsClient) {
         self.settings = settings
         self.authorization = authorization
         self.client = client
     }
-    
+
     func pull() async throws -> RemoteSyncSnapshot {
         do {
             let spreadsheetId = try selectedSpreadsheetId()
             let accessToken = try await authorization.accessToken()
-            
+
             return try await client.readSnapshot(accessToken: accessToken, spreadsheetId: spreadsheetId)
         } catch {
             throw mapError(error)
         }
     }
-    
+
     func push(_ request: SyncPushRequest) async throws -> SyncPushResult {
         do {
             let spreadsheetId = try selectedSpreadsheetId()
             let accessToken = try await authorization.accessToken()
-            
+
             return try await client.push(request, accessToken: accessToken, spreadsheetId: spreadsheetId)
         } catch {
             throw mapError(error)
@@ -246,7 +245,7 @@ final class GoogleSheetsProvider: SyncProvider {
 
         return spreadsheetId
     }
-    
+
     private func mapError(_ error: Error) -> Error {
         if let error = error as? GoogleSheetsError {
             switch error {
@@ -260,13 +259,13 @@ final class GoogleSheetsProvider: SyncProvider {
                 return SyncProviderError.configurationRequired
             }
         }
-        
+
         if let error = error as? GoogleSheetsClientError {
             switch error {
             case .invalidURL,
-                    .invalidResponse:
+                 .invalidResponse:
                 return error
-                
+
             case let .apiError(status, _):
                 switch status {
                 case 401:
@@ -284,15 +283,15 @@ final class GoogleSheetsProvider: SyncProvider {
                 default:
                     return error
                 }
-                
+
             case .invalidData:
                 return SyncProviderError.invalidRemoteData
-                
+
             case .writeConflict:
                 return SyncProviderError.remoteChanged
             }
         }
-        
+
         return error
     }
 }
