@@ -31,8 +31,16 @@ struct GeneralSettingsView: View {
                 } label: {
                     SettingsValueRow(title: "Currency", value: currencyValue)
                 }
+                
             } footer: {
                 Text("System uses the corresponding iPhone setting.")
+            }
+            Section {
+                NavigationLink {
+                    InfoSettingsView()
+                } label: {
+                    Label("Info", systemImage: "info.circle")
+                }
             }
         }
         .navigationTitle("General")

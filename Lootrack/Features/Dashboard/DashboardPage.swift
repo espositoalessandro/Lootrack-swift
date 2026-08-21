@@ -119,6 +119,6 @@ struct Dashboard: View {
             await syncCoordinator
                 .synchronize()
         }
-        .navigationTitle("Lootrack v\(BuildInfo.version)")
+        .navigationTitle("Lootrack")
     }
 }
