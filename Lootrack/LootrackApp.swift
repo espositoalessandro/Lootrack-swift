@@ -21,9 +21,7 @@ struct LootrackApp: App {
     init() {
         appSettings = AppSettings()
 
-        let googleSheetSettings = GoogleSheetSettings(
-            initialSpreadsheetId: "1c1fO_W-pfRMNu8vBjpBdKr-q3wAnjYrWB9srocgnYUk"
-        )
+        let googleSheetSettings = GoogleSheetSettings()
         self.googleSheetSettings = googleSheetSettings
 
         do {
