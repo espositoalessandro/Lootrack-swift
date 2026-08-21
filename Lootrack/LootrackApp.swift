@@ -21,37 +21,53 @@ struct LootrackApp: App {
     init() {
         appSettings = AppSettings()
 
-        let googleSheetSettings = GoogleSheetSettings(initialSpreadsheetId: "1c1fO_W-pfRMNu8vBjpBdKr-q3wAnjYrWB9srocgnYUk")
+        let googleSheetSettings = GoogleSheetSettings(
+            initialSpreadsheetId: "1c1fO_W-pfRMNu8vBjpBdKr-q3wAnjYrWB9srocgnYUk"
+        )
         self.googleSheetSettings = googleSheetSettings
 
         do {
-            let modelContainer = try ModelContainer(for:
-                Transaction.self,
+            let modelContainer = try ModelContainer(
+                for:
+                    Transaction.self,
                 Category.self,
                 Subcategory.self,
                 Tag.self,
                 Mutation.self,
-                EntitySyncState.self)
+                EntitySyncState.self
+            )
 
             #if DEBUG
                 SwiftDataDebugLogger.shared
                     .install(context: modelContainer.mainContext)
             #endif
 
-            let mutationService = MutationService(modelContext: modelContainer.mainContext)
-            let tagService = TagService(modelContext: modelContainer.mainContext)
+            let mutationService = MutationService(
+                modelContext: modelContainer.mainContext
+            )
+            let tagService = TagService(
+                modelContext: modelContainer.mainContext
+            )
 
-            let transactionService = TransactionService(modelContext: modelContainer.mainContext,
-                                                        mutationService: mutationService,
-                                                        tagService: tagService)
-            let subcategoryService = SubcategoryService(modelContext: modelContainer.mainContext,
-                                                        mutationService: mutationService)
-            let categoryService = CategoryService(modelContext: modelContainer.mainContext,
-                                                  mutationService: mutationService,
-                                                  subcategoryService: subcategoryService)
-            let conflictResolutionService = ConflictResolutionService(modelContext: modelContainer.mainContext,
-                                                                      mutationService: mutationService,
-                                                                      tagService: tagService)
+            let transactionService = TransactionService(
+                modelContext: modelContainer.mainContext,
+                mutationService: mutationService,
+                tagService: tagService
+            )
+            let subcategoryService = SubcategoryService(
+                modelContext: modelContainer.mainContext,
+                mutationService: mutationService
+            )
+            let categoryService = CategoryService(
+                modelContext: modelContainer.mainContext,
+                mutationService: mutationService,
+                subcategoryService: subcategoryService
+            )
+            let conflictResolutionService = ConflictResolutionService(
+                modelContext: modelContainer.mainContext,
+                mutationService: mutationService,
+                tagService: tagService
+            )
 
             self.modelContainer = modelContainer
             self.mutationService = mutationService
@@ -60,37 +76,52 @@ struct LootrackApp: App {
             self.categoryService = categoryService
             self.subcategoryService = subcategoryService
 
-            let googleSheetsConfiguration = GoogleSheetsConfiguration.development
+            let googleSheetsConfiguration = GoogleSheetsConfiguration
+                .development
             let googleSheetsClient = GoogleSheetsClient()
 
-            let googleAuthorizationService = GoogleAuthorizationService(configuration: googleSheetsConfiguration)
+            let googleAuthorizationService = GoogleAuthorizationService(
+                configuration: googleSheetsConfiguration
+            )
             self.googleAuthorizationService = googleAuthorizationService
 
-            let googlePickerService = GooglePickerService(configuration: googleSheetsConfiguration)
+            let googlePickerService = GooglePickerService(
+                configuration: googleSheetsConfiguration
+            )
 
-            let googleSheetSelectionService = GoogleSheetSelectionService(settings: googleSheetSettings,
-                                                                          picker: googlePickerService,
-                                                                          authorization: googleAuthorizationService,
-                                                                          client: googleSheetsClient,
-                                                                          modelContext: modelContainer.mainContext)
+            let googleSheetSelectionService = GoogleSheetSelectionService(
+                settings: googleSheetSettings,
+                picker: googlePickerService,
+                authorization: googleAuthorizationService,
+                client: googleSheetsClient,
+                modelContext: modelContainer.mainContext
+            )
 
             self.googleSheetSelectionService = googleSheetSelectionService
 
-            let googleSheetsProvider = GoogleSheetsProvider(settings: googleSheetSettings,
-                                                            authorization: googleAuthorizationService,
-                                                            client: googleSheetsClient)
-            let localSyncStore = LocalSyncStore(modelContext: modelContainer.mainContext,
-                                                tagService: tagService)
+            let googleSheetsProvider = GoogleSheetsProvider(
+                settings: googleSheetSettings,
+                authorization: googleAuthorizationService,
+                client: googleSheetsClient
+            )
+            let localSyncStore = LocalSyncStore(
+                modelContext: modelContainer.mainContext,
+                tagService: tagService
+            )
 
-            let syncEngine = SyncEngine(localStore: localSyncStore,
-                                        provider: googleSheetsProvider)
+            let syncEngine = SyncEngine(
+                localStore: localSyncStore,
+                provider: googleSheetsProvider
+            )
 
             let networkMonitor = NetworkMonitor()
             self.networkMonitor = networkMonitor
 
-            syncCoordinator = SyncCoordinator(syncEngine: syncEngine,
-                                              conflictResolutionService: conflictResolutionService,
-                                              networkMonitor: networkMonitor)
+            syncCoordinator = SyncCoordinator(
+                syncEngine: syncEngine,
+                conflictResolutionService: conflictResolutionService,
+                networkMonitor: networkMonitor
+            )
 
             /*
              * The Tag table is a derived local cache.
@@ -107,9 +138,7 @@ struct LootrackApp: App {
             SettingsAwareRootView()
                 .environment(syncCoordinator)
                 .environment(networkMonitor)
-                .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
-                }
+                .onOpenURL { url in GIDSignIn.sharedInstance.handle(url) }
         }
         .modelContainer(modelContainer)
         .environment(transactionService)
