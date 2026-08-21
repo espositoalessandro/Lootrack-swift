@@ -8,6 +8,12 @@ private enum AppTab: Hashable {
     case settings
 }
 
+private struct AutomaticSyncTaskID: Equatable {
+    let isActive: Bool
+    let isEnabled: Bool
+    let interval: Int
+}
+
 struct RootView: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
@@ -17,6 +23,9 @@ struct RootView: View {
 
     @Environment(\.scenePhase)
     private var scenePhase
+
+    @Environment(AppSettings.self)
+    private var settings
 
     @Query(MutationQueries.pendingByOldest)
     private var mutations: [Mutation]
@@ -29,6 +38,14 @@ struct RootView: View {
 
     @State
     private var showOnlineStatus = false
+
+    private var automaticSyncTaskID: AutomaticSyncTaskID {
+        AutomaticSyncTaskID(
+            isActive: scenePhase == .active,
+            isEnabled: settings.automaticSyncEnabled,
+            interval: settings.syncInterval.rawValue
+        )
+    }
 
     private var hasConflicts: Bool {
         !syncCoordinator.conflicts.isEmpty
@@ -58,10 +75,11 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("Dashboard",
+            Tab(
+                "Dashboard",
                 systemImage: "rectangle.3.group",
-                value: AppTab.dashboard)
-            {
+                value: AppTab.dashboard
+            ) {
                 NavigationStack {
                     Dashboard()
                         .toolbar {
@@ -70,10 +88,11 @@ struct RootView: View {
                 }
             }
 
-            Tab("Transactions",
+            Tab(
+                "Transactions",
                 systemImage: "list.bullet",
-                value: AppTab.transactions)
-            {
+                value: AppTab.transactions
+            ) {
                 NavigationStack {
                     TransactionListView()
                         .toolbar {
@@ -82,10 +101,11 @@ struct RootView: View {
                 }
             }
 
-            Tab("Categories",
+            Tab(
+                "Categories",
                 systemImage: "square.grid.2x2",
-                value: AppTab.categories)
-            {
+                value: AppTab.categories
+            ) {
                 NavigationStack {
                     CategoryListView()
                         .toolbar {
@@ -93,10 +113,11 @@ struct RootView: View {
                         }
                 }
             }
-            Tab("Settings",
+            Tab(
+                "Settings",
                 systemImage: "gear",
-                value: AppTab.settings)
-            {
+                value: AppTab.settings
+            ) {
                 NavigationStack {
                     SettingsView()
                         .toolbar {
@@ -113,21 +134,44 @@ struct RootView: View {
         }
         .background {
             UndoResponderView()
-                .frame(width: 0,
-                       height: 0)
+                .frame(
+                    width: 0,
+                    height: 0
+                )
         }
         .onChange(of: networkMonitor.status) { oldStatus, newStatus in
             if newStatus == .offline {
                 showOnlineStatus = false
-            } else if oldStatus == .offline, newStatus == .online {
-                showOnlineStatus = true
-            }
-        }
-        .task(id: scenePhase) {
-            guard scenePhase == .active else {
                 return
             }
-            await syncCoordinator.runForegroundAutomaticSync()
+
+            guard oldStatus == .offline, newStatus == .online else {
+                return
+            }
+
+            showOnlineStatus = true
+
+            guard scenePhase == .active, settings.automaticSyncEnabled
+            else {
+                return
+            }
+
+            Task {
+                await syncCoordinator.synchronize(
+                    trigger: .connectivityRestored
+                )
+            }
+        }
+        .task(id: automaticSyncTaskID) {
+            guard scenePhase == .active,
+                settings.automaticSyncEnabled
+            else {
+                return
+            }
+
+            await syncCoordinator.runForegroundAutomaticSync(
+                interval: settings.syncInterval.duration
+            )
         }
         .task(id: showOnlineStatus) {
             guard showOnlineStatus else {
@@ -163,27 +207,31 @@ struct RootView: View {
         Button {
             isSyncPresented = true
         } label: {
-            Image(systemName:
-                hasConflicts
+            Image(
+                systemName:
+                    hasConflicts
                     ? "exclamationmark.triangle.fill"
-                    : "arrow.triangle.2.circlepath")
-                .overlay(alignment: .topTrailing) {
-                    if syncBadgeCount > 0 {
-                        Text(syncBadgeCount > 99 ? "99+" : "\(syncBadgeCount)")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 4)
-                            .frame(minWidth: 16, minHeight: 16)
-                            .background(hasConflicts
-                                ? Color.red
-                                : Color.accentColor,
-                                in: Capsule())
-                            .offset(x: 9, y: -8)
-                    }
+                    : "arrow.triangle.2.circlepath"
+            )
+            .overlay(alignment: .topTrailing) {
+                if syncBadgeCount > 0 {
+                    Text(syncBadgeCount > 99 ? "99+" : "\(syncBadgeCount)")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .background(
+                            hasConflicts ? Color.red : Color.accentColor,
+                            in: Capsule()
+                        )
+                        .offset(x: 9, y: -8)
                 }
+            }
         }
-        .accessibilityLabel(hasConflicts
-            ? "Synchronization conflicts"
-            : "Synchronization")
+        .accessibilityLabel(
+            hasConflicts
+                ? "Synchronization conflicts"
+                : "Synchronization"
+        )
     }
 }

@@ -14,7 +14,6 @@ final class SyncCoordinator {
     private(set) var status: SyncStatus = .idle
     private(set) var lastSuccessfulSync: Date?
 
-    private static let automaticSyncInterval: TimeInterval = 15 * 60
     private(set) var lastSyncAttempt: Date?
 
     var conflicts: [SyncConflictCandidate] = []
@@ -34,16 +33,6 @@ final class SyncCoordinator {
         self.syncEngine = syncEngine
         self.conflictResolutionService = conflictResolutionService
         self.networkMonitor = networkMonitor
-
-        networkMonitor.statusDidChange = { [weak self] oldStatus, newStatus in
-            guard oldStatus == .offline, newStatus == .online else {
-                return
-            }
-
-            Task { @MainActor [weak self] in
-                await self?.synchronize(trigger: .connectivityRestored)
-            }
-        }
     }
 
     func synchronize(trigger: SyncTrigger = .manual) async {
@@ -164,56 +153,56 @@ final class SyncCoordinator {
         return .unexpected
     }
 
-    func runForegroundAutomaticSync() async {
-        await synchronizeIfStale(trigger: .foreground)
-
+    func runForegroundAutomaticSync(interval: TimeInterval) async {
+        await synchronizeIfStale(trigger: .foreground, interval: interval)
+        
         while !Task.isCancelled {
-            let delay = timeUntilNextAutomaticSync
-
+            let delay = timeUntilNextAutomaticSync(interval: interval)
+            
             do {
                 try await Task.sleep(for: .seconds(delay))
             } catch {
                 return
             }
-
+            
             guard !Task.isCancelled else {
                 return
             }
-
-            await synchronizeIfStale(trigger: .automatic)
+            
+            await synchronizeIfStale(trigger: .automatic, interval: interval)
         }
     }
-
-    private func synchronizeIfStale(trigger: SyncTrigger) async {
+    
+    private func synchronizeIfStale(trigger: SyncTrigger, interval: TimeInterval) async {
         guard networkMonitor.status == .online,
               syncEngine.isConfigured,
               conflicts.isEmpty
-        else {
+                else {
             return
         }
-
+        
         if let lastSyncAttempt,
-           Date.now.timeIntervalSince(lastSyncAttempt) < Self.automaticSyncInterval
-        {
+           Date.now.timeIntervalSince(lastSyncAttempt) < interval
+            {
             return
         }
-
+        
         await synchronize(trigger: trigger)
     }
-
-    private var timeUntilNextAutomaticSync: TimeInterval {
+    
+    private func timeUntilNextAutomaticSync(interval: TimeInterval) -> TimeInterval {
         guard networkMonitor.status == .online,
               syncEngine.isConfigured,
               conflicts.isEmpty
-        else {
-            return Self.automaticSyncInterval
+                else {
+            return interval
         }
-
+        
         guard let lastSyncAttempt else {
-            return Self.automaticSyncInterval
+            return interval
         }
-
+        
         let elapsed = Date.now.timeIntervalSince(lastSyncAttempt)
-        return max(1, Self.automaticSyncInterval - elapsed)
+        return max(1, interval - elapsed)
     }
 }
