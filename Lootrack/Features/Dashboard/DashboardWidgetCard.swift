@@ -1,3 +1,11 @@
+//
+//  DashboardWidgetCard.swift
+//  Lootrack
+//
+//  Created by Alessandro Esposito on 09/09/2026.
+//
+
+
 import Charts
 import SwiftUI
 

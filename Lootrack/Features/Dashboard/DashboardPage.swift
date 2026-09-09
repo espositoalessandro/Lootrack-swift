@@ -1,124 +1,142 @@
-import SwiftData
 import SwiftUI
 
 struct Dashboard: View {
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
 
-    @Environment(AppSettings.self)
-    private var settings
-
-    @Query(TransactionQueries.active)
-    private var transactions: [Transaction]
-
-    private var currentMonthTransactions: [Transaction] {
-        guard let interval =
-            Calendar.current.dateInterval(of: .month,
-                                          for: .now)
-        else {
-            return []
-        }
-
-        return transactions.filter {
-            transaction in
-            interval.contains(transaction.occurredOn)
-        }
-    }
-
-    private var totalIncome: Int {
-        currentMonthTransactions
-            .filter {
-                $0.type == .income
-            }
-            .reduce(0) {
-                total,
-                transaction in
-                total
-                    + transaction
-                    .amountInCents
-            }
-    }
-
-    private var totalExpenses: Int {
-        currentMonthTransactions
-            .filter {
-                $0.type == .expense
-            }
-            .reduce(0) {
-                total,
-                transaction in
-                total
-                    + transaction
-                    .amountInCents
-            }
-    }
-
-    private var netTotal: Int {
-        totalIncome - totalExpenses
-    }
+    @State
+    private var widgets = DashboardWidgetPreview.samples
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                Text(Date.now,
-                     format:
-                     .dateTime
-                         .month(.wide)
-                         .year())
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity,
-                           alignment: .leading)
-
-                VStack(spacing: 8) {
-                    Text("Net this month")
-                        .foregroundStyle(.secondary)
-
-                    Text(settings.formattedAmount(netTotal))
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .monospacedDigit()
+            DashboardGridLayout(
+                horizontalSpacing: 12,
+                verticalSpacing: 12
+            ) {
+                ForEach(widgets) { widget in
+                    DashboardWidgetCard(widget: widget)
+                        .dashboardWidgetSpan(widget.width.rawValue)
                 }
-                .frame(maxWidth: .infinity)
-
-                Divider()
-
-                HStack(spacing: 16) {
-                    VStack(spacing: 6) {
-                        Label("Income",
-                              systemImage:
-                              "arrow.down")
-                            .foregroundStyle(.green)
-
-                        Text(settings
-                            .formattedAmount(totalIncome))
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .monospacedDigit()
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    VStack(spacing: 6) {
-                        Label("Expenses",
-                              systemImage:
-                              "arrow.up")
-                            .foregroundStyle(.red)
-
-                        Text(settings
-                            .formattedAmount(totalExpenses))
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .monospacedDigit()
-                    }
-                    .frame(maxWidth: .infinity)
-                }
+                .reorderable()
             }
-            .padding()
+            .reorderContainer(for: DashboardWidgetPreview.self) {
+                difference in apply(difference)
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
         }
         .refreshable {
-            await syncCoordinator
-                .synchronize()
+            await syncCoordinator.synchronize()
         }
         .navigationTitle("Lootrack")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                addWidgetMenu
+            }
+        }
+    }
+
+    private var addWidgetMenu: some View {
+        Menu {
+            Button {
+                addNumericWidget()
+            } label: {
+                Label(
+                    "Numeric",
+                    systemImage: "number"
+                )
+            }
+
+            Button {
+                addChartWidget()
+            } label: {
+                Label(
+                    "Chart",
+                    systemImage: "chart.xyaxis.line"
+                )
+            }
+        } label: {
+            Image(
+                systemName: "plus"
+            )
+        }
+        .accessibilityLabel(
+            "Add Widget"
+        )
+    }
+
+    private func addNumericWidget() {
+        withAnimation {
+            widgets.append(
+                .numericPlaceholder(
+                    index: widgets.count + 1
+                )
+            )
+        }
+    }
+
+    private func addChartWidget() {
+        withAnimation {
+            widgets.append(
+                .chartPlaceholder(
+                    index: widgets.count + 1
+                )
+            )
+        }
+    }
+
+    private func apply(
+        _ difference: ReorderDifference<
+            DashboardWidgetPreview.ID,
+            ReorderableSingleCollectionIdentifier
+        >
+    ) {
+        let sourceIDs =
+            difference.sources
+
+        let movedWidgets =
+            sourceIDs.compactMap {
+                sourceID in
+
+                widgets.first {
+                    $0.id == sourceID
+                }
+            }
+
+        widgets.removeAll {
+            sourceIDs.contains(
+                $0.id
+            )
+        }
+
+        switch difference.destination.position {
+        case .before(
+            let
+                destinationID
+        ):
+            guard
+                let destinationIndex =
+                    widgets.firstIndex(
+                        where: {
+                            $0.id == destinationID
+                        }
+                    )
+            else {
+                widgets.append(
+                    contentsOf: movedWidgets
+                )
+                return
+            }
+
+            widgets.insert(
+                contentsOf: movedWidgets,
+                at: destinationIndex
+            )
+
+        case .end:
+            widgets.append(
+                contentsOf: movedWidgets
+            )
+        }
     }
 }

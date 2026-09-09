@@ -1,29 +1,16 @@
-//
-//  DashboardWidgetSpanKey.swift
-//  Lootrack
-//
-//  Created by Alessandro Esposito on 09/09/2026.
-//
-
-
 import SwiftUI
 
-private struct DashboardWidgetSpanKey: LayoutValueKey {
-    static let defaultValue = 1
+nonisolated extension ContainerValues {
+    @Entry var dashboardWidgetSpan = 1
 }
 
 extension View {
-    func dashboardWidgetSpan(
-        _ span: Int
-    ) -> some View {
-        layoutValue(
-            key: DashboardWidgetSpanKey.self,
-            value: span
-        )
+    func dashboardWidgetSpan(_ span: Int) -> some View {
+        containerValue(\.dashboardWidgetSpan, span)
     }
 }
 
-struct DashboardGridLayout: Layout {
+nonisolated struct DashboardGridLayout: Layout {
     var horizontalSpacing: CGFloat
     var verticalSpacing: CGFloat
 
@@ -88,8 +75,7 @@ struct DashboardGridLayout: Layout {
         for subviews: Subviews,
         width: CGFloat
     ) -> [CGRect] {
-        let columnWidth =
-            (width - horizontalSpacing) / 2
+        let columnWidth = (width - horizontalSpacing) / 2
 
         var frames: [CGRect] = []
 
@@ -98,29 +84,16 @@ struct DashboardGridLayout: Layout {
         var currentRowHeight: CGFloat = 0
 
         for subview in subviews {
-            let span = min(
-                max(
-                    subview[DashboardWidgetSpanKey.self],
-                    1
-                ),
-                2
-            )
-
+            let span = min(max(subview.containerValues.dashboardWidgetSpan, 1), 2)
             if span == 2 {
                 if currentColumn != 0 {
-                    currentY +=
-                        currentRowHeight
-                            + verticalSpacing
-
+                    currentY += currentRowHeight + verticalSpacing
                     currentColumn = 0
                     currentRowHeight = 0
                 }
 
                 let size = subview.sizeThatFits(
-                    ProposedViewSize(
-                        width: width,
-                        height: nil
-                    )
+                    ProposedViewSize(width: width, height: nil)
                 )
 
                 frames.append(
@@ -132,9 +105,7 @@ struct DashboardGridLayout: Layout {
                     )
                 )
 
-                currentY +=
-                    size.height
-                        + verticalSpacing
+                currentY += size.height + verticalSpacing
 
                 continue
             }
@@ -146,9 +117,7 @@ struct DashboardGridLayout: Layout {
                 )
             )
 
-            let x =
-                CGFloat(currentColumn)
-                    * (columnWidth + horizontalSpacing)
+            let x = CGFloat(currentColumn) * (columnWidth + horizontalSpacing)
 
             frames.append(
                 CGRect(
@@ -167,9 +136,7 @@ struct DashboardGridLayout: Layout {
             currentColumn += 1
 
             if currentColumn == 2 {
-                currentY +=
-                    currentRowHeight
-                        + verticalSpacing
+                currentY += currentRowHeight + verticalSpacing
 
                 currentColumn = 0
                 currentRowHeight = 0
