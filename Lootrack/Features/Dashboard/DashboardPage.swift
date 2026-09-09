@@ -10,12 +10,12 @@ struct Dashboard: View {
     var body: some View {
         ScrollView {
             DashboardGridLayout(
+                spans: widgets.map(\.width.rawValue),
                 horizontalSpacing: 12,
                 verticalSpacing: 12
             ) {
                 ForEach(widgets) { widget in
                     DashboardWidgetCard(widget: widget)
-                        .dashboardWidgetSpan(widget.width.rawValue)
                 }
                 .reorderable()
             }
