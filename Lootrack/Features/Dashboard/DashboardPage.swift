@@ -16,6 +16,13 @@ struct Dashboard: View {
             ) {
                 ForEach(widgets) { widget in
                     DashboardWidgetCard(widget: widget)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                removeWidget(widget)
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
                 }
                 .reorderable()
             }
@@ -137,6 +144,12 @@ struct Dashboard: View {
             widgets.append(
                 contentsOf: movedWidgets
             )
+        }
+    }
+    
+    private func removeWidget(_ widget: DashboardWidgetPreview) {
+        withAnimation {
+            widgets.removeAll { $0.id == widget.id }
         }
     }
 }
