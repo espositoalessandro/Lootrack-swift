@@ -5,7 +5,18 @@ struct Dashboard: View {
     private var syncCoordinator
 
     @State
+    private var allWidgets = DashboardWidgetPreview.librarySamples
+
+    @State
     private var widgets = DashboardWidgetPreview.samples
+
+    @State
+    private var isWidgetPickerPresented = false
+
+    private var unusedWidgets: [DashboardWidgetPreview] {
+        let dashboardWidgetIDs = Set(widgets.map(\.id))
+        return allWidgets.filter { !dashboardWidgetIDs.contains($0.id) }
+    }
 
     var body: some View {
         ScrollView {
@@ -17,17 +28,20 @@ struct Dashboard: View {
                 ForEach(widgets) { widget in
                     DashboardWidgetCard(widget: widget)
                         .contextMenu {
-                            Button(role: .destructive) {
+                            Button {
                                 removeWidget(widget)
                             } label: {
-                                Label("Remove", systemImage: "trash")
+                                Label(
+                                    "Remove from Dashboard",
+                                    systemImage: "minus.circle"
+                                )
                             }
                         }
                 }
                 .reorderable()
             }
-            .reorderContainer(for: DashboardWidgetPreview.self) {
-                difference in apply(difference)
+            .reorderContainer(for: DashboardWidgetPreview.self) { difference in
+                apply(difference)
             }
             .padding(.horizontal)
             .padding(.bottom)
@@ -38,118 +52,87 @@ struct Dashboard: View {
         .navigationTitle("Lootrack")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                addWidgetMenu
+                Button {
+                    isWidgetPickerPresented = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add Widget")
             }
+        }
+        .sheet(isPresented: $isWidgetPickerPresented) {
+            AddDashboardWidgetSheet(
+                widgets: unusedWidgets,
+                onAdd: addWidget,
+                onCreateNumeric: createNumericWidget,
+                onCreateChart: createChartWidget
+            )
         }
     }
 
-    private var addWidgetMenu: some View {
-        Menu {
-            Button {
-                addNumericWidget()
-            } label: {
-                Label(
-                    "Numeric",
-                    systemImage: "number"
-                )
-            }
-
-            Button {
-                addChartWidget()
-            } label: {
-                Label(
-                    "Chart",
-                    systemImage: "chart.xyaxis.line"
-                )
-            }
-        } label: {
-            Image(
-                systemName: "plus"
-            )
+    private func addWidget(_ widget: DashboardWidgetPreview) {
+        guard !widgets.contains(where: { $0.id == widget.id }) else {
+            return
         }
-        .accessibilityLabel(
-            "Add Widget"
+
+        withAnimation {
+            widgets.append(widget)
+        }
+    }
+
+    private func removeWidget(_ widget: DashboardWidgetPreview) {
+        withAnimation {
+            widgets.removeAll { $0.id == widget.id }
+        }
+    }
+
+    private func createNumericWidget() {
+        let widget = DashboardWidgetPreview.numericPlaceholder(
+            index: allWidgets.count + 1
         )
-    }
 
-    private func addNumericWidget() {
         withAnimation {
-            widgets.append(
-                .numericPlaceholder(
-                    index: widgets.count + 1
-                )
-            )
+            allWidgets.append(widget)
         }
     }
 
-    private func addChartWidget() {
+    private func createChartWidget() {
+        let widget = DashboardWidgetPreview.chartPlaceholder(
+            index: allWidgets.count + 1
+        )
+
         withAnimation {
-            widgets.append(
-                .chartPlaceholder(
-                    index: widgets.count + 1
-                )
-            )
+            allWidgets.append(widget)
         }
     }
 
     private func apply(
         _ difference: ReorderDifference<
-            DashboardWidgetPreview.ID,
-            ReorderableSingleCollectionIdentifier
+            DashboardWidgetPreview.ID, ReorderableSingleCollectionIdentifier
         >
     ) {
-        let sourceIDs =
-            difference.sources
-
-        let movedWidgets =
-            sourceIDs.compactMap {
-                sourceID in
-
-                widgets.first {
-                    $0.id == sourceID
-                }
-            }
-
-        widgets.removeAll {
-            sourceIDs.contains(
-                $0.id
-            )
+        let sourceIDs = difference.sources
+        let movedWidgets = sourceIDs.compactMap { sourceID in
+            widgets.first { $0.id == sourceID }
         }
 
+        widgets.removeAll { sourceIDs.contains($0.id) }
+
         switch difference.destination.position {
-        case .before(
-            let
-                destinationID
-        ):
+        case .before(let destinationID):
             guard
-                let destinationIndex =
-                    widgets.firstIndex(
-                        where: {
-                            $0.id == destinationID
-                        }
-                    )
+                let destinationIndex = widgets.firstIndex(where: {
+                    $0.id == destinationID
+                })
             else {
-                widgets.append(
-                    contentsOf: movedWidgets
-                )
+                widgets.append(contentsOf: movedWidgets)
                 return
             }
 
-            widgets.insert(
-                contentsOf: movedWidgets,
-                at: destinationIndex
-            )
+            widgets.insert(contentsOf: movedWidgets, at: destinationIndex)
 
         case .end:
-            widgets.append(
-                contentsOf: movedWidgets
-            )
-        }
-    }
-    
-    private func removeWidget(_ widget: DashboardWidgetPreview) {
-        withAnimation {
-            widgets.removeAll { $0.id == widget.id }
+            widgets.append(contentsOf: movedWidgets)
         }
     }
 }
