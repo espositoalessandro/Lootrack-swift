@@ -3,12 +3,15 @@ import SwiftUI
 struct AddDashboardWidgetSheet: View {
     @Environment(\.dismiss)
     private var dismiss
-
-    let widgets: [DashboardWidgetPreview]
-    let onAdd: (DashboardWidgetPreview) -> Void
+    
+    let widgets: [DashboardWidgetDefinition]
+    let transactions: [Transaction]
+    let onAdd: (DashboardWidgetDefinition) -> Void
     let onCreateNumeric: () -> Void
     let onCreateChart: () -> Void
-
+    
+    private let evaluator = DashboardWidgetEvaluator()
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -20,13 +23,9 @@ struct AddDashboardWidgetSheet: View {
                     )
                     .padding(.top, 80)
                 } else {
-                    DashboardGridLayout(
-                        spans: widgets.map(\.width.rawValue),
-                        horizontalSpacing: 12,
-                        verticalSpacing: 12
-                    ) {
+                    DashboardGridLayout(spans: widgets.map(\.width.rawValue), horizontalSpacing: 12, verticalSpacing: 12) {
                         ForEach(widgets) { widget in
-                            DashboardWidgetCard(widget: widget)
+                            DashboardWidgetCard(widget: widget, result: evaluator.evaluate(widget, transactions: transactions))
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     onAdd(widget)
@@ -45,14 +44,14 @@ struct AddDashboardWidgetSheet: View {
                         dismiss()
                     }
                 }
-
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     createWidgetMenu
                 }
             }
         }
     }
-
+    
     private var createWidgetMenu: some View {
         Menu {
             Button {
@@ -60,7 +59,7 @@ struct AddDashboardWidgetSheet: View {
             } label: {
                 Label("Numeric", systemImage: "number")
             }
-
+            
             Button {
                 onCreateChart()
             } label: {
