@@ -56,6 +56,28 @@ nonisolated enum EntitySnapshot:
         SyncEntityKey(type: type,
                       id: id)
     }
+
+    func normalizingTransactionDate(sourceCalendar: Calendar) -> EntitySnapshot {
+        guard case let .transaction(transaction) = self
+        else {
+            return self
+        }
+
+        return .transaction(TransactionDTO(id: transaction.id,
+                                           createdAt: transaction.createdAt,
+                                           updatedAt: transaction.updatedAt,
+                                           deletedAt: transaction.deletedAt,
+                                           type: transaction.type,
+                                           amountInCents: transaction.amountInCents,
+                                           note: transaction.note,
+                                           occurredOn:
+                                           TransactionDate.canonicalizing(transaction.occurredOn,
+                                                                        sourceCalendar:
+                                                                        sourceCalendar),
+                                           categoryId: transaction.categoryId,
+                                           subcategoryId: transaction.subcategoryId,
+                                           tags: transaction.tags))
+    }
 }
 
 @Model

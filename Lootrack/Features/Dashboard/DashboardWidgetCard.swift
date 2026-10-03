@@ -52,6 +52,8 @@ struct DashboardWidgetCard: View {
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .frame(height: 110)
+            .environment(\.timeZone,
+                         TransactionDate.timeZone)
         }
     }
     

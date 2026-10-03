@@ -156,7 +156,10 @@ struct TransactionListView: View {
         .toolbar {
             if let toolbarMonth {
                 ToolbarItem(placement: .title) {
-                    Text(toolbarMonth.formatted(.dateTime.month(.wide).year()))
+                    Text(toolbarMonth.formatted(.dateTime
+                            .month(.wide)
+                            .year()
+                            .timeZone(TransactionDate.timeZone)))
                 }
             }
 
@@ -270,7 +273,8 @@ struct TransactionListView: View {
     private func monthHeader(_ month: TransactionMonthGroup) -> some View {
         Text(month.date.formatted(.dateTime
                 .month(.wide)
-                .year()))
+                .year()
+                .timeZone(TransactionDate.timeZone)))
             .font(.title2.bold())
             .foregroundStyle(.primary)
             .padding(.horizontal, 32)
@@ -284,7 +288,8 @@ struct TransactionListView: View {
         Text(day.date.formatted(.dateTime
                 .weekday(.wide)
                 .day()
-                .month(.abbreviated)))
+                .month(.abbreviated)
+                .timeZone(TransactionDate.timeZone)))
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 32)

@@ -636,12 +636,12 @@ final class GoogleSheetsClient {
                                           "description")
 
                 let occurredOn =
-                    try readDate(row,
-                                 index: 4,
-                                 context:
-                                 context,
-                                 field:
-                                 "occurredOn")
+                    try readDateOnly(row,
+                                     index: 4,
+                                     context:
+                                     context,
+                                     field:
+                                     "occurredOn")
 
                 let categoryId =
                     try readOptionalUUID(row,
@@ -1203,6 +1203,28 @@ final class GoogleSheetsClient {
                              field: field)
     }
 
+    private func readDateOnly(_ row: [Cell],
+                              index: Int,
+                              context: String,
+                              field: String) throws -> Date
+    {
+        let value =
+            try readRequiredString(row,
+                                   index: index,
+                                   context: context,
+                                   field: field)
+
+        guard let date =
+            TransactionDate.date(from: value)
+        else {
+            throw
+                GoogleSheetsClientError
+                .invalidData("\(context): \(field) is not a valid date")
+        }
+
+        return date
+    }
+
     private func readOptionalDate(_ row: [Cell],
                                   index: Int,
                                   context: String,
@@ -1270,30 +1292,7 @@ final class GoogleSheetsClient {
     // MARK: - Date formatting
 
     private func formatDateOnly(_ date: Date) -> String {
-        let components =
-            Calendar.current
-                .dateComponents([.year,
-                                 .month,
-                                 .day],
-                                from: date)
-
-        guard let year =
-            components.year,
-            let month =
-            components.month,
-            let day =
-            components.day
-        else {
-            return Self
-                .dateOnly
-                .string(from: date)
-        }
-
-        return String(format:
-            "%04d-%02d-%02d",
-            year,
-            month,
-            day)
+        TransactionDate.string(from: date)
     }
 
     // MARK: - HTTP
@@ -1549,7 +1548,7 @@ final class GoogleSheetsClient {
                 .gregorian)
 
         formatter.timeZone =
-            .current
+            TransactionDate.timeZone
 
         formatter.dateFormat =
             "yyyy-MM-dd"

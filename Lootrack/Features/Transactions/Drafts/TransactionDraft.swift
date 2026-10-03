@@ -4,7 +4,7 @@ struct TransactionDraft {
     var note: String = ""
     var amount: String = ""
     var type: TransactionType = .expense
-    var occurredOn: Date = .now
+    var occurredOn: Date = TransactionDate.today()
     var categoryId: UUID?
     var subcategoryId: UUID?
     var tags: [String] = []

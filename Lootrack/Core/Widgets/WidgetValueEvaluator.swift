@@ -1,12 +1,12 @@
 import Foundation
 
 nonisolated struct WidgetValueEvaluator {
-    func evaluate(_ value: WidgetValue, transactions: [Transaction], calendar: Calendar = .current, now: Date = .now) -> Int {
+    func evaluate(_ value: WidgetValue, transactions: [Transaction], calendar: Calendar = TransactionDate.calendar, now: Date = TransactionDate.today()) -> Int {
         let transactions = transactions.filter { matches($0, filter: value.filter, calendar: calendar, now: now) }
         return aggregate(transactions, using: value.aggregation)
     }
     
-    func matches(_ transaction: Transaction, filter: WidgetFilter, calendar: Calendar = .current, now: Date = .now) -> Bool {
+    func matches(_ transaction: Transaction, filter: WidgetFilter, calendar: Calendar = TransactionDate.calendar, now: Date = TransactionDate.today()) -> Bool {
         guard transaction.deletedAt == nil else {
             return false
         }

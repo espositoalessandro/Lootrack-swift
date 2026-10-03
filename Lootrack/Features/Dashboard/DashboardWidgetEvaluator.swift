@@ -17,7 +17,7 @@ nonisolated enum DashboardWidgetResult: Hashable, Sendable {
 nonisolated struct DashboardWidgetEvaluator {
     private let valueEvaluator = WidgetValueEvaluator()
 
-    func evaluate(_ widget: DashboardWidgetDefinition, transactions: [Transaction], calendar: Calendar = .current, now: Date = .now) -> DashboardWidgetResult {
+    func evaluate(_ widget: DashboardWidgetDefinition, transactions: [Transaction], calendar: Calendar = TransactionDate.calendar, now: Date = TransactionDate.today()) -> DashboardWidgetResult {
         switch widget.type {
         case .numeric:
             return .numeric(evaluateScalar(widget, transactions: transactions, calendar: calendar, now: now))

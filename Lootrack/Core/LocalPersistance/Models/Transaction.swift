@@ -6,6 +6,101 @@ nonisolated enum TransactionType: String, Codable, Equatable, Hashable, Sendable
     case income
 }
 
+nonisolated enum TransactionDate {
+    static let timeZone =
+        TimeZone(secondsFromGMT: 0)!
+
+    static var calendar: Calendar {
+        var calendar =
+            Calendar(identifier: .gregorian)
+
+        calendar.timeZone =
+            timeZone
+
+        return calendar
+    }
+
+    static func today(now: Date = .now,
+                      sourceCalendar: Calendar = .current) -> Date
+    {
+        canonicalizing(now,
+                       sourceCalendar: sourceCalendar)
+    }
+
+    static func canonicalizing(_ date: Date,
+                               sourceCalendar: Calendar) -> Date
+    {
+        let components =
+            sourceCalendar
+                .dateComponents([.year,
+                                 .month,
+                                 .day],
+                                from: date)
+
+        guard let year =
+            components.year,
+            let month =
+            components.month,
+            let day =
+            components.day,
+            let canonical =
+            calendar.date(from:
+                DateComponents(year: year,
+                               month: month,
+                               day: day))
+        else {
+            return date
+        }
+
+        return canonical
+    }
+
+    static func date(from value: String) -> Date? {
+        let components =
+            value.split(separator: "-")
+
+        guard components.count == 3,
+              let year = Int(components[0]),
+              let month = Int(components[1]),
+              let day = Int(components[2]),
+              (1 ... 12).contains(month),
+              (1 ... 31).contains(day)
+        else {
+            return nil
+        }
+
+        return calendar.date(from:
+            DateComponents(year: year,
+                           month: month,
+                           day: day))
+    }
+
+    static func string(from date: Date) -> String {
+        let components =
+            calendar
+                .dateComponents([.year,
+                                 .month,
+                                 .day],
+                                from: date)
+
+        guard let year =
+            components.year,
+            let month =
+            components.month,
+            let day =
+            components.day
+        else {
+            return ""
+        }
+
+        return String(format:
+            "%04d-%02d-%02d",
+            year,
+            month,
+            day)
+    }
+}
+
 @Model
 final class Transaction: Entity {
     @Attribute(.unique)

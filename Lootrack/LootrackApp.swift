@@ -35,6 +35,9 @@ struct LootrackApp: App {
                 EntitySyncState.self
             )
 
+            try TransactionDateStorageMigration
+                .runIfNeeded(in: modelContainer.mainContext)
+
             #if DEBUG
                 SwiftDataDebugLogger.shared
                     .install(context: modelContainer.mainContext)
@@ -157,5 +160,61 @@ private struct SettingsAwareRootView: View {
     var body: some View {
         RootView()
             .environment(\.locale, settings.resolvedLocale)
+    }
+}
+
+
+private enum TransactionDateStorageMigration {
+    private static let version = 1
+    private static let versionKey =
+        "transactionDateStorageVersion"
+
+    @MainActor
+    static func runIfNeeded(in modelContext: ModelContext) throws {
+        let defaults =
+            UserDefaults.standard
+
+        guard defaults.integer(forKey: versionKey)
+            < version
+        else {
+            return
+        }
+
+        let sourceCalendar =
+            Calendar.current
+
+        let transactions =
+            try modelContext.fetch(
+                FetchDescriptor<Transaction>()
+            )
+
+        let mutations =
+            try modelContext.fetch(
+                FetchDescriptor<Mutation>()
+            )
+
+        try modelContext.transaction {
+            for transaction in transactions {
+                transaction.occurredOn =
+                    TransactionDate.canonicalizing(transaction.occurredOn,
+                                                   sourceCalendar:
+                                                   sourceCalendar)
+            }
+
+            for mutation in mutations {
+                mutation.base =
+                    mutation.base?
+                        .normalizingTransactionDate(sourceCalendar:
+                            sourceCalendar)
+
+                mutation.payload =
+                    mutation.payload
+                        .normalizingTransactionDate(sourceCalendar:
+                            sourceCalendar)
+            }
+        }
+
+        defaults.set(version,
+                     forKey: versionKey)
     }
 }

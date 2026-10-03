@@ -39,7 +39,7 @@ struct TransactionMonthGroup: Identifiable {
 
 enum TransactionListGrouping {
     static func groups(from transactions: [Transaction]) -> [TransactionMonthGroup] {
-        let calendar = Calendar.current
+        let calendar = TransactionDate.calendar
 
         let transactionsByMonth = Dictionary(grouping: transactions) { transaction in
             calendar.dateInterval(of: .month,

@@ -99,6 +99,11 @@ final class TransactionService {
 
             let normalizedTags = Tag.normalizedTags(tags)
 
+            let occurredOn =
+                TransactionDate.canonicalizing(occurredOn,
+                                               sourceCalendar:
+                                               TransactionDate.calendar)
+
             let now = Date.now
 
             let transaction = Transaction(createdAt: now,
@@ -151,6 +156,11 @@ final class TransactionService {
                                     subcategoryId: subcategoryId)
 
             let normalizedTags = Tag.normalizedTags(tags)
+
+            let occurredOn =
+                TransactionDate.canonicalizing(occurredOn,
+                                               sourceCalendar:
+                                               TransactionDate.calendar)
 
             guard transaction.type != type
                 || transaction.amountInCents != amountInCents

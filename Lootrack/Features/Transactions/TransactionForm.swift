@@ -224,6 +224,8 @@ struct TransactionForm: View {
                                $draft.occurredOn,
                                displayedComponents:
                                .date)
+                        .environment(\.timeZone,
+                                     TransactionDate.timeZone)
                 }
 
                 Section("Tags") {
