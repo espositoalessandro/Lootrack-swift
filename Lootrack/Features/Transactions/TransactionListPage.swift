@@ -324,6 +324,31 @@ struct TransactionListView: View {
         )
     }
 
+    private func monthLabel(_ date: Date) -> String {
+        var format =
+            Date.FormatStyle.dateTime
+                .month(.wide)
+                .year()
+
+        format.timeZone =
+            TransactionDate.timeZone
+
+        return date.formatted(format)
+    }
+
+    private func dayLabel(_ date: Date) -> String {
+        var format =
+            Date.FormatStyle.dateTime
+                .weekday(.wide)
+                .day()
+                .month(.abbreviated)
+
+        format.timeZone =
+            TransactionDate.timeZone
+
+        return date.formatted(format)
+    }
+
     // MARK: - Rows
 
     private func transactionRow(_ transaction: Transaction) -> some View {
