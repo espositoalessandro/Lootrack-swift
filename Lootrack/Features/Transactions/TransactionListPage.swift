@@ -33,6 +33,9 @@ struct TransactionListView: View {
     @Environment(\.undoManager)
     private var undoManager
 
+    @Environment(\.locale)
+    private var locale
+
     @Environment(SyncCoordinator.self)
     private var syncCoordinator
 
@@ -156,10 +159,7 @@ struct TransactionListView: View {
         .toolbar {
             if let toolbarMonth {
                 ToolbarItem(placement: .title) {
-                    Text(toolbarMonth.formatted(.dateTime
-                            .month(.wide)
-                            .year()
-                            .timeZone(TransactionDate.timeZone)))
+                    Text(formattedMonth(toolbarMonth))
                 }
             }
 
@@ -271,10 +271,7 @@ struct TransactionListView: View {
     // MARK: - Headers
 
     private func monthHeader(_ month: TransactionMonthGroup) -> some View {
-        Text(month.date.formatted(.dateTime
-                .month(.wide)
-                .year()
-                .timeZone(TransactionDate.timeZone)))
+        Text(formattedMonth(month.date))
             .font(.title2.bold())
             .foregroundStyle(.primary)
             .padding(.horizontal, 32)
@@ -285,16 +282,46 @@ struct TransactionListView: View {
     private func dayHeader(_ day: TransactionDayGroup,
                            isFirst: Bool) -> some View
     {
-        Text(day.date.formatted(.dateTime
-                .weekday(.wide)
-                .day()
-                .month(.abbreviated)
-                .timeZone(TransactionDate.timeZone)))
+        Text(formattedDay(day.date))
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 32)
             .padding(.top, isFirst ? 0 : 14)
             .padding(.bottom, 10)
+    }
+
+    private func formattedMonth(_ date: Date) -> String {
+        formattedDate(date,
+                      template: "MMMM y")
+    }
+
+    private func formattedDay(_ date: Date) -> String {
+        formattedDate(date,
+                      template: "EEEE d MMM")
+    }
+
+    private func formattedDate(_ date: Date,
+                               template: String) -> String
+    {
+        let formatter =
+            DateFormatter()
+
+        formatter.locale =
+            locale
+
+        formatter.calendar =
+            TransactionDate.calendar
+
+        formatter.timeZone =
+            TransactionDate.timeZone
+
+        formatter.setLocalizedDateFormatFromTemplate(
+            template
+        )
+
+        return formatter.string(
+            from: date
+        )
     }
 
     // MARK: - Rows
