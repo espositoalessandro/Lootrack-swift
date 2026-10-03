@@ -84,11 +84,9 @@ struct SyncSettingsView: View {
         }
         .navigationTitle("Sync")
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Replace Remote Data?",
-                            isPresented:
-                            $showingResetConfirmation,
-                            titleVisibility:
-                            .visible)
+        .alert("Replace Remote Data?",
+               isPresented:
+               $showingResetConfirmation)
         {
             Button("Replace Remote",
                    role: .destructive)
