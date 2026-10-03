@@ -236,6 +236,19 @@ final class GoogleSheetsProvider: SyncProvider {
         }
     }
 
+    func replaceRemote(with snapshot: RemoteSyncSnapshot) async throws {
+        do {
+            let spreadsheetId = try selectedSpreadsheetId()
+            let accessToken = try await authorization.accessToken()
+
+            try await client.replaceRemote(snapshot,
+                                           accessToken: accessToken,
+                                           spreadsheetId: spreadsheetId)
+        } catch {
+            throw mapError(error)
+        }
+    }
+
     private func selectedSpreadsheetId() throws -> String {
         guard let spreadsheetId = settings.spreadsheetId?.trimmingCharacters(in: .whitespacesAndNewlines),
               !spreadsheetId.isEmpty

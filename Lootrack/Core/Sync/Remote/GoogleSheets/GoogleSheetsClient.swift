@@ -335,6 +335,171 @@ final class GoogleSheetsClient {
                 .values))
     }
 
+    // MARK: - Remote replacement
+
+    func replaceRemote(_ snapshot: RemoteSyncSnapshot,
+                       accessToken: String,
+                       spreadsheetId: String) async throws
+    {
+        let currentSnapshot =
+            try await readSnapshot(accessToken:
+                accessToken,
+                spreadsheetId:
+                spreadsheetId)
+
+        let transactionRecords =
+            snapshot.records
+                .filter {
+                    $0.entityType
+                        == .transaction
+                }
+                .sorted {
+                    $0.entityId.uuidString
+                        < $1.entityId
+                        .uuidString
+                }
+
+        let categoryRecords =
+            snapshot.records
+                .filter {
+                    $0.entityType
+                        == .category
+                }
+                .sorted {
+                    $0.entityId.uuidString
+                        < $1.entityId
+                        .uuidString
+                }
+
+        let subcategoryRecords =
+            snapshot.records
+                .filter {
+                    $0.entityType
+                        == .subcategory
+                }
+                .sorted {
+                    $0.entityId.uuidString
+                        < $1.entityId
+                        .uuidString
+                }
+
+        var transactionValues =
+            try buildTransactionSheetValues(transactionRecords)
+
+        var categoryValues =
+            try buildCategorySheetValues(categoryRecords)
+
+        var subcategoryValues =
+            try buildSubcategorySheetValues(subcategoryRecords)
+
+        let currentTransactionCount =
+            currentSnapshot.records
+                .filter {
+                    $0.entityType
+                        == .transaction
+                }
+                .count
+
+        let currentCategoryCount =
+            currentSnapshot.records
+                .filter {
+                    $0.entityType
+                        == .category
+                }
+                .count
+
+        let currentSubcategoryCount =
+            currentSnapshot.records
+                .filter {
+                    $0.entityType
+                        == .subcategory
+                }
+                .count
+
+        pad(&transactionValues,
+            toRowCount:
+            currentTransactionCount + 1,
+            columnCount: Self.transactionHeaders.count)
+
+        pad(&categoryValues,
+            toRowCount:
+            currentCategoryCount + 1,
+            columnCount: Self.categoryHeaders.count)
+
+        pad(&subcategoryValues,
+            toRowCount:
+            currentSubcategoryCount + 1,
+            columnCount: Self.subcategoryHeaders.count)
+
+        guard let url =
+            URL(string:
+                "\(Self.baseURL)/\(spreadsheetId)/values:batchUpdate")
+        else {
+            throw GoogleSheetsClientError
+                .invalidURL
+        }
+
+        let body =
+            BatchUpdateRequest(valueInputOption:
+                "RAW",
+                includeValuesInResponse:
+                false,
+                data: [
+                    WriteValueRange(range:
+                        "Transactions!A1:M\(transactionValues.count)",
+                        majorDimension:
+                        "ROWS",
+                        values:
+                        transactionValues),
+                    WriteValueRange(range:
+                        "Categories!A1:I\(categoryValues.count)",
+                        majorDimension:
+                        "ROWS",
+                        values:
+                        categoryValues),
+                    WriteValueRange(range:
+                        "Subcategories!A1:H\(subcategoryValues.count)",
+                        majorDimension:
+                        "ROWS",
+                        values:
+                        subcategoryValues),
+                ])
+
+        let encodedBody =
+            try JSONEncoder()
+                .encode(body)
+
+        let _: BatchUpdateResponse =
+            try await request(url: url,
+                              accessToken:
+                              accessToken,
+                              method: "POST",
+                              body:
+                              encodedBody)
+    }
+
+    private func pad(_ values: inout [[Cell]],
+                     toRowCount rowCount: Int,
+                     columnCount: Int)
+    {
+        guard values.count
+            < rowCount
+        else {
+            return
+        }
+
+        let blankRow =
+            Array(repeating:
+                Cell.string(""),
+                count:
+                columnCount)
+
+        values.append(contentsOf:
+            repeatElement(blankRow,
+                          count:
+                          rowCount - values.count))
+    }
+
     // MARK: - Mutation handling
 
     private func matchesExpectedRemote(_ current:

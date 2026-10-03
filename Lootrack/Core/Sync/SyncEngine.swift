@@ -27,6 +27,15 @@ final class SyncEngine {
         self.reconciler = reconciler
     }
 
+    func resetRemoteFromLocal() async throws {
+        let snapshot =
+            try localStore
+                .remoteSnapshotForReset()
+
+        try await provider
+            .replaceRemote(with: snapshot)
+    }
+
     func synchronize() async throws {
         let localSnapshot = try localStore.getSnapshot()
 

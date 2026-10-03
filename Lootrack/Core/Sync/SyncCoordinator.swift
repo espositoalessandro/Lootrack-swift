@@ -18,6 +18,10 @@ final class SyncCoordinator {
 
     var conflicts: [SyncConflictCandidate] = []
 
+    var isConfigured: Bool {
+        syncEngine.isConfigured
+    }
+
     var isSyncing: Bool {
         if case .syncing = status {
             return true
@@ -62,6 +66,73 @@ final class SyncCoordinator {
 
         syncTask = task
         await task.value
+    }
+
+    func resetRemoteFromLocal() async {
+        guard networkMonitor.status == .online
+        else {
+            status = .failed(.connectionUnavailable)
+            return
+        }
+
+        guard syncEngine.isConfigured
+        else {
+            status = .failed(.configurationRequired)
+            return
+        }
+
+        guard conflicts.isEmpty
+        else {
+            return
+        }
+
+        if let syncTask {
+            await syncTask.value
+            return
+        }
+
+        let task =
+            Task { @MainActor in
+                await performRemoteReset()
+            }
+
+        syncTask = task
+        await task.value
+    }
+
+    private func performRemoteReset() async {
+        lastSyncAttempt = .now
+        status = .syncing
+
+        defer {
+            syncTask = nil
+        }
+
+        do {
+            try await syncEngine
+                .resetRemoteFromLocal()
+
+            let now =
+                Date.now
+
+            lastSuccessfulSync =
+                now
+
+            status =
+                .succeeded(now)
+        } catch {
+            let syncError =
+                mapError(error)
+
+            status =
+                .failed(syncError)
+
+            let errorDescription =
+                String(describing: error)
+
+            AppLogger.sync
+                .error("Remote reset failed: \(errorDescription, privacy: .public)")
+        }
     }
 
     private func performSynchronization(trigger: SyncTrigger) async {

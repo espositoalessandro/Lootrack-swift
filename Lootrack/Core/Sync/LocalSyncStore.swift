@@ -30,6 +30,10 @@ nonisolated enum LocalSyncStoreError:
     case invalidRemoteUpsert(SyncEntityKey)
 
     case invalidRemoteDelete(SyncEntityKey)
+
+    case pendingMutations
+
+    case missingSyncMetadata(SyncEntityKey)
 }
 
 @MainActor
@@ -82,6 +86,55 @@ final class LocalSyncStore {
             metadata: metadata,
             mutations:
             mutations.map(MutationDTO.init))
+    }
+
+    func remoteSnapshotForReset() throws -> RemoteSyncSnapshot {
+        let snapshot =
+            try getSnapshot()
+
+        guard snapshot.mutations.isEmpty
+        else {
+            throw LocalSyncStoreError
+                .pendingMutations
+        }
+
+        let payloads =
+            snapshot.transactions.map {
+                EntitySnapshot.transaction($0)
+            }
+            + snapshot.categories.map {
+                EntitySnapshot.category($0)
+            }
+            + snapshot.subcategories.map {
+                EntitySnapshot.subcategory($0)
+            }
+
+        let records =
+            try payloads.map { payload in
+                let key =
+                    payload.key
+
+                guard let metadata =
+                    snapshot.metadata[key],
+                    let mutationId =
+                    metadata.lastMutationId
+                else {
+                    throw LocalSyncStoreError
+                        .missingSyncMetadata(key)
+                }
+
+                return RemoteSyncRecord(operation:
+                    operation(for: payload),
+                    revision:
+                    metadata.revision,
+                    mutationId:
+                    mutationId,
+                    payload:
+                    payload)
+            }
+
+        return RemoteSyncSnapshot(records:
+            records)
     }
 
     func applyChanges(_ changes: LocalSyncChanges) throws {
@@ -318,6 +371,25 @@ final class LocalSyncStore {
         modelContext.insert(subcategory)
 
         subcategoriesById[snapshot.id] = subcategory
+    }
+
+    private func operation(for snapshot: EntitySnapshot) -> SyncOperation {
+        switch snapshot {
+        case let .transaction(transaction):
+            transaction.deletedAt == nil
+                ? .upsert
+                : .delete
+
+        case let .category(category):
+            category.deletedAt == nil
+                ? .upsert
+                : .delete
+
+        case let .subcategory(subcategory):
+            subcategory.deletedAt == nil
+                ? .upsert
+                : .delete
+        }
     }
 
     private func applyMetadata(_ record: RemoteSyncRecord,
