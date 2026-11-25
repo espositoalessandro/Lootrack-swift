@@ -2,53 +2,62 @@ import SwiftData
 import SwiftUI
 
 struct Dashboard: View {
-    @Environment(SyncCoordinator.self)
-    private var syncCoordinator
-    
-    @Query(TransactionQueries.active)
-    private var transactions: [Transaction]
-    
-    @State
-    private var allWidgets = DashboardWidgetDefinition.librarySamples
-    
-    @State
-    private var widgets = DashboardWidgetDefinition.samples
-    
-    @State
-    private var isWidgetPickerPresented = false
-    
+    @Environment(SyncCoordinator.self) private var syncCoordinator
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
+
+    @Query(TransactionQueries.active) private var transactions: [Transaction]
+    @Query(CategoryQueries.activeByName) private var categories: [Category]
+    @Query private var records: [DashboardWidgetRecord]
+    @Query(sort: \DashboardWidgetPlacement.position) private var placements: [DashboardWidgetPlacement]
+
+    @State private var today = TransactionDate.today()
+    @State private var isWidgetPickerPresented = false
+    @State private var showSaveError = false
     private let evaluator = DashboardWidgetEvaluator()
-    
-    private var unusedWidgets: [DashboardWidgetDefinition] {
-        let dashboardWidgetIDs = Set(widgets.map(\.id))
-        return allWidgets.filter { !dashboardWidgetIDs.contains($0.id) }
-    }
-    
+
     var body: some View {
+        let library = records.compactMap(\.widget)
+        let widgetsByID = Dictionary(uniqueKeysWithValues: library.map { ($0.id, $0) })
+        let widgets = placements.compactMap { widgetsByID[$0.widgetID] }
+        let activity = DashboardActivity(transactions: transactions, categories: categories, now: today)
+
         ScrollView {
-            DashboardGridLayout(spans: widgets.map(\.width.rawValue), horizontalSpacing: 12, verticalSpacing: 12) {
-                ForEach(widgets) { widget in
-                    DashboardWidgetCard(widget: widget, result: evaluator.evaluate(widget, transactions: transactions))
-                        .contextMenu {
-                            Button {
-                                removeWidget(widget)
-                            } label: {
-                                Label("Remove from Dashboard", systemImage: "minus.circle")
-                            }
-                        }
+            if widgets.isEmpty {
+                ContentUnavailableView {
+                    Label("No Dashboard Widgets", systemImage: "rectangle.3.group")
+                } actions: {
+                    Button("Add Widget") {
+                        isWidgetPickerPresented = true
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .reorderable()
+                .padding(.top, 40)
+            } else {
+                DashboardGridLayout(spans: widgets.map(\.width.rawValue)) {
+                    ForEach(widgets) { widget in
+                        card(for: widget, activity: activity)
+                            .contextMenu {
+                                Button {
+                                    removeWidget(widget)
+                                } label: {
+                                    Label("Remove from Dashboard", systemImage: "minus.circle")
+                                }
+                            }
+                    }
+                    .reorderable()
+                }
+                .reorderContainer(for: DashboardWidget.self) { difference in
+                    apply(difference)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
             }
-            .reorderContainer(for: DashboardWidgetDefinition.self) { difference in
-                apply(difference)
-            }
-            .padding(.horizontal)
-            .padding(.bottom)
         }
         .refreshable {
             await syncCoordinator.synchronize()
         }
-        .navigationTitle("Lootrack")
+        .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -59,70 +68,100 @@ struct Dashboard: View {
                 .accessibilityLabel("Add Widget")
             }
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                today = TransactionDate.today()
+            }
+        }
         .sheet(isPresented: $isWidgetPickerPresented) {
+            let placedIDs = Set(placements.map(\.widgetID))
             AddDashboardWidgetSheet(
-                widgets: unusedWidgets,
+                widgets: library.filter { !placedIDs.contains($0.id) },
                 transactions: transactions,
                 onAdd: addWidget,
-                onCreateNumeric: createNumericWidget,
-                onCreateChart: createChartWidget
+                onCreateNumeric: {
+                    createWidget(.numericPlaceholder(index: nextCustomWidgetIndex))
+                },
+                onCreateChart: {
+                    createWidget(.chartPlaceholder(index: nextCustomWidgetIndex))
+                }
             )
         }
-    }
-    
-    private func addWidget(_ widget: DashboardWidgetDefinition) {
-        guard !widgets.contains(where: { $0.id == widget.id }) else {
-            return
+        .alert("Dashboard Change Failed", isPresented: $showSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("The dashboard change could not be saved. Try again.")
         }
-        
+    }
+
+    private var nextCustomWidgetIndex: Int {
+        records.count - BuiltInDashboardWidget.allCases.count + 1
+    }
+
+    @ViewBuilder
+    private func card(for widget: DashboardWidget, activity: DashboardActivity) -> some View {
+        switch widget {
+        case .builtIn(let builtIn):
+            BuiltInDashboardWidgetCard(widget: builtIn, activity: activity)
+        case .custom(let definition):
+            DashboardWidgetCard(widget: definition, result: evaluator.evaluate(definition, transactions: transactions))
+        }
+    }
+
+    private func addWidget(_ widget: DashboardWidget) {
+        guard !placements.contains(where: { $0.widgetID == widget.id }) else { return }
+
+        let nextPosition = (placements.last?.position ?? -1) + 1
         withAnimation {
-            widgets.append(widget)
+            modelContext.insert(DashboardWidgetPlacement(widgetID: widget.id, position: nextPosition))
+            saveChanges()
         }
     }
-    
-    private func removeWidget(_ widget: DashboardWidgetDefinition) {
+
+    private func removeWidget(_ widget: DashboardWidget) {
+        guard let placement = placements.first(where: { $0.widgetID == widget.id }) else { return }
+
         withAnimation {
-            widgets.removeAll { $0.id == widget.id }
+            modelContext.delete(placement)
+            saveChanges()
         }
     }
-    
-    private func createNumericWidget() {
-        let widget = DashboardWidgetDefinition.numericPlaceholder(index: allWidgets.count + 1)
-        
-        withAnimation {
-            allWidgets.append(widget)
+
+    private func createWidget(_ definition: DashboardWidgetDefinition) {
+        do {
+            modelContext.insert(try DashboardWidgetRecord(definition))
+            saveChanges()
+        } catch {
+            showSaveError = true
         }
     }
-    
-    private func createChartWidget() {
-        let widget = DashboardWidgetDefinition.chartPlaceholder(index: allWidgets.count + 1)
-        
-        withAnimation {
-            allWidgets.append(widget)
-        }
-    }
-    
-    private func apply(
-        _ difference: ReorderDifference<DashboardWidgetDefinition.ID, ReorderableSingleCollectionIdentifier>
-    ) {
-        let sourceIDs = difference.sources
-        let movedWidgets = sourceIDs.compactMap { sourceID in
-            widgets.first { $0.id == sourceID }
-        }
-        
-        widgets.removeAll { sourceIDs.contains($0.id) }
-        
+
+    private func apply(_ difference: ReorderDifference<DashboardWidget.ID, ReorderableSingleCollectionIdentifier>) {
+        let sourceIDs = Set(difference.sources)
+        let moved = difference.sources.compactMap { id in placements.first { $0.widgetID == id } }
+        guard !moved.isEmpty else { return }
+
+        var reordered = placements.filter { !sourceIDs.contains($0.widgetID) }
         switch difference.destination.position {
         case .before(let destinationID):
-            guard let destinationIndex = widgets.firstIndex(where: { $0.id == destinationID }) else {
-                widgets.append(contentsOf: movedWidgets)
-                return
-            }
-            
-            widgets.insert(contentsOf: movedWidgets, at: destinationIndex)
-            
+            let index = reordered.firstIndex { $0.widgetID == destinationID } ?? reordered.endIndex
+            reordered.insert(contentsOf: moved, at: index)
         case .end:
-            widgets.append(contentsOf: movedWidgets)
+            reordered.append(contentsOf: moved)
+        }
+
+        for (position, placement) in reordered.enumerated() where placement.position != position {
+            placement.position = position
+        }
+        saveChanges()
+    }
+
+    private func saveChanges() {
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
         }
     }
 }

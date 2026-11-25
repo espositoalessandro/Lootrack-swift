@@ -32,11 +32,14 @@ struct LootrackApp: App {
                 Subcategory.self,
                 Tag.self,
                 Mutation.self,
-                EntitySyncState.self
+                    EntitySyncState.self,
+                    DashboardWidgetRecord.self,
+                    DashboardWidgetPlacement.self
             )
 
             try TransactionDateStorageMigration
                 .runIfNeeded(in: modelContainer.mainContext)
+            try DashboardWidgetRecord.installBuiltIns(in: modelContainer.mainContext)
 
             #if DEBUG
                 SwiftDataDebugLogger.shared
