@@ -160,9 +160,19 @@ private struct SettingsAwareRootView: View {
     @Environment(AppSettings.self)
     private var settings
 
+    @Environment(GoogleAuthorizationService.self)
+    private var googleAuthorizationService
+
+    @Environment(NetworkMonitor.self)
+    private var networkMonitor
+
     var body: some View {
         RootView()
             .environment(\.locale, settings.resolvedLocale)
+            .task(id: networkMonitor.status == .online) {
+                guard networkMonitor.status == .online else { return }
+                await googleAuthorizationService.restoreSession()
+            }
     }
 }
 

@@ -4,39 +4,55 @@ import SwiftUI
 struct BuiltInDashboardWidgetCard: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.locale) private var locale
-    @State private var selectedMonth: Date?
-    @State private var categoryType: TransactionType = .expense
     @State private var showAllCategories = false
 
     let widget: BuiltInDashboardWidget
     let activity: DashboardActivity
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label {
-                Text(widget.title)
-            } icon: {
-                Image(systemName: widget.symbol)
-                    .foregroundStyle(.tint)
-            }
-            .font(.headline)
-            .accessibilityAddTraits(.isHeader)
-
+        Group {
             switch widget {
-            case .monthlyNet: monthlyNet
-            case .spendingByCategory: spendingByCategory
-            case .monthlyBalanceTrend: balanceTrend
-            case .monthlyAverages: monthlyAverages
-            case .categoryAverages: categoryAverages
+            case .monthlyNet:
+                monthCard { month in monthlyNet(for: month) }
+            case .spendingByCategory:
+                monthCard { month in spendingByCategory(for: month) }
+            case .monthlyBalanceTrend:
+                staticCard { balanceTrend }
+            case .monthlyAverages:
+                staticCard { monthlyAverages }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.thinMaterial, in: .rect(cornerRadius: 20))
     }
 
-    private var month: Date {
-        min(max(selectedMonth ?? activity.currentMonth, activity.firstMonth), activity.lastMonth)
+    private var heading: some View {
+        Label {
+            Text(widget.title)
+        } icon: {
+            Image(systemName: widget.symbol)
+                .foregroundStyle(.tint)
+        }
+        .font(.headline)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func monthCard<Content: View>(@ViewBuilder content: @escaping (Date) -> Content) -> some View {
+        MonthNavigableWidget(
+            calendar: TransactionDate.calendar,
+            availableMonths: activity.firstMonth ... activity.lastMonth,
+            defaultMonth: activity.currentMonth,
+            header: { heading },
+            content: content
+        )
+    }
+
+    private func staticCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            heading
+            content()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var monthFormat: Date.FormatStyle {
@@ -46,41 +62,10 @@ struct BuiltInDashboardWidgetCard: View {
         return style
     }
 
-    private var monthPicker: some View {
-        HStack(spacing: 2) {
-            monthButton(-1, label: "Previous Month", icon: "chevron.backward")
-            Text(month, format: monthFormat)
-                .font(.subheadline.weight(.semibold))
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .accessibilityAddTraits(.updatesFrequently)
-            monthButton(1, label: "Next Month", icon: "chevron.forward")
-        }
-        .background(.quaternary, in: .rect(cornerRadius: 12))
-    }
-
-    private func monthButton(_ offset: Int, label: LocalizedStringKey, icon: String) -> some View {
-        let destination = activity.month(byAdding: offset, to: month)
-
-        return Button {
-            selectedMonth = destination
-        } label: {
-            Image(systemName: icon)
-                .font(.footnote.weight(.semibold))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(destination == nil ? Color.secondary : Color.accentColor)
-        .disabled(destination == nil)
-        .accessibilityLabel(Text(label))
-    }
-
-    private var monthlyNet: some View {
+    private func monthlyNet(for month: Date) -> some View {
         let totals = activity.totals(for: month)
 
         return VStack(alignment: .leading, spacing: 12) {
-            monthPicker
             if activity.hasTransactions(in: month) {
                 headlineAmount(totals.net)
                     .accessibilityLabel(Text("Net"))
@@ -94,11 +79,10 @@ struct BuiltInDashboardWidgetCard: View {
         }
     }
 
-    private var spendingByCategory: some View {
+    private func spendingByCategory(for month: Date) -> some View {
         let rows = activity.spendingByCategory(in: month)
 
         return VStack(alignment: .leading, spacing: 12) {
-            monthPicker
             if rows.isEmpty {
                 emptyMessage("No expenses this month.")
             } else {
@@ -183,25 +167,6 @@ struct BuiltInDashboardWidgetCard: View {
         }
     }
 
-    private var categoryAverages: some View {
-        let rows = activity.averageByCategory(for: categoryType)
-
-        return VStack(alignment: .leading, spacing: 12) {
-            Picker("Transaction Type", selection: $categoryType) {
-                Text("Expenses").tag(TransactionType.expense)
-                Text("Income").tag(TransactionType.income)
-            }
-            .pickerStyle(.segmented)
-
-            if rows.isEmpty {
-                emptyMessage("No transactions for this type.")
-            } else {
-                monthCountLabel
-                categoryRows(rows)
-            }
-        }
-    }
-
     private var monthCountLabel: some View {
         Text("Based on \(activity.loggedMonthCount) logged months")
             .font(.subheadline)
@@ -231,43 +196,66 @@ struct BuiltInDashboardWidgetCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func categoryRows(_ rows: [DashboardActivity.CategoryAmount], total: Int? = nil) -> some View {
+    private func categoryRows(_ rows: [DashboardActivity.CategorySpending], total: Int) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(rows.prefix(4)) { row in
-                categoryRow(row, total: total)
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                ForEach(showAllCategories ? rows[...] : rows.prefix(4)) { row in
+                    categoryRow(row)
+                    if total > 0, row.currentCents > 0 {
+                        ProgressView(value: min(Double(row.currentCents) / Double(total), 1))
+                            .padding(.bottom, 4)
+                            .accessibilityHidden(true)
+                    }
+                }
             }
             if rows.count > 4 {
-                DisclosureGroup("More Categories", isExpanded: $showAllCategories) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(rows.dropFirst(4)) { row in
-                            categoryRow(row, total: total)
+                Button {
+                    withAnimation { showAllCategories.toggle() }
+                } label: {
+                    HStack {
+                        if showAllCategories {
+                            Text("Fewer Categories")
+                        } else {
+                            Text("More Categories")
                         }
+                        Spacer()
+                        Image(systemName: showAllCategories ? "chevron.up" : "chevron.down")
+                            .accessibilityHidden(true)
                     }
-                    .padding(.top, 8)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .font(.subheadline)
+                .foregroundStyle(.tint)
             }
         }
     }
 
-    private func categoryRow(_ row: DashboardActivity.CategoryAmount, total: Int?) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            LabeledContent {
-                Text(settings.formattedAmount(row.cents))
-                    .monospacedDigit()
-            } label: {
+    private func categoryRow(_ row: DashboardActivity.CategorySpending) -> some View {
+        let average = settings.formattedAmount(row.averageCents)
+
+        return GridRow {
+            Group {
                 if let name = row.name {
                     Text(name)
                 } else {
                     Text("Uncategorized")
                 }
             }
-            .font(.subheadline)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if let total, total > 0 {
-                ProgressView(value: min(max(Double(row.cents) / Double(total), 0), 1))
-                    .accessibilityHidden(true)
-            }
+            Text(settings.formattedAmount(row.currentCents))
+                .multilineTextAlignment(.trailing)
+                .gridColumnAlignment(.trailing)
+
+            Text("\(average) avg")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+                .gridColumnAlignment(.trailing)
+                .accessibilityLabel(Text("Monthly average \(average)"))
         }
+        .font(.subheadline)
+        .monospacedDigit()
     }
 }

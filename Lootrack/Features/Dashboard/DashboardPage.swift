@@ -54,9 +54,7 @@ struct Dashboard: View {
                 .padding(.bottom)
             }
         }
-        .refreshable {
-            await syncCoordinator.synchronize()
-        }
+        .syncRefreshable(using: syncCoordinator)
         .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -95,7 +93,10 @@ struct Dashboard: View {
     }
 
     private var nextCustomWidgetIndex: Int {
-        records.count - BuiltInDashboardWidget.allCases.count + 1
+        records.count { record in
+            if case .custom? = record.widget { return true }
+            return false
+        } + 1
     }
 
     @ViewBuilder

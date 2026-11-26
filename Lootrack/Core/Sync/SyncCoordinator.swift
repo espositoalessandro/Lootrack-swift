@@ -12,14 +12,15 @@ final class SyncCoordinator {
     private var syncTask: Task<Void, Never>?
 
     private(set) var status: SyncStatus = .idle
+    private(set) var synchronizationError: SyncError?
     private(set) var lastSuccessfulSync: Date?
 
     private(set) var lastSyncAttempt: Date?
 
     var conflicts: [SyncConflictCandidate] = []
 
-    var isConfigured: Bool {
-        syncEngine.isConfigured
+    var isProviderReady: Bool {
+        syncEngine.isProviderReady
     }
 
     var isSyncing: Bool {
@@ -40,23 +41,19 @@ final class SyncCoordinator {
     }
 
     func synchronize(trigger: SyncTrigger = .manual) async {
-        guard networkMonitor.status == .online else {
-            return
-        }
-
-        guard syncEngine.isConfigured else {
-            if trigger == .manual {
-                status = .failed(.configurationRequired)
-            }
-            return
-        }
-
-        guard conflicts.isEmpty else {
+        guard isProviderReady, conflicts.isEmpty else {
             return
         }
 
         if let syncTask {
             await syncTask.value
+            return
+        }
+
+        guard networkMonitor.status == .online else {
+            if trigger == .manual {
+                recordSynchronizationFailure(.connectionUnavailable)
+            }
             return
         }
 
@@ -68,6 +65,10 @@ final class SyncCoordinator {
         await task.value
     }
 
+    func dismissSynchronizationError() {
+        synchronizationError = nil
+    }
+
     func resetRemoteFromLocal() async {
         guard networkMonitor.status == .online
         else {
@@ -75,7 +76,7 @@ final class SyncCoordinator {
             return
         }
 
-        guard syncEngine.isConfigured
+        guard isProviderReady
         else {
             status = .failed(.configurationRequired)
             return
@@ -149,20 +150,24 @@ final class SyncCoordinator {
 
             let now = Date.now
             lastSuccessfulSync = now
+            synchronizationError = nil
             status = .succeeded(now)
         } catch let error as SyncRunConflictError {
             conflicts = error.conflicts
+            synchronizationError = nil
             status = .waitingForConflictResolution
         } catch {
-            conflicts = []
-
-            let syncError = mapError(error)
-            status = .failed(syncError)
+            recordSynchronizationFailure(mapError(error))
 
             let errorDescription = String(describing: error)
             let triggerName = trigger.rawValue
             AppLogger.sync.error("Synchronization failed [\(triggerName, privacy: .public)]: \(errorDescription, privacy: .public)")
         }
+    }
+
+    private func recordSynchronizationFailure(_ error: SyncError) {
+        status = .failed(error)
+        synchronizationError = error
     }
 
     func resolveConflict(_ conflict: SyncConflictCandidate, using resolution: ConflictResolution) {
@@ -246,7 +251,7 @@ final class SyncCoordinator {
     
     private func synchronizeIfStale(trigger: SyncTrigger, interval: TimeInterval) async {
         guard networkMonitor.status == .online,
-              syncEngine.isConfigured,
+              isProviderReady,
               conflicts.isEmpty
                 else {
             return
@@ -263,7 +268,7 @@ final class SyncCoordinator {
     
     private func timeUntilNextAutomaticSync(interval: TimeInterval) -> TimeInterval {
         guard networkMonitor.status == .online,
-              syncEngine.isConfigured,
+              isProviderReady,
               conflicts.isEmpty
                 else {
             return interval

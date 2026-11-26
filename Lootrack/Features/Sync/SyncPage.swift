@@ -1,6 +1,25 @@
 import SwiftData
 import SwiftUI
 
+extension View {
+    @ViewBuilder
+    func syncRefreshable(using coordinator: SyncCoordinator,
+                         waitForRelease: @escaping @MainActor @Sendable () async -> Bool = { true },
+                         onCompletion: @escaping @MainActor @Sendable () -> Void = {}) -> some View
+    {
+        if coordinator.isProviderReady {
+            refreshable {
+                guard await waitForRelease(), !Task.isCancelled else { return }
+
+                await coordinator.synchronize()
+                onCompletion()
+            }
+        } else {
+            self
+        }
+    }
+}
+
 enum PendingMutationKind {
     case created
     case updated
@@ -147,15 +166,12 @@ struct SyncView: View {
         Section("Status") {
             HStack {
                 Text("Synchronization")
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    Image(systemName: syncStatusIcon)
-                    Text(syncStatusName)
-                }
-                .foregroundStyle(syncStatusColor)
+                Spacer(minLength: 12)
+                synchronizationStatusLabel
+                    .multilineTextAlignment(.trailing)
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
             
             LabeledContent("Last Sync") {
                 if let lastSuccessfulSync = syncCoordinator.lastSuccessfulSync {
@@ -197,12 +213,15 @@ struct SyncView: View {
                 }
             }
             .disabled(
-                syncCoordinator.isSyncing
+                !syncCoordinator.isProviderReady
+                    || syncCoordinator.isSyncing
                     || networkMonitor.status != .online
                     || !syncCoordinator.conflicts.isEmpty
             )
         } footer: {
-            if networkMonitor.status == .offline {
+            if !syncCoordinator.isProviderReady {
+                Text("Connect a provider and select a destination to enable sync.")
+            } else if networkMonitor.status == .offline {
                 Text(
                     "Synchronization is unavailable while offline. Your changes are saved locally."
                 )
@@ -338,48 +357,20 @@ struct SyncView: View {
         }
     }
 
-    private var syncStatusName: String {
-        switch syncCoordinator.status {
-        case .idle:
-            String(localized: "Ready")
-        case .syncing:
-            String(localized: "Synchronizing…")
-        case .succeeded:
-            String(localized: "Up to date")
-        case .waitingForConflictResolution:
-            String(localized: "Needs attention")
-        case .failed:
-            String(localized: "Failed")
-        }
-    }
-
-    private var syncStatusIcon: String {
-        switch syncCoordinator.status {
-        case .idle:
-            "circle"
-        case .syncing:
-            "arrow.triangle.2.circlepath"
-        case .succeeded:
-            "checkmark.circle.fill"
-        case .waitingForConflictResolution:
-            "exclamationmark.triangle.fill"
-        case .failed:
-            "xmark.circle.fill"
-        }
-    }
-
-    private var syncStatusColor: Color {
-        switch syncCoordinator.status {
-        case .idle:
-            .secondary
-        case .syncing:
-            .accentColor
-        case .succeeded:
-            .green
-        case .waitingForConflictResolution:
-            .orange
-        case .failed:
-            .red
+    @ViewBuilder
+    private var synchronizationStatusLabel: some View {
+        if !syncCoordinator.conflicts.isEmpty {
+            Label("Conflict", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+        } else if mutations.isEmpty,
+                  syncCoordinator.isProviderReady,
+                  case .succeeded = syncCoordinator.status
+        {
+            Label("Up to date", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        } else {
+            Label("Not synchronized", systemImage: "clock.fill")
+                .foregroundStyle(.orange)
         }
     }
 

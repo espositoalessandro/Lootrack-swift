@@ -70,10 +70,7 @@ struct CategoryListView: View {
             .padding(.bottom,
                      16)
         }
-        .refreshable {
-            await syncCoordinator
-                .synchronize()
-        }
+        .syncRefreshable(using: syncCoordinator)
         .swipeActionsContainer()
         .background(Color(uiColor:
             .systemGroupedBackground))

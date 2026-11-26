@@ -1,11 +1,16 @@
 import SwiftData
 import SwiftUI
 
-private enum TransactionScrollTarget: Hashable {
+private nonisolated enum TransactionScrollTarget: Hashable, Sendable {
     case top
     case monthHeader(Date)
     case day(Date, month: Date)
     case transaction(UUID, month: Date)
+}
+
+private struct TransactionScrollGeometry: Equatable {
+    let offsetY: CGFloat
+    let topInset: CGFloat
 }
 
 struct TransactionListView: View {
@@ -22,7 +27,16 @@ struct TransactionListView: View {
     private var searchQuery = ""
 
     @State
-    private var scrolledTarget: TransactionScrollTarget?
+    private var listPosition = ScrollPosition(idType: TransactionScrollTarget.self)
+
+    @State
+    private var isTrackingScroll = false
+
+    @State
+    private var pullRelease: AsyncStream<Void>.Continuation?
+
+    @State
+    private var refreshDidFinish = false
 
     @State
     private var error: TransactionServiceError?
@@ -88,6 +102,10 @@ struct TransactionListView: View {
         TransactionListGrouping.groups(from: filteredTransactions)
     }
 
+    private var scrolledTarget: TransactionScrollTarget? {
+        listPosition.viewID(type: TransactionScrollTarget.self)
+    }
+
     private var toolbarMonth: Date? {
         guard let scrolledTarget else {
             return nil
@@ -148,10 +166,28 @@ struct TransactionListView: View {
             .scrollTargetLayout()
             .padding(.bottom, 16)
         }
-        .refreshable {
-            await syncCoordinator.synchronize()
+        .syncRefreshable(using: syncCoordinator, waitForRelease: waitForPullRelease) {
+            refreshDidFinish = true
         }
-        .scrollPosition(id: $scrolledTarget, anchor: .top)
+        .scrollPosition($listPosition, anchor: .top)
+        .onScrollPhaseChange { _, phase in
+            isTrackingScroll = phase == .tracking || phase == .interacting
+            if isTrackingScroll {
+                refreshDidFinish = false
+            } else {
+                pullRelease?.yield(())
+                pullRelease?.finish()
+            }
+        }
+        .onDisappear {
+            pullRelease?.finish()
+        }
+        .onScrollGeometryChange(for: TransactionScrollGeometry.self) { geometry in
+            TransactionScrollGeometry(offsetY: geometry.contentOffset.y,
+                                      topInset: geometry.contentInsets.top)
+        } action: { previous, current in
+            restoreTopAfterRefresh(previous: previous, current: current)
+        }
         .swipeActionsContainer()
         .background(Color(uiColor: .systemGroupedBackground))
         .scrollDismissesKeyboard(.interactively)
@@ -193,6 +229,32 @@ struct TransactionListView: View {
             if let recoverySuggestion = error.recoverySuggestion {
                 Text(recoverySuggestion)
             }
+        }
+    }
+
+    private func waitForPullRelease() async -> Bool {
+        guard isTrackingScroll else { return true }
+
+        // The native control can begin spinning while the user is still dragging.
+        let (releases, continuation) = AsyncStream<Void>.makeStream()
+        pullRelease = continuation
+        defer { pullRelease = nil }
+
+        var iterator = releases.makeAsyncIterator()
+        return await iterator.next() != nil
+    }
+
+    private func restoreTopAfterRefresh(previous: TransactionScrollGeometry,
+                                        current: TransactionScrollGeometry)
+    {
+        guard refreshDidFinish, current.topInset < previous.topInset else { return }
+
+        refreshDidFinish = false
+        // The native refresh inset can retract while the scroll offset stays at the old top.
+        guard !isTrackingScroll, current.offsetY + current.topInset < -1 else { return }
+
+        withAnimation {
+            listPosition.scrollTo(edge: .top)
         }
     }
 

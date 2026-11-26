@@ -36,6 +36,7 @@ final class GoogleAuthorizationService {
     private static let driveFileScope = "https://www.googleapis.com/auth/spreadsheets"
     private let configuration: GoogleSheetsConfiguration
     private(set) var user: GIDGoogleUser?
+    private(set) var isRestoringSession = false
 
     init(configuration: GoogleSheetsConfiguration) {
         self.configuration = configuration
@@ -45,16 +46,12 @@ final class GoogleAuthorizationService {
     }
 
     func restoreSession() async {
-        if let currentUser = GIDSignIn.sharedInstance.currentUser {
-            user = currentUser
+        guard user == nil, !isRestoringSession, GIDSignIn.sharedInstance.hasPreviousSignIn() else {
             return
         }
 
-        guard GIDSignIn.sharedInstance.hasPreviousSignIn() else {
-            user = nil
-            return
-        }
-
+        isRestoringSession = true
+        defer { isRestoringSession = false }
         user = try? await GIDSignIn.sharedInstance.restorePreviousSignIn()
     }
 
@@ -65,29 +62,6 @@ final class GoogleAuthorizationService {
 
         self.user = authorizedUser
         return authorizedUser
-    }
-
-    private func userForSynchronization() async throws -> GIDGoogleUser {
-        if let currentUser = GIDSignIn.sharedInstance.currentUser {
-            return currentUser
-        }
-
-        guard GIDSignIn.sharedInstance.hasPreviousSignIn() else {
-            throw GoogleSheetsError.authenticationRequired
-        }
-
-        do {
-            let restoredUser = try await GIDSignIn.sharedInstance.restorePreviousSignIn()
-            user = restoredUser
-            return restoredUser
-        } catch {
-            if isMissingAuthentication(error) {
-                user = nil
-                throw GoogleSheetsError.authenticationRequired
-            }
-
-            throw error
-        }
     }
 
     private func isMissingAuthentication(_ error: Error) -> Bool {
@@ -102,16 +76,23 @@ final class GoogleAuthorizationService {
     }
 
     func accessToken() async throws -> String {
-        let user = try await userForSynchronization()
-
-        guard user.grantedScopes?.contains(Self.driveFileScope) == true else {
+        guard let user, user.grantedScopes?.contains(Self.driveFileScope) == true else {
             throw GoogleSheetsError.authenticationRequired
         }
 
-        let refreshedUser = try await user.refreshTokensIfNeeded()
+        do {
+            let refreshedUser = try await user.refreshTokensIfNeeded()
+            guard self.user === user else {
+                throw GoogleSheetsError.authenticationRequired
+            }
 
-        self.user = refreshedUser
-        return refreshedUser.accessToken.tokenString
+            return refreshedUser.accessToken.tokenString
+        } catch where isMissingAuthentication(error) {
+            if self.user === user {
+                signOut()
+            }
+            throw GoogleSheetsError.authenticationRequired
+        }
     }
 
     func signOut() {
@@ -200,12 +181,12 @@ final class GoogleSheetsProvider: SyncProvider {
     private let authorization: GoogleAuthorizationService
     private let client: GoogleSheetsClient
 
-    var isConfigured: Bool {
-        guard let spreadsheetId = settings.spreadsheetId?.trimmingCharacters(in: .whitespacesAndNewlines) else {
-            return false
-        }
+    var isConnected: Bool {
+        authorization.user != nil
+    }
 
-        return !spreadsheetId.isEmpty
+    var isConfigured: Bool {
+        (try? selectedSpreadsheetId()) != nil
     }
 
     init(settings: GoogleSheetSettings, authorization: GoogleAuthorizationService, client: GoogleSheetsClient) {

@@ -6,7 +6,6 @@ enum BuiltInDashboardWidget: String, CaseIterable, Identifiable {
     case spendingByCategory
     case monthlyBalanceTrend
     case monthlyAverages
-    case categoryAverages
 
     var id: String { "built-in.\(rawValue)" }
 
@@ -16,7 +15,6 @@ enum BuiltInDashboardWidget: String, CaseIterable, Identifiable {
         case .spendingByCategory: "Spending by Category"
         case .monthlyBalanceTrend: "Monthly Balance Trend"
         case .monthlyAverages: "Monthly Averages"
-        case .categoryAverages: "Category Averages"
         }
     }
 
@@ -26,7 +24,6 @@ enum BuiltInDashboardWidget: String, CaseIterable, Identifiable {
         case .spendingByCategory: "chart.bar.xaxis"
         case .monthlyBalanceTrend: "chart.bar"
         case .monthlyAverages: "sum"
-        case .categoryAverages: "square.grid.2x2"
         }
     }
 }
@@ -84,6 +81,19 @@ final class DashboardWidgetRecord {
             // Seed the initial dashboard once. A later launch must respect removed placements.
             if existingIDs.isEmpty {
                 context.insert(DashboardWidgetPlacement(widgetID: widget.id, position: position))
+            }
+        }
+
+        let retiredWidgetID = "built-in.categoryAverages"
+        if existingIDs.contains(retiredWidgetID) {
+            let placements = try context.fetch(FetchDescriptor<DashboardWidgetPlacement>())
+            if let retiredPlacement = placements.first(where: { $0.widgetID == retiredWidgetID }) {
+                let spendingWidgetID = BuiltInDashboardWidget.spendingByCategory.id
+                if placements.contains(where: { $0.widgetID == spendingWidgetID }) {
+                    context.delete(retiredPlacement)
+                } else {
+                    retiredPlacement.widgetID = spendingWidgetID
+                }
             }
         }
 

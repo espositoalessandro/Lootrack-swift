@@ -7,10 +7,11 @@ struct DashboardActivity {
         var net: Int { income - expenses }
     }
 
-    struct CategoryAmount: Identifiable {
+    struct CategorySpending: Identifiable {
         let id: UUID?
         let name: String?
-        let cents: Int
+        let currentCents: Int
+        let averageCents: Int
     }
 
     let currentMonth: Date
@@ -27,7 +28,7 @@ struct DashboardActivity {
     private let categoryNames: [UUID: String]
     private let monthlyTotals: [Date: Totals]
     private let monthlySpending: [Date: [UUID?: Int]]
-    private let categoryTotals: [TransactionType: [UUID?: Int]]
+    private let spendingTotalsByCategory: [UUID?: Int]
 
     init(transactions: [Transaction], categories: [Category], now: Date = TransactionDate.today()) {
         let calendar = TransactionDate.calendar
@@ -36,23 +37,23 @@ struct DashboardActivity {
         var totals = Totals()
         var monthlyTotals: [Date: Totals] = [:]
         var monthlySpending: [Date: [UUID?: Int]] = [:]
-        var categoryTotals: [TransactionType: [UUID?: Int]] = [:]
+        var spendingTotalsByCategory: [UUID?: Int] = [:]
 
         for transaction in transactions where transaction.deletedAt == nil {
             guard let month = calendar.dateInterval(of: .month, for: transaction.occurredOn)?.start else { continue }
 
-            let categoryID = transaction.categoryId.flatMap { categoryNames[$0] == nil ? nil : $0 }
             let amount = transaction.amountInCents
-            categoryTotals[transaction.type, default: [:]][categoryID, default: 0] += amount
 
             switch transaction.type {
             case .income:
                 totals.income += amount
                 monthlyTotals[month, default: Totals()].income += amount
             case .expense:
+                let categoryID = transaction.categoryId.flatMap { categoryNames[$0] == nil ? nil : $0 }
                 totals.expenses += amount
                 monthlyTotals[month, default: Totals()].expenses += amount
                 monthlySpending[month, default: [:]][categoryID, default: 0] += amount
+                spendingTotalsByCategory[categoryID, default: 0] += amount
             }
         }
 
@@ -64,7 +65,7 @@ struct DashboardActivity {
         self.categoryNames = categoryNames
         self.monthlyTotals = monthlyTotals
         self.monthlySpending = monthlySpending
-        self.categoryTotals = categoryTotals
+        self.spendingTotalsByCategory = spendingTotalsByCategory
     }
 
     func totals(for month: Date) -> Totals {
@@ -75,25 +76,26 @@ struct DashboardActivity {
         monthlyTotals[month] != nil
     }
 
-    func month(byAdding offset: Int, to month: Date) -> Date? {
-        guard let date = calendar.date(byAdding: .month, value: offset, to: month),
-              (firstMonth ... lastMonth).contains(date)
-        else { return nil }
-
-        return date
-    }
-
     var trendMonths: [Date] {
         let monthSpan = calendar.dateComponents([.month], from: firstMonth, to: lastMonth).month ?? 0
-        return (0 ... monthSpan).compactMap { month(byAdding: $0, to: firstMonth) }
+        return (0 ... monthSpan).compactMap { calendar.date(byAdding: .month, value: $0, to: firstMonth) }
     }
 
-    func spendingByCategory(in month: Date) -> [CategoryAmount] {
-        categoryAmounts(monthlySpending[month] ?? [:])
-    }
-
-    func averageByCategory(for type: TransactionType) -> [CategoryAmount] {
-        categoryAmounts(categoryTotals[type]?.mapValues(monthlyAverage) ?? [:])
+    func spendingByCategory(in month: Date) -> [CategorySpending] {
+        let currentSpending = monthlySpending[month] ?? [:]
+        return spendingTotalsByCategory.map { id, cents in
+            CategorySpending(id: id,
+                             name: id.flatMap { categoryNames[$0] },
+                             currentCents: currentSpending[id] ?? 0,
+                             averageCents: monthlyAverage(cents))
+        }
+        .sorted { lhs, rhs in
+            if lhs.currentCents != rhs.currentCents { return lhs.currentCents > rhs.currentCents }
+            if lhs.averageCents != rhs.averageCents { return lhs.averageCents > rhs.averageCents }
+            let nameOrder = (lhs.name ?? "").localizedStandardCompare(rhs.name ?? "")
+            if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
+            return (lhs.id?.uuidString ?? "") < (rhs.id?.uuidString ?? "")
+        }
     }
 
     private func monthlyAverage(_ cents: Int) -> Int {
@@ -101,17 +103,5 @@ struct DashboardActivity {
 
         let (quotient, remainder) = cents.quotientAndRemainder(dividingBy: loggedMonthCount)
         return abs(remainder) * 2 < loggedMonthCount ? quotient : quotient + remainder.signum()
-    }
-
-    private func categoryAmounts(_ amounts: [UUID?: Int]) -> [CategoryAmount] {
-        amounts.map { id, cents in
-            CategoryAmount(id: id, name: id.flatMap { categoryNames[$0] }, cents: cents)
-        }
-        .sorted { lhs, rhs in
-            if lhs.cents != rhs.cents { return lhs.cents > rhs.cents }
-            let nameOrder = (lhs.name ?? "").localizedStandardCompare(rhs.name ?? "")
-            if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
-            return (lhs.id?.uuidString ?? "") < (rhs.id?.uuidString ?? "")
-        }
     }
 }

@@ -14,8 +14,8 @@ final class SyncEngine {
     private let provider: any SyncProvider
     private let reconciler: SyncReconciler
 
-    var isConfigured: Bool {
-        provider.isConfigured
+    var isProviderReady: Bool {
+        provider.isReady
     }
 
     init(localStore: LocalSyncStore,
@@ -28,6 +28,8 @@ final class SyncEngine {
     }
 
     func resetRemoteFromLocal() async throws {
+        try requireReadyProvider()
+
         let snapshot =
             try localStore
                 .remoteSnapshotForReset()
@@ -37,9 +39,12 @@ final class SyncEngine {
     }
 
     func synchronize() async throws {
+        try requireReadyProvider()
+
         let localSnapshot = try localStore.getSnapshot()
 
         let remoteSnapshot = try await provider.pull()
+        try requireReadyProvider()
 
         let plan = reconciler.reconcile(local: localSnapshot,
                                         remote: remoteSnapshot)
@@ -67,5 +72,13 @@ final class SyncEngine {
             mutationIdsToAcknowledge:
             plan.mutationIdsToAcknowledge
                 + pushedMutationIds))
+    }
+
+    private func requireReadyProvider() throws {
+        guard isProviderReady else {
+            throw provider.isConnected
+                ? SyncProviderError.configurationRequired
+                : SyncProviderError.authenticationRequired
+        }
     }
 }

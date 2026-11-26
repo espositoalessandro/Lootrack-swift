@@ -27,6 +27,7 @@ struct SyncSettingsView: View {
         List {
             Section {
                 Toggle("Automatic Sync", isOn: $settings.automaticSyncEnabled)
+                    .disabled(!syncCoordinator.isProviderReady)
 
                 Picker("Sync Interval", selection: $settings.syncInterval) {
                     ForEach(SyncInterval.allCases) { interval in
@@ -35,9 +36,13 @@ struct SyncSettingsView: View {
                     }
                 }
                 .pickerStyle(.navigationLink)
-                .disabled(!settings.automaticSyncEnabled)
+                .disabled(!syncCoordinator.isProviderReady || !settings.automaticSyncEnabled)
             } footer: {
-                Text("Automatically synchronizes while Lootrack is active and when you return to the app.")
+                if syncCoordinator.isProviderReady {
+                    Text("Automatically synchronizes while Lootrack is active and when you return to the app.")
+                } else {
+                    Text("Connect a provider and select a destination to enable sync.")
+                }
             }
 
             Section {
@@ -126,7 +131,7 @@ struct SyncSettingsView: View {
     private var canResetRemote: Bool {
         mutations.isEmpty
             && !syncCoordinator.isSyncing
-            && syncCoordinator.isConfigured
+            && syncCoordinator.isProviderReady
             && syncCoordinator.conflicts.isEmpty
             && networkMonitor.status == .online
     }

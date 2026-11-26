@@ -50,7 +50,9 @@ final class GoogleSheetSelectionService {
 
         let file = try await picker.pickSpreadsheet(loginHint: loginHint)
 
-        if file.id != settings.spreadsheetId {
+        if let selectedId = settings.spreadsheetId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !selectedId.isEmpty, file.id != selectedId
+        {
             let pendingMutationCount = try modelContext.fetchCount(FetchDescriptor<Mutation>())
 
             guard pendingMutationCount == 0 else {

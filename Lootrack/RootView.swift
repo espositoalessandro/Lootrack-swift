@@ -42,21 +42,9 @@ struct RootView: View {
     private var automaticSyncTaskID: AutomaticSyncTaskID {
         AutomaticSyncTaskID(
             isActive: scenePhase == .active,
-            isEnabled: settings.automaticSyncEnabled,
+            isEnabled: settings.automaticSyncEnabled && syncCoordinator.isProviderReady,
             interval: settings.syncInterval.rawValue
         )
-    }
-
-    private var hasConflicts: Bool {
-        !syncCoordinator.conflicts.isEmpty
-    }
-
-    private var syncBadgeCount: Int {
-        if hasConflicts {
-            return syncCoordinator.conflicts.count
-        }
-
-        return mutations.count
     }
 
     private var connectivityStatusLabel: some View {
@@ -127,6 +115,11 @@ struct RootView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let error = syncCoordinator.synchronizationError {
+                syncErrorBanner(error)
+            }
+        }
         .sheet(isPresented: $isSyncPresented) {
             NavigationStack {
                 SyncView()
@@ -151,8 +144,7 @@ struct RootView: View {
 
             showOnlineStatus = true
 
-            guard scenePhase == .active, settings.automaticSyncEnabled
-            else {
+            guard automaticSyncTaskID.isActive, automaticSyncTaskID.isEnabled else {
                 return
             }
 
@@ -163,9 +155,7 @@ struct RootView: View {
             }
         }
         .task(id: automaticSyncTaskID) {
-            guard scenePhase == .active,
-                settings.automaticSyncEnabled
-            else {
+            guard automaticSyncTaskID.isActive, automaticSyncTaskID.isEnabled else {
                 return
             }
 
@@ -196,42 +186,66 @@ struct RootView: View {
             }
         }
 
-        if syncBadgeCount > 0 {
+        let conflictCount = syncCoordinator.conflicts.count
+        let hasConflicts = conflictCount > 0
+        let badgeCount = hasConflicts ? conflictCount : mutations.count
+        if syncCoordinator.isProviderReady, badgeCount > 0 {
             ToolbarItem(placement: .topBarTrailing) {
-                syncStatusButton
+                syncStatusButton(count: badgeCount, hasConflicts: hasConflicts)
             }
         }
     }
 
-    private var syncStatusButton: some View {
+    private func syncStatusButton(count: Int, hasConflicts: Bool) -> some View {
         Button {
             isSyncPresented = true
         } label: {
-            Image(
-                systemName:
-                    hasConflicts
-                    ? "exclamationmark.triangle.fill"
-                    : "arrow.triangle.2.circlepath"
-            )
-            .overlay(alignment: .topTrailing) {
-                if syncBadgeCount > 0 {
-                    Text(syncBadgeCount > 99 ? "99+" : "\(syncBadgeCount)")
+            Image(systemName: hasConflicts ? "exclamationmark.triangle.fill" : "arrow.triangle.2.circlepath")
+                .overlay(alignment: .topTrailing) {
+                    Text(count > 99 ? "99+" : "\(count)")
                         .font(.caption2.bold())
                         .foregroundStyle(.white)
                         .padding(.horizontal, 4)
                         .frame(minWidth: 16, minHeight: 16)
-                        .background(
-                            hasConflicts ? Color.red : Color.accentColor,
-                            in: Capsule()
-                        )
+                        .background(hasConflicts ? Color.red : Color.accentColor, in: Capsule())
                         .offset(x: 9, y: -8)
                 }
-            }
         }
-        .accessibilityLabel(
-            hasConflicts
-                ? "Synchronization conflicts"
-                : "Synchronization"
-        )
+        .accessibilityLabel(hasConflicts ? "Synchronization conflicts" : "Synchronization")
+    }
+
+    private func syncErrorBanner(_ error: SyncError) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(error.errorDescription ?? String(localized: "Synchronization failed."))
+                    .font(.subheadline.weight(.semibold))
+
+                if let recoverySuggestion = error.recoverySuggestion {
+                    Text(recoverySuggestion)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+
+            Button {
+                syncCoordinator.dismissSynchronizationError()
+            } label: {
+                Label("Close", systemImage: "xmark")
+                    .labelStyle(.iconOnly)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
     }
 }

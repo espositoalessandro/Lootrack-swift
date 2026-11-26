@@ -45,9 +45,6 @@ struct GoogleSheetSettingsView: View {
         }
         .navigationTitle("Google Sheet")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await authorization.restoreSession()
-        }
         .alert(errorTitle, isPresented: $showingError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -105,7 +102,7 @@ struct GoogleSheetSettingsView: View {
         } description: {
             Text("Link a Google account to synchronize Lootrack with Google Sheets.")
         } actions: {
-            if isSigningIn {
+            if isSigningIn || authorization.isRestoringSession {
                 ProgressView()
             } else {
                 GoogleLoginButton {
